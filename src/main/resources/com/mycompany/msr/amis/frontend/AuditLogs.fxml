@@ -1,0 +1,132 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import java.net.URL?>
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.ComboBox?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.TableColumn?>
+<?import javafx.scene.control.TableView?>
+<?import javafx.scene.control.TitledPane?>
+<?import javafx.scene.layout.AnchorPane?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.Priority?>
+<?import javafx.scene.layout.Region?>
+<?import javafx.scene.layout.VBox?>
+
+<AnchorPane prefHeight="720.0" prefWidth="1040.0"
+            xmlns="http://javafx.com/javafx/17"
+            xmlns:fx="http://javafx.com/fxml/1"
+            fx:controller="com.mycompany.msr.amis.AuditLogsController">
+
+    <stylesheets>
+        <URL value="@theme.css"/>
+    </stylesheets>
+
+    <children>
+        <VBox spacing="18.0"
+              AnchorPane.topAnchor="0.0"
+              AnchorPane.bottomAnchor="0.0"
+              AnchorPane.leftAnchor="0.0"
+              AnchorPane.rightAnchor="0.0"
+              styleClass="page-shell">
+            <padding>
+                <Insets top="24.0" right="24.0" bottom="24.0" left="24.0"/>
+            </padding>
+
+            <children>
+                <HBox alignment="CENTER_LEFT" spacing="14.0">
+                    <children>
+                        <VBox spacing="4.0">
+                            <children>
+                                <Label text="Audit Logs" styleClass="page-title"/>
+                                <Label text="Review system activity for restore, backup, submission, approvals, and related actions"
+                                       styleClass="page-subtitle"/>
+                            </children>
+                        </VBox>
+                    </children>
+                </HBox>
+
+                <TitledPane text="Log Filters" expanded="true" animated="false" styleClass="section-pane">
+                    <content>
+                        <VBox spacing="14.0" styleClass="content-card">
+                            <padding>
+                                <Insets top="20.0" right="20.0" bottom="20.0" left="20.0"/>
+                            </padding>
+
+                            <children>
+                                <Label fx:id="lblAuditScope"
+                                       text="Showing audit logs."
+                                       wrapText="true"
+                                       styleClass="helper-text"/>
+
+                                <HBox spacing="14.0" styleClass="toolbar-row">
+                                    <children>
+                                        <VBox spacing="6.0">
+                                            <children>
+                                                <Label text="Action" styleClass="input-label"/>
+                                                <ComboBox fx:id="cmbAction"
+                                                          prefWidth="220.0"
+                                                          onAction="#handleFilter"/>
+                                            </children>
+                                        </VBox>
+
+                                        <VBox spacing="6.0">
+                                            <children>
+                                                <Label text="Username" styleClass="input-label"/>
+                                                <ComboBox fx:id="cmbUsername"
+                                                          prefWidth="280.0"
+                                                          onAction="#handleFilter"/>
+                                            </children>
+                                        </VBox>
+
+                                        <Region HBox.hgrow="ALWAYS"/>
+
+                                        <HBox alignment="BOTTOM_RIGHT" spacing="12.0" styleClass="toolbar-row">
+                                            <children>
+                                                <Button text="Refresh"
+                                                        onAction="#handleRefresh"
+                                                        styleClass="secondary-button"/>
+                                                <Button text="Export Logs"
+                                                        onAction="#handleExport"
+                                                        styleClass="action-button"/>
+                                            </children>
+                                        </HBox>
+                                    </children>
+                                </HBox>
+                            </children>
+                        </VBox>
+                    </content>
+                </TitledPane>
+
+                <TitledPane text="Audit Entries" expanded="true" animated="false" styleClass="section-pane" VBox.vgrow="ALWAYS">
+                    <content>
+                        <VBox spacing="14.0" styleClass="content-card">
+                            <padding>
+                                <Insets top="20.0" right="20.0" bottom="20.0" left="20.0"/>
+                            </padding>
+
+                            <children>
+                                <TableView fx:id="tableAuditLogs" VBox.vgrow="ALWAYS">
+                                    <columns>
+                                        <TableColumn fx:id="colId" text="ID" prefWidth="70.0"/>
+                                        <TableColumn fx:id="colUsername" text="Username" prefWidth="210.0"/>
+                                        <TableColumn fx:id="colAction" text="Action" prefWidth="170.0"/>
+                                        <TableColumn fx:id="colModule" text="Module" prefWidth="150.0"/>
+                                        <TableColumn fx:id="colDetails" text="Details" prefWidth="380.0"/>
+                                        <TableColumn fx:id="colActionTime" text="Action Time" prefWidth="170.0"/>
+                                    </columns>
+                                </TableView>
+
+                                <Label fx:id="lblAuditStatus"
+                                       text="Ready"
+                                       wrapText="true"
+                                       styleClass="status-value"/>
+                            </children>
+                        </VBox>
+                    </content>
+                </TitledPane>
+            </children>
+        </VBox>
+    </children>
+</AnchorPane>

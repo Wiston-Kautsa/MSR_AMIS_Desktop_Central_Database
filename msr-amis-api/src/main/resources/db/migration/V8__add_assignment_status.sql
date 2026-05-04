@@ -1,0 +1,6 @@
+ALTER TABLE assignments
+ADD COLUMN IF NOT EXISTS status VARCHAR(30) NOT NULL DEFAULT 'ACTIVE';
+
+UPDATE assignments
+SET status = 'ACTIVE'
+WHERE status IS NULL OR TRIM(status) = '';

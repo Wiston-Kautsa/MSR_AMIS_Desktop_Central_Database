@@ -1,0 +1,402 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import java.net.URL?>
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.chart.PieChart?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+
+<BorderPane prefHeight="700" prefWidth="1100"
+            xmlns="http://javafx.com/javafx/17"
+            xmlns:fx="http://javafx.com/fxml/1"
+            fx:controller="com.mycompany.msr.amis.DashboardsController">
+
+    <stylesheets>
+        <URL value="@theme.css"/>
+    </stylesheets>
+
+    <top>
+        <HBox alignment="CENTER_LEFT" styleClass="header">
+            <padding>
+                <Insets top="15" bottom="15" left="20" right="20"/>
+            </padding>
+
+            <children>
+                <Label text="MSR Asset Management System" styleClass="header-title"/>
+                <Region HBox.hgrow="ALWAYS"/>
+                <VBox alignment="CENTER_RIGHT" spacing="3.0" styleClass="connection-panel">
+                    <children>
+                        <Label fx:id="lblConnectionStatus"
+                               text="Checking..."
+                               styleClass="connection-status-pill"/>
+                        <Label fx:id="lblConnectionDetail"
+                               text="Checking central server status..."
+                               styleClass="connection-detail-label"/>
+                    </children>
+                </VBox>
+            </children>
+        </HBox>
+    </top>
+
+    <left>
+        <ScrollPane fitToWidth="true"
+                    hbarPolicy="NEVER"
+                    vbarPolicy="AS_NEEDED"
+                    prefWidth="260"
+                    styleClass="sidebar-scroll">
+            <content>
+                <VBox spacing="15" prefWidth="260" styleClass="sidebar">
+
+                    <padding>
+                        <Insets top="20" left="15" right="15" bottom="20"/>
+                    </padding>
+
+                    <children>
+
+                        <Label text="MSR-AMIS" styleClass="logo"/>
+
+                        <Separator/>
+
+                        <Button text="Dashboard"
+                                styleClass="sidebar-button"
+                                onAction="#openDashboard"/>
+
+                        <Accordion>
+
+                            <panes>
+
+                                <TitledPane text="Equipment Inventory">
+                                    <content>
+                                        <VBox spacing="5">
+                                            <children>
+
+                                                <Button text="Add Equipment"
+                                                        styleClass="submenu-button"
+                                                        onAction="#openAddEquipment"/>
+
+                                                <Button text="Equipment List"
+                                                        styleClass="submenu-button"
+                                                        onAction="#openEquipmentList"/>
+
+                                            </children>
+                                        </VBox>
+                                    </content>
+                                </TitledPane>
+
+                                <TitledPane text="Equipment Issuing">
+                                    <content>
+                                        <VBox spacing="5">
+                                            <children>
+
+                                                <Button text="Create Assignment"
+                                                        styleClass="submenu-button"
+                                                        onAction="#openCreateAssignment"/>
+
+                                                <Button text="Distribute Equipment"
+                                                        styleClass="submenu-button"
+                                                        onAction="#openDistributeEquipment"/>
+
+                                                <Button text="Distribution List"
+                                                        styleClass="submenu-button"
+                                                        onAction="#openDistributionReport"/>
+
+                                                <Button text="Assignment List"
+                                                        styleClass="submenu-button"
+                                                        onAction="#openAssignmentList"/>
+
+                                            </children>
+                                        </VBox>
+                                    </content>
+                                </TitledPane>
+
+                                <TitledPane text="Equipment Return">
+                                    <content>
+                                        <VBox spacing="5">
+                                            <children>
+
+                                                <Button text="Return Equipment"
+                                                        styleClass="submenu-button"
+                                                        onAction="#openReturnEquipment"/>
+
+                                                <Button text="Return Equipment List"
+                                                        styleClass="submenu-button"
+                                                        onAction="#openReturnEquipmentList"/>
+
+                                            </children>
+                                        </VBox>
+                                    </content>
+                                </TitledPane>
+
+                                <TitledPane text="Reports">
+                                    <content>
+                                        <VBox spacing="5">
+                                            <children>
+
+                                                <Button text="Inventory Report"
+                                                        styleClass="submenu-button"
+                                                        onAction="#openInventoryReport"/>
+
+                                                <Button text="Assignment Report"
+                                                        styleClass="submenu-button"
+                                                        onAction="#openAssignmentReport"/>
+
+                                                <Button text="Distribution Report"
+                                                        styleClass="submenu-button"
+                                                        onAction="#openDistributionReport"/>
+
+                                                <Button text="Asset History"
+                                                        styleClass="submenu-button"
+                                                        onAction="#openAssetHistory"/>
+
+                                                <Button text="Return Report"
+                                                        styleClass="submenu-button"
+                                                        onAction="#openReturnReport"/>
+
+                                                <Button text="Outstanding Report"
+                                                        styleClass="submenu-button"
+                                                        onAction="#openOutstandingReport"/>
+
+                                            </children>
+                                        </VBox>
+                                    </content>
+                                </TitledPane>
+
+                            </panes>
+
+                        </Accordion>
+
+                        <Separator/>
+
+                        <TitledPane text="Data &amp; Records"
+                                    expanded="false"
+                                    styleClass="sidebar-titled-pane">
+                            <content>
+                                <VBox spacing="6">
+                                    <children>
+                                        <Button fx:id="btnBackupSync"
+                                                text="Backup &amp; Restore"
+                                                styleClass="sidebar-button"
+                                                onAction="#openBackupSync"/>
+
+                                        <Button fx:id="btnAuditLogs"
+                                                text="Audit Logs"
+                                                styleClass="sidebar-button"
+                                                onAction="#openAuditLogs"/>
+                                    </children>
+                                </VBox>
+                            </content>
+                        </TitledPane>
+
+                        <TitledPane text="Administration"
+                                    expanded="false"
+                                    styleClass="sidebar-titled-pane">
+                            <content>
+                                <VBox spacing="6">
+                                    <children>
+                                        <Button fx:id="btnUsers"
+                                                text="Users"
+                                                styleClass="sidebar-button"
+                                                onAction="#openUsers"/>
+
+                                        <Button fx:id="btnDataMaintenance"
+                                                text="Data Maintenance"
+                                                styleClass="sidebar-button"
+                                                onAction="#openDataMaintenance"
+                                                managed="false"
+                                                visible="false"/>
+                                    </children>
+                                </VBox>
+                            </content>
+                        </TitledPane>
+
+                        <TitledPane text="Support"
+                                    expanded="false"
+                                    styleClass="sidebar-titled-pane">
+                            <content>
+                                <VBox spacing="6">
+                                    <children>
+                                        <Button text="About Us"
+                                                styleClass="sidebar-button"
+                                                onAction="#openAboutUs"/>
+                                    </children>
+                                </VBox>
+                            </content>
+                        </TitledPane>
+
+                        <Separator/>
+
+                        <Button text="Logout"
+                                styleClass="sidebar-button"
+                                onAction="#openLogout"/>
+
+                    </children>
+
+                </VBox>
+            </content>
+        </ScrollPane>
+    </left>
+
+    <center>
+        <StackPane fx:id="contentArea">
+            <children>
+                <ScrollPane fitToWidth="true" fitToHeight="true"
+                            hbarPolicy="NEVER"
+                            styleClass="dashboard-scroll">
+                    <content>
+                        <VBox spacing="22"
+                              fillWidth="true"
+                              styleClass="dashboard-shell">
+                            <padding>
+                                <Insets top="28" right="28" bottom="28" left="28"/>
+                            </padding>
+
+                            <children>
+                                <HBox alignment="CENTER_LEFT" spacing="18" styleClass="dashboard-hero">
+                                    <children>
+                                        <VBox spacing="6" HBox.hgrow="ALWAYS">
+                                            <children>
+                                                <Label text="Asset Overview" styleClass="dashboard-hero-title"/>
+                                                <Label text="View a clear snapshot of the asset records currently stored in the system database."
+                                                       wrapText="true"
+                                                       styleClass="dashboard-hero-copy"/>
+                                            </children>
+                                        </VBox>
+                                    </children>
+                                </HBox>
+
+                                <TitledPane text="Summary Overview"
+                                            expanded="true"
+                                            collapsible="true"
+                                            styleClass="dashboard-section">
+                                    <content>
+                                        <GridPane hgap="16" vgap="16" styleClass="dashboard-section-content">
+                                            <columnConstraints>
+                                                <ColumnConstraints percentWidth="25.0" hgrow="ALWAYS"/>
+                                                <ColumnConstraints percentWidth="25.0" hgrow="ALWAYS"/>
+                                                <ColumnConstraints percentWidth="25.0" hgrow="ALWAYS"/>
+                                                <ColumnConstraints percentWidth="25.0" hgrow="ALWAYS"/>
+                                            </columnConstraints>
+
+                                            <children>
+                                                <VBox spacing="8" styleClass="dashboard-kpi-card">
+                                                    <children>
+                                                        <Label text="Total Assets" wrapText="true" styleClass="dashboard-kpi-title"/>
+                                                        <Label fx:id="lblTotalAssets" text="0" styleClass="dashboard-kpi-value"/>
+                                                    </children>
+                                                </VBox>
+
+                                                <VBox spacing="8" styleClass="dashboard-kpi-card" GridPane.columnIndex="1">
+                                                    <children>
+                                                        <Label text="Available Assets" wrapText="true" styleClass="dashboard-kpi-title"/>
+                                                        <Label fx:id="lblAvailableAssets" text="0" styleClass="dashboard-kpi-value"/>
+                                                    </children>
+                                                </VBox>
+
+                                                <VBox spacing="8" styleClass="dashboard-kpi-card" GridPane.columnIndex="2">
+                                                    <children>
+                                                        <Label text="Borrowed This Month" wrapText="true" styleClass="dashboard-kpi-title"/>
+                                                        <Label fx:id="lblBorrowedThisMonth" text="0" styleClass="dashboard-kpi-value"/>
+                                                        <Label fx:id="lblBorrowedBreakdown" text="Returned: 0  |  Still In Use: 0" wrapText="true" styleClass="dashboard-kpi-meta"/>
+                                                    </children>
+                                                </VBox>
+
+                                                <VBox spacing="8" styleClass="dashboard-kpi-card" GridPane.columnIndex="3">
+                                                    <children>
+                                                        <Label text="Returned This Month" wrapText="true" styleClass="dashboard-kpi-title"/>
+                                                        <Label fx:id="lblReturnedAssets" text="0" styleClass="dashboard-kpi-value"/>
+                                                    </children>
+                                                </VBox>
+                                            </children>
+                                        </GridPane>
+                                    </content>
+                                </TitledPane>
+
+                                <TitledPane text="Asset Snapshot"
+                                            expanded="true"
+                                            collapsible="true"
+                                            styleClass="dashboard-section">
+                                    <content>
+                                        <HBox spacing="16" styleClass="dashboard-section-content">
+                                            <children>
+                                                <VBox spacing="14" styleClass="dashboard-panel-card" HBox.hgrow="ALWAYS">
+                                                    <children>
+                                                        <HBox alignment="CENTER_LEFT" spacing="12">
+                                                            <children>
+                                                                <VBox spacing="4" HBox.hgrow="ALWAYS">
+                                                                    <children>
+                                                                        <Label text="Asset Overview" styleClass="dashboard-panel-title"/>
+                                                                    </children>
+                                                                </VBox>
+                                                                <Button text="Refresh"
+                                                                        onAction="#handleRefreshDashboard"
+                                                                        styleClass="secondary-button"/>
+                                                            </children>
+                                                        </HBox>
+                                                        <PieChart fx:id="assetStatusPieChart"
+                                                                  labelsVisible="true"
+                                                                  legendVisible="true"
+                                                                  minHeight="300"
+                                                                  prefHeight="340"
+                                                                  styleClass="dashboard-pie-chart"
+                                                                  VBox.vgrow="ALWAYS"/>
+                                                    </children>
+                                                </VBox>
+
+                                                <VBox spacing="18" prefWidth="320" styleClass="dashboard-panel-card">
+                                                    <children>
+                                                        <Label text="Overview" styleClass="dashboard-panel-title"/>
+                                                        <VBox spacing="10" styleClass="dashboard-rate-card">
+                                                            <children>
+                                                                <Label text="Utilization Rate" wrapText="true" styleClass="dashboard-chip-label"/>
+                                                                <Label fx:id="lblUtilizationRate" text="0%" styleClass="dashboard-rate-value"/>
+                                                                <ProgressBar fx:id="progressUtilization"
+                                                                             progress="0.0"
+                                                                             maxWidth="1.7976931348623157E308"
+                                                                             styleClass="dashboard-progress"/>
+                                                                <Label text="Assets in use divided by total assets." wrapText="true" styleClass="dashboard-panel-copy"/>
+                                                            </children>
+                                                        </VBox>
+                                                        <VBox spacing="10" styleClass="dashboard-rate-card">
+                                                            <children>
+                                                                <Label text="Availability Rate" wrapText="true" styleClass="dashboard-chip-label"/>
+                                                                <Label fx:id="lblAvailabilityRate" text="0%" styleClass="dashboard-rate-value"/>
+                                                                <ProgressBar fx:id="progressAvailability"
+                                                                             progress="0.0"
+                                                                             maxWidth="1.7976931348623157E308"
+                                                                             styleClass="dashboard-progress availability"/>
+                                                                <Label text="Available assets divided by total assets." wrapText="true" styleClass="dashboard-panel-copy"/>
+                                                            </children>
+                                                        </VBox>
+                                                    </children>
+                                                </VBox>
+                                            </children>
+                                        </HBox>
+                                    </content>
+                                </TitledPane>
+
+                                <TitledPane text="Alerts"
+                                            expanded="true"
+                                            collapsible="true"
+                                            styleClass="dashboard-section">
+                                    <content>
+                                        <HBox spacing="16" styleClass="dashboard-section-content">
+                                            <children>
+                                                <VBox spacing="14" styleClass="dashboard-panel-card" HBox.hgrow="ALWAYS">
+                                                    <children>
+                                                        <Label text="Alerts" styleClass="dashboard-panel-title"/>
+                                                        <VBox fx:id="alertsContainer" spacing="10" VBox.vgrow="ALWAYS"/>
+                                                    </children>
+                                                </VBox>
+                                            </children>
+                                        </HBox>
+                                    </content>
+                                </TitledPane>
+                            </children>
+                        </VBox>
+                    </content>
+                </ScrollPane>
+            </children>
+        </StackPane>
+    </center>
+
+</BorderPane>

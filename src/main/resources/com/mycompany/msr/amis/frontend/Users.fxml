@@ -1,0 +1,210 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import java.net.URL?>
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.CheckBox?>
+<?import javafx.scene.control.ComboBox?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.PasswordField?>
+<?import javafx.scene.control.TableColumn?>
+<?import javafx.scene.control.TableView?>
+<?import javafx.scene.control.TitledPane?>
+<?import javafx.scene.control.TextField?>
+<?import javafx.scene.layout.AnchorPane?>
+<?import javafx.scene.layout.ColumnConstraints?>
+<?import javafx.scene.layout.GridPane?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.Priority?>
+<?import javafx.scene.layout.VBox?>
+
+<AnchorPane prefHeight="700.0" prefWidth="980.0"
+            xmlns="http://javafx.com/javafx/17"
+            xmlns:fx="http://javafx.com/fxml/1"
+            fx:controller="com.mycompany.msr.amis.UsersController">
+
+    <stylesheets>
+        <URL value="@theme.css"/>
+    </stylesheets>
+
+    <children>
+        <VBox spacing="18.0"
+              AnchorPane.topAnchor="0.0"
+              AnchorPane.bottomAnchor="0.0"
+              AnchorPane.leftAnchor="0.0"
+              AnchorPane.rightAnchor="0.0"
+              styleClass="page-shell">
+            <padding>
+                <Insets top="24.0" right="24.0" bottom="24.0" left="24.0"/>
+            </padding>
+
+            <children>
+                <HBox alignment="CENTER_LEFT" spacing="14.0">
+                    <children>
+                        <VBox spacing="4.0">
+                            <children>
+                                <Label text="Users &amp; Access" styleClass="page-title"/>
+                                <Label fx:id="lblPageSubtitle"
+                                       text="Manage user accounts, departments, roles, and account status"
+                                       styleClass="page-subtitle"/>
+                            </children>
+                        </VBox>
+                    </children>
+                </HBox>
+
+                <TitledPane fx:id="createUserPane" text="Create New User" expanded="true" animated="false" styleClass="section-pane">
+                    <content>
+                        <VBox spacing="18.0" styleClass="content-card">
+                            <padding>
+                                <Insets top="20.0" right="20.0" bottom="20.0" left="20.0"/>
+                            </padding>
+
+                            <children>
+                                <GridPane hgap="16.0" vgap="14.0" styleClass="form-grid">
+                                    <columnConstraints>
+                                        <ColumnConstraints percentWidth="16.0"/>
+                                        <ColumnConstraints percentWidth="34.0"/>
+                                        <ColumnConstraints percentWidth="16.0"/>
+                                        <ColumnConstraints percentWidth="34.0"/>
+                                    </columnConstraints>
+
+                                    <children>
+                                        <Label text="Full Name" styleClass="input-label" GridPane.rowIndex="0" GridPane.columnIndex="0"/>
+                                        <TextField fx:id="txtName"
+                                                   promptText="Enter full name"
+                                                   GridPane.rowIndex="0"
+                                                   GridPane.columnIndex="1"/>
+
+                                        <Label text="Email" styleClass="input-label" GridPane.rowIndex="1" GridPane.columnIndex="0"/>
+                                        <TextField fx:id="txtEmail"
+                                                   promptText="name@example.com"
+                                                   GridPane.rowIndex="1"
+                                                   GridPane.columnIndex="1"/>
+
+                                        <Label text="Department" styleClass="input-label" GridPane.rowIndex="1" GridPane.columnIndex="2"/>
+                                        <ComboBox fx:id="cmbDepartment"
+                                                  prefWidth="240.0"
+                                                  GridPane.rowIndex="1"
+                                                  GridPane.columnIndex="3"/>
+
+                                        <Label text="Role" styleClass="input-label" GridPane.rowIndex="2" GridPane.columnIndex="0"/>
+                                        <ComboBox fx:id="cmbRole"
+                                                  prefWidth="220.0"
+                                                  GridPane.rowIndex="2"
+                                                  GridPane.columnIndex="1"/>
+
+                                        <Label text="Password" styleClass="input-label" GridPane.rowIndex="2" GridPane.columnIndex="2"/>
+                                        <VBox spacing="8.0"
+                                              GridPane.rowIndex="2"
+                                              GridPane.columnIndex="3">
+                                            <children>
+                                                <PasswordField fx:id="txtPassword"
+                                                               promptText="Set a temporary password"/>
+                                                <TextField fx:id="txtPasswordVisible"
+                                                           promptText="Set a temporary password"
+                                                           visible="false"
+                                                           managed="false"/>
+                                                <CheckBox fx:id="chkShowPassword"
+                                                          text="Show Password"
+                                                          styleClass="login-checkbox"/>
+                                            </children>
+                                        </VBox>
+                                    </children>
+                                </GridPane>
+
+                                <HBox alignment="CENTER_RIGHT" spacing="12.0" styleClass="toolbar-row">
+                                    <children>
+                                        <Button fx:id="btnBackToLogin"
+                                                text="Back to Login"
+                                                managed="false"
+                                                visible="false"
+                                                onAction="#handleBackToLogin"
+                                                styleClass="secondary-button"/>
+                                        <Button fx:id="btnCompleteSetup"
+                                                text="Finish Setup"
+                                                managed="false"
+                                                visible="false"
+                                                onAction="#handleCompleteSetup"
+                                                styleClass="action-button"/>
+                                        <Button text="Add User"
+                                                onAction="#handleAddUser"
+                                                styleClass="action-button"/>
+                                        <Button text="Refresh Users"
+                                                onAction="#handleRefreshUsers"
+                                                styleClass="secondary-button"/>
+                                    </children>
+                                </HBox>
+                            </children>
+                        </VBox>
+                    </content>
+                </TitledPane>
+
+                <TitledPane fx:id="userDirectoryPane" text="User Directory" expanded="true" animated="false" styleClass="section-pane" VBox.vgrow="ALWAYS">
+                    <content>
+                        <VBox spacing="14.0" styleClass="content-card">
+                            <padding>
+                                <Insets top="20.0" right="20.0" bottom="20.0" left="20.0"/>
+                            </padding>
+
+                            <children>
+                                <HBox alignment="CENTER_LEFT" spacing="12.0" styleClass="toolbar-row">
+                                    <children>
+                                        <Button text="Refresh"
+                                                onAction="#handleRefreshUsers"
+                                                styleClass="secondary-button"/>
+                                    </children>
+                                </HBox>
+
+                                <TableView fx:id="tableUsers" VBox.vgrow="ALWAYS">
+                                    <columns>
+                                        <TableColumn fx:id="colId" text="ID" prefWidth="70.0"/>
+                                        <TableColumn fx:id="colName" text="Full Name" prefWidth="190.0"/>
+                                        <TableColumn fx:id="colRole" text="Role" prefWidth="120.0"/>
+                                        <TableColumn fx:id="colDepartment" text="Department" prefWidth="180.0"/>
+                                        <TableColumn fx:id="colEmail" text="Email" prefWidth="220.0"/>
+                                        <TableColumn fx:id="colStatus" text="Status" prefWidth="120.0"/>
+                                    </columns>
+                                </TableView>
+
+                                <Label fx:id="lblUserStatus"
+                                       text="Ready"
+                                       wrapText="true"
+                                       styleClass="status-value"/>
+                            </children>
+                        </VBox>
+                    </content>
+                </TitledPane>
+
+                <TitledPane fx:id="remoteResetPane"
+                            text="Remote Demo Reset"
+                            expanded="false"
+                            animated="false"
+                            managed="false"
+                            visible="false"
+                            styleClass="section-pane">
+                    <content>
+                        <VBox spacing="12.0" styleClass="content-card">
+                            <padding>
+                                <Insets top="20.0" right="20.0" bottom="20.0" left="20.0"/>
+                            </padding>
+
+                            <children>
+                                <Label text="Super Admin only. Clears remote PostgreSQL demo data while preserving users and departments. A fresh audit entry is written after the reset."
+                                       wrapText="true"
+                                       styleClass="helper-text"/>
+                                <Label text="Type RESET REMOTE DEMO DATA to enable the action." styleClass="input-label"/>
+                                <TextField fx:id="txtRemoteResetConfirmation"
+                                           promptText="RESET REMOTE DEMO DATA"/>
+                                <Button fx:id="btnRemoteDemoReset"
+                                        text="Reset Remote Demo Data"
+                                        disable="true"
+                                        onAction="#handleRemoteDemoReset"
+                                        styleClass="action-button"/>
+                            </children>
+                        </VBox>
+                    </content>
+                </TitledPane>
+            </children>
+        </VBox>
+    </children>
+</AnchorPane>

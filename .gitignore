@@ -3,5 +3,11 @@ target/
 dist/
 dist-test/
 dist-installer-test/
+.tmp.driveupload/
+.tmp.drivedownload/
+.env
+.env.local
+*.class
+*.log
 *.db
 *.sqlite

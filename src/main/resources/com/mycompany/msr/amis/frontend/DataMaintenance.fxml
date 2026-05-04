@@ -1,0 +1,253 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import java.net.URL?>
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.TextField?>
+<?import javafx.scene.control.TitledPane?>
+<?import javafx.scene.layout.AnchorPane?>
+<?import javafx.scene.layout.ColumnConstraints?>
+<?import javafx.scene.layout.GridPane?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.VBox?>
+
+<AnchorPane prefHeight="760.0" prefWidth="1200.0"
+            xmlns="http://javafx.com/javafx/17"
+            xmlns:fx="http://javafx.com/fxml/1"
+            fx:controller="com.mycompany.msr.amis.DataMaintenanceController">
+
+    <stylesheets>
+        <URL value="@theme.css"/>
+    </stylesheets>
+
+    <children>
+        <VBox spacing="18.0"
+              AnchorPane.topAnchor="15.0"
+              AnchorPane.bottomAnchor="15.0"
+              AnchorPane.leftAnchor="15.0"
+              AnchorPane.rightAnchor="15.0">
+
+            <padding>
+                <Insets top="10.0" right="10.0" bottom="10.0" left="10.0"/>
+            </padding>
+
+            <HBox alignment="CENTER_LEFT" spacing="14.0" styleClass="page-header">
+                <children>
+                    <VBox spacing="4.0">
+                        <children>
+                            <Label text="Data Maintenance" styleClass="page-title"/>
+                            <Label fx:id="lblPageSubtitle"
+                                   text="Super Admin tools for clearing demo content in the active database with audit tracing"
+                                   styleClass="page-subtitle"/>
+                        </children>
+                    </VBox>
+                    <Button text="Refresh Counts"
+                            onAction="#handleRefresh"
+                            styleClass="secondary-button"/>
+                </children>
+            </HBox>
+
+            <TitledPane fx:id="summaryPane" text="Data Summary" expanded="true" animated="false" styleClass="section-pane">
+                <content>
+                    <GridPane hgap="15.0" vgap="15.0">
+                        <columnConstraints>
+                            <ColumnConstraints percentWidth="20.0"/>
+                            <ColumnConstraints percentWidth="20.0"/>
+                            <ColumnConstraints percentWidth="20.0"/>
+                            <ColumnConstraints percentWidth="20.0"/>
+                            <ColumnConstraints percentWidth="20.0"/>
+                        </columnConstraints>
+
+                        <children>
+                            <VBox GridPane.columnIndex="0" spacing="8.0" styleClass="summary-card">
+                                <padding><Insets top="15" right="15" bottom="15" left="15"/></padding>
+                                <children>
+                                    <Label text="Equipment" styleClass="card-title"/>
+                                    <Label fx:id="lblEquipmentCount" text="0" styleClass="card-value"/>
+                                </children>
+                            </VBox>
+
+                            <VBox GridPane.columnIndex="1" spacing="8.0" styleClass="summary-card">
+                                <padding><Insets top="15" right="15" bottom="15" left="15"/></padding>
+                                <children>
+                                    <Label text="Assignments" styleClass="card-title"/>
+                                    <Label fx:id="lblAssignmentCount" text="0" styleClass="card-value"/>
+                                </children>
+                            </VBox>
+
+                            <VBox GridPane.columnIndex="2" spacing="8.0" styleClass="summary-card">
+                                <padding><Insets top="15" right="15" bottom="15" left="15"/></padding>
+                                <children>
+                                    <Label text="Distribution" styleClass="card-title"/>
+                                    <Label fx:id="lblDistributionCount" text="0" styleClass="card-value"/>
+                                </children>
+                            </VBox>
+
+                            <VBox GridPane.columnIndex="3" spacing="8.0" styleClass="summary-card">
+                                <padding><Insets top="15" right="15" bottom="15" left="15"/></padding>
+                                <children>
+                                    <Label text="Returns" styleClass="card-title"/>
+                                    <Label fx:id="lblReturnCount" text="0" styleClass="card-value"/>
+                                </children>
+                            </VBox>
+
+                            <VBox GridPane.columnIndex="4" spacing="8.0" styleClass="summary-card">
+                                <padding><Insets top="15" right="15" bottom="15" left="15"/></padding>
+                                <children>
+                                    <Label text="Audit Logs" styleClass="card-title"/>
+                                    <Label fx:id="lblAuditLogCount" text="0" styleClass="card-value"/>
+                                </children>
+                            </VBox>
+                        </children>
+                    </GridPane>
+                </content>
+            </TitledPane>
+
+            <HBox spacing="15.0" VBox.vgrow="ALWAYS">
+                <children>
+                    <VBox spacing="15.0" HBox.hgrow="ALWAYS">
+                        <children>
+                            <TitledPane text="Returns" expanded="true" animated="false" styleClass="section-pane">
+                                <content>
+                                    <VBox spacing="12.0" styleClass="content-card">
+                                        <padding><Insets top="18" right="18" bottom="18" left="18"/></padding>
+                                        <children>
+                                            <Label text="Clear return records from the active database. Useful when you want to re-run a demo return flow."
+                                                   wrapText="true"
+                                                   styleClass="helper-text"/>
+                                            <Label text="Type RESET RETURNS DATA" styleClass="input-label"/>
+                                            <TextField fx:id="txtReturnsConfirmation"
+                                                       promptText="RESET RETURNS DATA"/>
+                                            <Button fx:id="btnResetReturns"
+                                                    text="Reset Returns Data"
+                                                    disable="true"
+                                                    onAction="#handleResetReturns"
+                                                    styleClass="action-button"/>
+                                        </children>
+                                    </VBox>
+                                </content>
+                            </TitledPane>
+
+                            <TitledPane text="Distribution" expanded="true" animated="false" styleClass="section-pane">
+                                <content>
+                                    <VBox spacing="12.0" styleClass="content-card">
+                                        <padding><Insets top="18" right="18" bottom="18" left="18"/></padding>
+                                        <children>
+                                            <Label text="Clear distribution rows from the active database and return currently assigned equipment back to AVAILABLE. Returns must be empty first."
+                                                   wrapText="true"
+                                                   styleClass="helper-text"/>
+                                            <Label text="Type RESET DISTRIBUTION DATA" styleClass="input-label"/>
+                                            <TextField fx:id="txtDistributionConfirmation"
+                                                       promptText="RESET DISTRIBUTION DATA"/>
+                                            <Button fx:id="btnResetDistribution"
+                                                    text="Reset Distribution Data"
+                                                    disable="true"
+                                                    onAction="#handleResetDistribution"
+                                                    styleClass="action-button"/>
+                                        </children>
+                                    </VBox>
+                                </content>
+                            </TitledPane>
+
+                            <TitledPane text="Assignments" expanded="true" animated="false" styleClass="section-pane">
+                                <content>
+                                    <VBox spacing="12.0" styleClass="content-card">
+                                        <padding><Insets top="18" right="18" bottom="18" left="18"/></padding>
+                                        <children>
+                                            <Label text="Clear assignments after distribution and returns have already been emptied."
+                                                   wrapText="true"
+                                                   styleClass="helper-text"/>
+                                            <Label text="Type RESET ASSIGNMENTS DATA" styleClass="input-label"/>
+                                            <TextField fx:id="txtAssignmentsConfirmation"
+                                                       promptText="RESET ASSIGNMENTS DATA"/>
+                                            <Button fx:id="btnResetAssignments"
+                                                    text="Reset Assignment Data"
+                                                    disable="true"
+                                                    onAction="#handleResetAssignments"
+                                                    styleClass="action-button"/>
+                                        </children>
+                                    </VBox>
+                                </content>
+                            </TitledPane>
+                        </children>
+                    </VBox>
+
+                    <VBox spacing="15.0" HBox.hgrow="ALWAYS">
+                        <children>
+                            <TitledPane text="Equipment" expanded="true" animated="false" styleClass="section-pane">
+                                <content>
+                                    <VBox spacing="12.0" styleClass="content-card">
+                                        <padding><Insets top="18" right="18" bottom="18" left="18"/></padding>
+                                        <children>
+                                            <Label text="Clear equipment after assignments, distribution, and returns are empty."
+                                                   wrapText="true"
+                                                   styleClass="helper-text"/>
+                                            <Label text="Type RESET EQUIPMENT DATA" styleClass="input-label"/>
+                                            <TextField fx:id="txtEquipmentConfirmation"
+                                                       promptText="RESET EQUIPMENT DATA"/>
+                                            <Button fx:id="btnResetEquipment"
+                                                    text="Reset Equipment Data"
+                                                    disable="true"
+                                                    onAction="#handleResetEquipment"
+                                                    styleClass="action-button"/>
+                                        </children>
+                                    </VBox>
+                                </content>
+                            </TitledPane>
+
+                            <TitledPane text="Audit Log" expanded="true" animated="false" styleClass="section-pane">
+                                <content>
+                                    <VBox spacing="12.0" styleClass="content-card">
+                                        <padding><Insets top="18" right="18" bottom="18" left="18"/></padding>
+                                        <children>
+                                            <Label text="Clear audit logs, then immediately write one fresh reset entry so the action remains traceable."
+                                                   wrapText="true"
+                                                   styleClass="helper-text"/>
+                                            <Label text="Type RESET AUDIT LOG DATA" styleClass="input-label"/>
+                                            <TextField fx:id="txtAuditLogConfirmation"
+                                                       promptText="RESET AUDIT LOG DATA"/>
+                                            <Button fx:id="btnResetAuditLog"
+                                                    text="Reset Audit Log Data"
+                                                    disable="true"
+                                                    onAction="#handleResetAuditLog"
+                                                    styleClass="action-button"/>
+                                        </children>
+                                    </VBox>
+                                </content>
+                            </TitledPane>
+
+                            <TitledPane text="Full Demo Data" expanded="true" animated="false" styleClass="section-pane">
+                                <content>
+                                    <VBox spacing="12.0" styleClass="content-card">
+                                        <padding><Insets top="18" right="18" bottom="18" left="18"/></padding>
+                                        <children>
+                                            <Label text="Clear returns, distribution, assignments, equipment, and audit logs in one action. Users and departments remain intact."
+                                                   wrapText="true"
+                                                   styleClass="helper-text"/>
+                                            <Label text="Type RESET FULL DEMO DATA" styleClass="input-label"/>
+                                            <TextField fx:id="txtFullDemoConfirmation"
+                                                       promptText="RESET FULL DEMO DATA"/>
+                                            <Button fx:id="btnResetFullDemo"
+                                                    text="Reset Full Demo Data"
+                                                    disable="true"
+                                                    onAction="#handleResetFullDemoData"
+                                                    styleClass="action-button"/>
+                                        </children>
+                                    </VBox>
+                                </content>
+                            </TitledPane>
+                        </children>
+                    </VBox>
+                </children>
+            </HBox>
+
+            <HBox alignment="CENTER_LEFT" spacing="8.0" styleClass="status-bar">
+                <children>
+                    <Label text="Status:" styleClass="status-label"/>
+                    <Label fx:id="lblMaintenanceStatus" text="Ready" styleClass="status-value" wrapText="true"/>
+                </children>
+            </HBox>
+        </VBox>
+    </children>
+</AnchorPane>
