@@ -175,35 +175,6 @@
                     </content>
                 </TitledPane>
 
-                <TitledPane fx:id="remoteResetPane"
-                            text="Remote Demo Reset"
-                            expanded="false"
-                            animated="false"
-                            managed="false"
-                            visible="false"
-                            styleClass="section-pane">
-                    <content>
-                        <VBox spacing="12.0" styleClass="content-card">
-                            <padding>
-                                <Insets top="20.0" right="20.0" bottom="20.0" left="20.0"/>
-                            </padding>
-
-                            <children>
-                                <Label text="Super Admin only. Clears remote PostgreSQL demo data while preserving users and departments. A fresh audit entry is written after the reset."
-                                       wrapText="true"
-                                       styleClass="helper-text"/>
-                                <Label text="Type RESET REMOTE DEMO DATA to enable the action." styleClass="input-label"/>
-                                <TextField fx:id="txtRemoteResetConfirmation"
-                                           promptText="RESET REMOTE DEMO DATA"/>
-                                <Button fx:id="btnRemoteDemoReset"
-                                        text="Reset Remote Demo Data"
-                                        disable="true"
-                                        onAction="#handleRemoteDemoReset"
-                                        styleClass="action-button"/>
-                            </children>
-                        </VBox>
-                    </content>
-                </TitledPane>
             </children>
         </VBox>
     </children>

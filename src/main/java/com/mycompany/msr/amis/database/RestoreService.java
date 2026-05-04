@@ -93,13 +93,13 @@ public final class RestoreService {
         return submissionCopy;
     }
 
-    public DemoResetResult resetLocalDemoData(String actor) throws Exception {
+    public OperationalDataResetResult resetLocalOperationalData(String actor) throws Exception {
         if (!Files.exists(config.getLocalDatabasePath())) {
             throw new IOException("Local database file was not found: " + config.getLocalDatabasePath());
         }
 
         String sanitizedActor = sanitizedActor(actor);
-        Path safetyBackup = backupCurrentLocalDatabaseBeforeRestore(sanitizedActor, "pre_demo_reset");
+        Path safetyBackup = backupCurrentLocalDatabaseBeforeRestore(sanitizedActor, "pre_operational_reset");
         Map<String, Integer> clearedRows = new LinkedHashMap<>();
 
         try (Connection connection = openConnection(config.getLocalDatabasePath())) {
@@ -125,7 +125,7 @@ public final class RestoreService {
             }
         }
 
-        StringBuilder summary = new StringBuilder("Operational demo data cleared.");
+        StringBuilder summary = new StringBuilder("Operational data cleared.");
         for (Map.Entry<String, Integer> entry : clearedRows.entrySet()) {
             summary.append(" ")
                     .append(entry.getKey())
@@ -137,12 +137,12 @@ public final class RestoreService {
 
         AuditService.log(
                 actor,
-                "RESET_DEMO_DATA",
+                "RESET_OPERATIONAL_DATA",
                 "BACKUP_SYNC",
                 summary.toString()
         );
 
-        return new DemoResetResult(safetyBackup, clearedRows);
+        return new OperationalDataResetResult(safetyBackup, clearedRows);
     }
 
     public PublishResult approveAndPublish(Path submissionFile, String actor) throws Exception {
@@ -1286,11 +1286,11 @@ public final class RestoreService {
         }
     }
 
-    public static final class DemoResetResult {
+    public static final class OperationalDataResetResult {
         private final Path safetyBackupFile;
         private final Map<String, Integer> clearedRows;
 
-        public DemoResetResult(Path safetyBackupFile, Map<String, Integer> clearedRows) {
+        public OperationalDataResetResult(Path safetyBackupFile, Map<String, Integer> clearedRows) {
             this.safetyBackupFile = safetyBackupFile;
             this.clearedRows = Map.copyOf(clearedRows);
         }

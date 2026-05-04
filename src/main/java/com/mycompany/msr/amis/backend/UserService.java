@@ -17,6 +17,4 @@ public interface UserService {
     void deleteUser(int id) throws Exception;
 
     void completeTemporarySetup(String email) throws Exception;
-
-    String resetRemoteDemoData() throws Exception;
 }

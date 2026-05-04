@@ -38,7 +38,7 @@
                         <children>
                             <Label text="Data Maintenance" styleClass="page-title"/>
                             <Label fx:id="lblPageSubtitle"
-                                   text="Super Admin tools for clearing demo content in the active database with audit tracing"
+                                   text="Super Admin tools for controlled operational data maintenance with audit tracing"
                                    styleClass="page-subtitle"/>
                         </children>
                     </VBox>
@@ -113,7 +113,7 @@
                                     <VBox spacing="12.0" styleClass="content-card">
                                         <padding><Insets top="18" right="18" bottom="18" left="18"/></padding>
                                         <children>
-                                            <Label text="Clear return records from the active database. Useful when you want to re-run a demo return flow."
+                                            <Label text="Clear return records from the active database after confirming that retention requirements have been met."
                                                    wrapText="true"
                                                    styleClass="helper-text"/>
                                             <Label text="Type RESET RETURNS DATA" styleClass="input-label"/>
@@ -217,21 +217,21 @@
                                 </content>
                             </TitledPane>
 
-                            <TitledPane text="Full Demo Data" expanded="true" animated="false" styleClass="section-pane">
+                            <TitledPane text="Full Operational Data" expanded="true" animated="false" styleClass="section-pane">
                                 <content>
                                     <VBox spacing="12.0" styleClass="content-card">
                                         <padding><Insets top="18" right="18" bottom="18" left="18"/></padding>
                                         <children>
-                                            <Label text="Clear returns, distribution, assignments, equipment, and audit logs in one action. Users and departments remain intact."
+                                            <Label text="Clear returns, distribution, assignments, equipment, password reset audit records, and audit logs in one controlled action. Users and departments remain intact."
                                                    wrapText="true"
                                                    styleClass="helper-text"/>
-                                            <Label text="Type RESET FULL DEMO DATA" styleClass="input-label"/>
-                                            <TextField fx:id="txtFullDemoConfirmation"
-                                                       promptText="RESET FULL DEMO DATA"/>
-                                            <Button fx:id="btnResetFullDemo"
-                                                    text="Reset Full Demo Data"
+                                            <Label text="Type RESET FULL OPERATIONAL DATA" styleClass="input-label"/>
+                                            <TextField fx:id="txtFullOperationalConfirmation"
+                                                       promptText="RESET FULL OPERATIONAL DATA"/>
+                                            <Button fx:id="btnResetFullOperational"
+                                                    text="Reset Full Operational Data"
                                                     disable="true"
-                                                    onAction="#handleResetFullDemoData"
+                                                    onAction="#handleResetFullOperationalData"
                                                     styleClass="action-button"/>
                                         </children>
                                     </VBox>

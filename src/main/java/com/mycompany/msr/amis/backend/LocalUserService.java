@@ -131,16 +131,6 @@ public final class LocalUserService implements UserService {
         DatabaseHandler.completeTemporarySetup(email);
     }
 
-    @Override
-    public String resetRemoteDemoData() throws Exception {
-        if (!remoteMirrorCoordinator.hasRemoteSession()) {
-            throw new UnsupportedOperationException("Remote demo reset is available only when the desktop is connected to the central API.");
-        }
-        String message = remoteMirrorCoordinator.getRemoteUserService().resetRemoteDemoData();
-        remoteMirrorCoordinator.synchronizeFromRemote(Map.of());
-        return message;
-    }
-
     private Map<String, String> passwordOverride(String email, String plainPassword) {
         Map<String, String> overrides = new HashMap<>();
         if (email != null && !email.isBlank() && plainPassword != null && !plainPassword.isBlank()) {

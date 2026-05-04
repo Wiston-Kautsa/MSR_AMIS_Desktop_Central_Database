@@ -33,4 +33,4 @@ app:
       secret: ${MSR_AMIS_JWT_SECRET:VGhpc0lzQVN0cm9uZ0RldmVsb3BtZW50U2VjcmV0S2V5Rm9yTVNSQU1JUw==}
       expiration-seconds: ${MSR_AMIS_JWT_EXPIRATION_SECONDS:28800}
     password-reset:
-      expose-code-when-email-disabled: ${MSR_AMIS_EXPOSE_RESET_CODE_ON_EMAIL_FAILURE:true}
+      expose-code-when-email-disabled: ${MSR_AMIS_EXPOSE_RESET_CODE_ON_EMAIL_FAILURE:false}

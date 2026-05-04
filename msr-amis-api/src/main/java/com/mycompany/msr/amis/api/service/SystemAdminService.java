@@ -21,29 +21,31 @@ public class SystemAdminService {
     }
 
     @Transactional
-    public String resetRemoteDemoData(String actor) {
+    public String resetOperationalData(String actor) {
         Map<String, Integer> deletedRows = new LinkedHashMap<>();
         deletedRows.put("returns", jdbcTemplate.update("DELETE FROM returns"));
         deletedRows.put("distribution", jdbcTemplate.update("DELETE FROM distribution"));
         deletedRows.put("assignments", jdbcTemplate.update("DELETE FROM assignments"));
         deletedRows.put("equipment", jdbcTemplate.update("DELETE FROM equipment"));
+        deletedRows.put("password_reset_audit", jdbcTemplate.update("DELETE FROM password_reset_audit"));
         deletedRows.put("audit_log", jdbcTemplate.update("DELETE FROM audit_log"));
 
         resetSequence("returns_id_seq");
         resetSequence("distribution_id_seq");
         resetSequence("assignments_id_seq");
         resetSequence("equipment_id_seq");
+        resetSequence("password_reset_audit_id_seq");
         resetSequence("audit_log_id_seq");
 
         StringJoiner joiner = new StringJoiner(", ");
         deletedRows.forEach((table, count) -> joiner.add(table + "=" + count));
-        String summary = "Remote demo data reset completed. Preserved users and departments. Cleared: " + joiner + ".";
+        String summary = "Remote operational data reset completed. Preserved users and departments. Cleared: " + joiner + ".";
 
         actionAuditService.log(
                 actor,
-                "RESET_REMOTE_DEMO_DATA",
+                "RESET_FULL_OPERATIONAL_DATA",
                 "SYSTEM",
-                "",
+                "operational_data",
                 summary
         );
         return summary;
@@ -68,7 +70,7 @@ public class SystemAdminService {
             case ASSIGNMENTS -> resetAssignments(actor);
             case EQUIPMENT -> resetEquipment(actor);
             case AUDIT_LOG -> resetAuditLog(actor);
-            case FULL_DEMO_DATA -> resetRemoteDemoData(actor);
+            case FULL_OPERATIONAL_DATA -> resetOperationalData(actor);
         };
     }
 
@@ -153,7 +155,7 @@ public class SystemAdminService {
         ASSIGNMENTS,
         EQUIPMENT,
         AUDIT_LOG,
-        FULL_DEMO_DATA;
+        FULL_OPERATIONAL_DATA;
 
         private static ResetComponent from(String rawValue) {
             if (rawValue == null || rawValue.isBlank()) {

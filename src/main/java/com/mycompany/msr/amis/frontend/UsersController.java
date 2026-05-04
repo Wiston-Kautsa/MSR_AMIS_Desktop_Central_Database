@@ -30,7 +30,6 @@ import javafx.scene.layout.GridPane;
 public class UsersController implements Initializable {
     private static final String EMAIL_PATTERN = "^[A-Za-z0-9+_.-]+@[A-Za-z0-9.-]+$";
     private static final String DEFAULT_SETUP_DEPARTMENT = "MSR";
-    private static final String REMOTE_RESET_CONFIRMATION_PHRASE = "RESET REMOTE DEMO DATA";
     private static final class SetupCounts {
         private final int adminCount;
         private final int userCount;
@@ -55,9 +54,6 @@ public class UsersController implements Initializable {
     @FXML private TitledPane userDirectoryPane;
     @FXML private javafx.scene.control.Button btnBackToLogin;
     @FXML private javafx.scene.control.Button btnCompleteSetup;
-    @FXML private javafx.scene.control.Button btnRemoteDemoReset;
-    @FXML private TitledPane remoteResetPane;
-    @FXML private TextField txtRemoteResetConfirmation;
 
     @FXML private TableView<User> tableUsers;
 
@@ -95,7 +91,6 @@ public class UsersController implements Initializable {
             loadUsers();
             updateSetupProgress();
         }
-        configureRemoteReset();
     }
 
     private void configureSetupMode() {
@@ -342,42 +337,6 @@ public class UsersController implements Initializable {
             e.printStackTrace();
             showAlert("Error", resolveUserCreationError(e));
             updateSetupProgress();
-        }
-    }
-
-    @FXML
-    private void handleRemoteDemoReset(ActionEvent event) {
-        if (!canAccessRemoteDemoReset()) {
-            showAlert("Access Denied", "Remote demo reset is available only to Super Admin in API mode.");
-            return;
-        }
-
-        String confirmation = txtRemoteResetConfirmation == null ? "" : txtRemoteResetConfirmation.getText().trim();
-        if (!REMOTE_RESET_CONFIRMATION_PHRASE.equalsIgnoreCase(confirmation)) {
-            showAlert("Confirmation Required", "Type RESET REMOTE DEMO DATA before starting the remote reset.");
-            return;
-        }
-
-        Alert confirm = new Alert(Alert.AlertType.CONFIRMATION);
-        confirm.setTitle("Reset Remote Demo Data");
-        confirm.setHeaderText("This will clear PostgreSQL demo records on the central server.");
-        confirm.setContentText("Users and departments will stay in place, but equipment, assignments, distributions, returns, and audit logs will be deleted from the remote database.");
-        Optional<ButtonType> result = confirm.showAndWait();
-        if (result.isEmpty() || result.get() != ButtonType.OK) {
-            return;
-        }
-
-        try {
-            String responseMessage = userService.resetRemoteDemoData();
-            if (txtRemoteResetConfirmation != null) {
-                txtRemoteResetConfirmation.clear();
-            }
-            updateRemoteResetButtonState();
-            showStatus(responseMessage);
-            showAlert("Success", responseMessage);
-        } catch (Exception e) {
-            e.printStackTrace();
-            showAlert("Error", resolveUserCreationError(e));
         }
     }
 
@@ -628,32 +587,6 @@ public class UsersController implements Initializable {
             txtPasswordVisible.setManaged(isSelected);
             txtPasswordVisible.setVisible(isSelected);
         });
-    }
-
-    private void configureRemoteReset() {
-        boolean visible = canAccessRemoteDemoReset();
-        if (remoteResetPane != null) {
-            remoteResetPane.setManaged(visible);
-            remoteResetPane.setVisible(visible);
-        }
-        if (txtRemoteResetConfirmation != null) {
-            txtRemoteResetConfirmation.textProperty().addListener((obs, oldValue, newValue) -> updateRemoteResetButtonState());
-        }
-        updateRemoteResetButtonState();
-    }
-
-    private void updateRemoteResetButtonState() {
-        if (btnRemoteDemoReset == null) {
-            return;
-        }
-        boolean enabled = canAccessRemoteDemoReset()
-                && txtRemoteResetConfirmation != null
-                && REMOTE_RESET_CONFIRMATION_PHRASE.equalsIgnoreCase(txtRemoteResetConfirmation.getText().trim());
-        btnRemoteDemoReset.setDisable(!enabled);
-    }
-
-    private boolean canAccessRemoteDemoReset() {
-        return false;
     }
 
     private String currentPasswordInput() {

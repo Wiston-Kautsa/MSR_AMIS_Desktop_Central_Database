@@ -23,7 +23,7 @@ public class DataMaintenanceController implements Initializable {
         CONFIRMATION_PHRASES.put("ASSIGNMENTS", "RESET ASSIGNMENTS DATA");
         CONFIRMATION_PHRASES.put("EQUIPMENT", "RESET EQUIPMENT DATA");
         CONFIRMATION_PHRASES.put("AUDIT_LOG", "RESET AUDIT LOG DATA");
-        CONFIRMATION_PHRASES.put("FULL_DEMO_DATA", "RESET FULL DEMO DATA");
+        CONFIRMATION_PHRASES.put("FULL_OPERATIONAL_DATA", "RESET FULL OPERATIONAL DATA");
     }
 
     @FXML private Label lblEquipmentCount;
@@ -38,13 +38,13 @@ public class DataMaintenanceController implements Initializable {
     @FXML private TextField txtAssignmentsConfirmation;
     @FXML private TextField txtEquipmentConfirmation;
     @FXML private TextField txtAuditLogConfirmation;
-    @FXML private TextField txtFullDemoConfirmation;
+    @FXML private TextField txtFullOperationalConfirmation;
     @FXML private Button btnResetReturns;
     @FXML private Button btnResetDistribution;
     @FXML private Button btnResetAssignments;
     @FXML private Button btnResetEquipment;
     @FXML private Button btnResetAuditLog;
-    @FXML private Button btnResetFullDemo;
+    @FXML private Button btnResetFullOperational;
     @FXML private TitledPane summaryPane;
 
     @Override
@@ -88,8 +88,8 @@ public class DataMaintenanceController implements Initializable {
     }
 
     @FXML
-    private void handleResetFullDemoData() {
-        resetComponent("FULL_DEMO_DATA", "Reset Full Demo Data");
+    private void handleResetFullOperationalData() {
+        resetComponent("FULL_OPERATIONAL_DATA", "Reset Full Operational Data");
     }
 
     private void refreshSummary() {
@@ -143,8 +143,8 @@ public class DataMaintenanceController implements Initializable {
         boolean localMode = ServiceRegistry.getConfiguration().usesLocalDatabase();
         if (lblPageSubtitle != null) {
             lblPageSubtitle.setText(localMode
-                    ? "Super Admin tools for clearing demo content in the local SQLite database with audit tracing"
-                    : "Super Admin tools for clearing demo content in the central PostgreSQL database with audit tracing");
+                    ? "Super Admin tools for controlled operational data maintenance in the local SQLite database with audit tracing"
+                    : "Super Admin tools for controlled operational data maintenance in the central PostgreSQL database with audit tracing");
         }
         if (summaryPane != null) {
             summaryPane.setText(localMode ? "Local Data Summary" : "Remote Data Summary");
@@ -171,7 +171,7 @@ public class DataMaintenanceController implements Initializable {
         bindConfirmation("ASSIGNMENTS", txtAssignmentsConfirmation);
         bindConfirmation("EQUIPMENT", txtEquipmentConfirmation);
         bindConfirmation("AUDIT_LOG", txtAuditLogConfirmation);
-        bindConfirmation("FULL_DEMO_DATA", txtFullDemoConfirmation);
+        bindConfirmation("FULL_OPERATIONAL_DATA", txtFullOperationalConfirmation);
     }
 
     private void bindConfirmation(String component, TextField field) {
@@ -204,8 +204,8 @@ public class DataMaintenanceController implements Initializable {
                 return txtEquipmentConfirmation;
             case "AUDIT_LOG":
                 return txtAuditLogConfirmation;
-            case "FULL_DEMO_DATA":
-                return txtFullDemoConfirmation;
+            case "FULL_OPERATIONAL_DATA":
+                return txtFullOperationalConfirmation;
             default:
                 return null;
         }
@@ -223,8 +223,8 @@ public class DataMaintenanceController implements Initializable {
                 return btnResetEquipment;
             case "AUDIT_LOG":
                 return btnResetAuditLog;
-            case "FULL_DEMO_DATA":
-                return btnResetFullDemo;
+            case "FULL_OPERATIONAL_DATA":
+                return btnResetFullOperational;
             default:
                 return null;
         }

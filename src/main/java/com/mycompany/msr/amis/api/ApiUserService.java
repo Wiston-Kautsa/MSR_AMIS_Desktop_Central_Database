@@ -63,14 +63,6 @@ public final class ApiUserService implements UserService {
         apiClient.post("/api/auth/bootstrap-admin/complete", new BootstrapAdminCompletionRequest(), CompletionResponse.class);
     }
 
-    @Override
-    public String resetRemoteDemoData() throws Exception {
-        CompletionResponse response = apiClient.post("/api/system/demo-reset", new ResetRemoteDemoDataRequest(), CompletionResponse.class);
-        return response == null || response.message == null || response.message.isBlank()
-                ? "Remote demo data reset completed."
-                : response.message;
-    }
-
     private String deriveUsername(String email) {
         if (email == null || email.isBlank()) {
             return "";
@@ -145,9 +137,6 @@ public final class ApiUserService implements UserService {
     }
 
     public static final class BootstrapAdminCompletionRequest {
-    }
-
-    public static final class ResetRemoteDemoDataRequest {
     }
 
     public static final class CompletionResponse {

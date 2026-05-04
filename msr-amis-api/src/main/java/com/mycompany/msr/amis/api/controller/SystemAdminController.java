@@ -34,13 +34,6 @@ public class SystemAdminController {
         return new CommonMessageResponse(true, message);
     }
 
-    @PostMapping("/demo-reset")
-    @PreAuthorize("hasRole('SUPER_ADMIN')")
-    public CommonMessageResponse resetRemoteDemoData(Authentication authentication) {
-        String message = systemAdminService.resetRemoteDemoData(authentication.getName());
-        return new CommonMessageResponse(true, message);
-    }
-
     public record DataMaintenanceResetRequest(String component) {
     }
 }

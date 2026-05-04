@@ -44,8 +44,8 @@ public final class LocalDataMaintenanceService implements DataMaintenanceService
                 return resetEquipment();
             case "AUDIT_LOG":
                 return resetAuditLog();
-            case "FULL_DEMO_DATA":
-                return resetFullDemoData();
+            case "FULL_OPERATIONAL_DATA":
+                return resetFullOperationalData();
             default:
                 throw new IllegalArgumentException("Unsupported maintenance component: " + component);
         }
@@ -111,7 +111,7 @@ public final class LocalDataMaintenanceService implements DataMaintenanceService
         }
     }
 
-    private String resetFullDemoData() throws Exception {
+    private String resetFullOperationalData() throws Exception {
         Map<String, Integer> deletedRows = new LinkedHashMap<>();
         try (Connection connection = DatabaseHandler.getConnection()) {
             deletedRows.put("returns", deleteTable(connection, "returns"));
@@ -128,11 +128,11 @@ public final class LocalDataMaintenanceService implements DataMaintenanceService
             resetSequence(connection, "audit_log");
         }
 
-        StringBuilder message = new StringBuilder("Local full demo reset completed. Preserved users and departments.");
+        StringBuilder message = new StringBuilder("Local operational data reset completed. Preserved users and departments.");
         for (Map.Entry<String, Integer> entry : deletedRows.entrySet()) {
             message.append(" ").append(entry.getKey()).append("=").append(entry.getValue()).append(";");
         }
-        DatabaseHandler.logAudit("RESET_FULL_DEMO_DATA", "SYSTEM", "full_demo", message.toString());
+        DatabaseHandler.logAudit("RESET_FULL_OPERATIONAL_DATA", "SYSTEM", "operational_data", message.toString());
         return message.toString();
     }
 
