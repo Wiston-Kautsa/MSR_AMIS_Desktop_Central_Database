@@ -20,6 +20,7 @@ public class App extends Application {
 
     private static Scene scene;
     private static Stage primaryStage;
+    private static boolean singleInstanceAcquired;
 
     @Override
     public void start(Stage stage) throws Exception {
@@ -36,6 +37,14 @@ public class App extends Application {
         stage.setHeight(LOGIN_HEIGHT);
         stage.centerOnScreen();
         stage.show();
+    }
+
+    @Override
+    public void stop() {
+        if (singleInstanceAcquired) {
+            SingleInstanceGuard.release();
+            singleInstanceAcquired = false;
+        }
     }
 
     static void setRoot(String fxml) throws IOException {
@@ -69,6 +78,11 @@ public class App extends Application {
     }
 
     public static void main(String[] args) {
+        singleInstanceAcquired = SingleInstanceGuard.acquire();
+        if (!singleInstanceAcquired) {
+            System.err.println("MSR AMIS is already running.");
+            return;
+        }
         launch();
     }
 }
