@@ -13,6 +13,7 @@ import java.util.stream.Collectors;
 public final class RemoteMirrorCoordinator {
 
     private static final Duration PROBE_TIMEOUT = Duration.ofSeconds(4);
+    private static final ThreadLocal<Boolean> AUTO_MIRROR_SUPPRESSED = ThreadLocal.withInitial(() -> false);
 
     private final AppConfiguration configuration;
     private final ApiClient apiClient;
@@ -43,8 +44,7 @@ public final class RemoteMirrorCoordinator {
     }
 
     public boolean isMirrorConfigured() {
-        return configuration.usesLocalDatabase()
-                && apiClient != null
+        return apiClient != null
                 && configuration.getApiBaseUrl() != null
                 && !configuration.getApiBaseUrl().isBlank();
     }
@@ -123,6 +123,23 @@ public final class RemoteMirrorCoordinator {
             synchronizeFromRemote(Map.of());
         } catch (Exception ignored) {
             // Keep local workflows available if the mirror refresh fails mid-session.
+        }
+    }
+
+    public void refreshAfterRemoteMutation() {
+        if (AUTO_MIRROR_SUPPRESSED.get()) {
+            return;
+        }
+        synchronizeQuietlyIfOnline();
+    }
+
+    public static void runWithAutoMirrorSuppressed(CheckedRunnable runnable) throws Exception {
+        boolean previous = AUTO_MIRROR_SUPPRESSED.get();
+        AUTO_MIRROR_SUPPRESSED.set(true);
+        try {
+            runnable.run();
+        } finally {
+            AUTO_MIRROR_SUPPRESSED.set(previous);
         }
     }
 
@@ -215,5 +232,10 @@ public final class RemoteMirrorCoordinator {
         public String moduleName;
         public String details;
         public String actionTime;
+    }
+
+    @FunctionalInterface
+    public interface CheckedRunnable {
+        void run() throws Exception;
     }
 }

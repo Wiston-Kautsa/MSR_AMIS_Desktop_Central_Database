@@ -38,29 +38,38 @@ public final class ApiUserService implements UserService {
     public void createUser(String name, String password, String role, String department, String email) throws Exception {
         String username = deriveUsername(email);
         apiClient.post("/api/users", new UserRequest(name, username, email, role, department, "", password), UserPayload.class);
+        refreshLocalMirror();
     }
 
     @Override
     public boolean updateUser(int id, String name, String password, String role, String department, String email) throws Exception {
         String username = deriveUsername(email);
         apiClient.put("/api/users/" + id, new UserRequest(name, username, email, role, department, "", password), UserPayload.class);
+        refreshLocalMirror();
         return true;
     }
 
     @Override
     public boolean updateUserStatus(int id, String status) throws Exception {
         apiClient.patch("/api/users/" + id + "/status", new StatusRequest(status), UserPayload.class);
+        refreshLocalMirror();
         return true;
     }
 
     @Override
     public void deleteUser(int id) throws Exception {
         apiClient.delete("/api/users/" + id);
+        refreshLocalMirror();
     }
 
     @Override
     public void completeTemporarySetup(String email) throws Exception {
         apiClient.post("/api/auth/bootstrap-admin/complete", new BootstrapAdminCompletionRequest(), CompletionResponse.class);
+        refreshLocalMirror();
+    }
+
+    private void refreshLocalMirror() {
+        ServiceRegistry.getRemoteMirrorCoordinator().refreshAfterRemoteMutation();
     }
 
     private String deriveUsername(String email) {

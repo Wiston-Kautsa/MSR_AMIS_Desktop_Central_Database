@@ -30,6 +30,7 @@ public final class ApiDataMaintenanceService implements DataMaintenanceService {
                 new ResetRequest(component),
                 MessagePayload.class
         );
+        ServiceRegistry.getRemoteMirrorCoordinator().refreshAfterRemoteMutation();
         return payload == null || payload.message == null || payload.message.isBlank()
                 ? "Data maintenance operation completed."
                 : payload.message;

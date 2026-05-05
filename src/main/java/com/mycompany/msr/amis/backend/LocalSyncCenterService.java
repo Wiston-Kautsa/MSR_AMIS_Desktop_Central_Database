@@ -135,7 +135,7 @@ public final class LocalSyncCenterService implements SyncCenterService {
                     }
 
                     try {
-                        applyQueueItem(item);
+                        RemoteMirrorCoordinator.runWithAutoMirrorSuppressed(() -> applyQueueItem(item));
                         storageRepository.markApplied(connection, item.getId(), "Applied to central API.");
                         storageRepository.insertAuditRecord(
                                 connection,

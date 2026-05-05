@@ -62,6 +62,7 @@ public final class ApiDistributionService implements DistributionService {
     @Override
     public void distributeEquipmentBatch(int assignmentId, List<Distribution> distributions) throws Exception {
         apiClient.post("/api/distributions/batch", DistributionBatchRequest.from(assignmentId, distributions), Void.class);
+        ServiceRegistry.getRemoteMirrorCoordinator().refreshAfterRemoteMutation();
     }
 
     private String resolveMessage(Exception e) {

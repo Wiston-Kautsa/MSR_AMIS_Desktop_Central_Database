@@ -37,6 +37,7 @@ public final class ApiEquipmentService implements EquipmentService {
     @Override
     public void createEquipment(Equipment equipment) throws Exception {
         apiClient.post("/api/equipment", EquipmentRequest.from(equipment), EquipmentPayload.class);
+        refreshLocalMirror();
     }
 
     @Override
@@ -50,16 +51,23 @@ public final class ApiEquipmentService implements EquipmentService {
         request.condition = condition;
         request.entryDate = existing == null ? null : existing.entryDate;
         apiClient.put("/api/equipment/" + assetCode, request, EquipmentPayload.class);
+        refreshLocalMirror();
     }
 
     @Override
     public void updateEquipmentStatus(String assetCode, String status) throws Exception {
         apiClient.patch("/api/equipment/" + assetCode + "/status", new StatusRequest(status), EquipmentPayload.class);
+        refreshLocalMirror();
     }
 
     @Override
     public void deleteEquipment(String assetCode) throws Exception {
         apiClient.delete("/api/equipment/" + assetCode);
+        refreshLocalMirror();
+    }
+
+    private void refreshLocalMirror() {
+        ServiceRegistry.getRemoteMirrorCoordinator().refreshAfterRemoteMutation();
     }
 
     private String resolveMessage(Exception exception) {

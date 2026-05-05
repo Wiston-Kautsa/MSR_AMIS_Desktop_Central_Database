@@ -69,21 +69,29 @@ public final class ApiAssignmentService implements AssignmentService {
     @Override
     public void createAssignment(String person, String department, String equipmentType, String reason, int quantity) throws Exception {
         apiClient.post("/api/assignments", new AssignmentRequest(person, department, equipmentType, reason, quantity), AssignmentPayload.class);
+        refreshLocalMirror();
     }
 
     @Override
     public void updateAssignment(int id, String person, String department, String equipmentType, String reason, int quantity) throws Exception {
         apiClient.put("/api/assignments/" + id, new AssignmentRequest(person, department, equipmentType, reason, quantity), AssignmentPayload.class);
+        refreshLocalMirror();
     }
 
     @Override
     public void updateAssignmentStatus(int id, String status) throws Exception {
         apiClient.patch("/api/assignments/" + id + "/status", new StatusRequest(status), AssignmentPayload.class);
+        refreshLocalMirror();
     }
 
     @Override
     public void deleteAssignment(int id) throws Exception {
         apiClient.delete("/api/assignments/" + id);
+        refreshLocalMirror();
+    }
+
+    private void refreshLocalMirror() {
+        ServiceRegistry.getRemoteMirrorCoordinator().refreshAfterRemoteMutation();
     }
 
     private String resolveMessage(Exception e) {

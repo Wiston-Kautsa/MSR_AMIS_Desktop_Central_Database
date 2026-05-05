@@ -104,6 +104,7 @@ public class LoginController implements Initializable {
 
         try {
             Session.setCurrentUser(user);
+            mirrorCentralDataAfterLogin(user, password);
             if (authService.isTemporarySetupAccount(user)) {
                 Session.setSetupMode(true);
                 App.showSetupUsersPage();
@@ -116,6 +117,14 @@ public class LoginController implements Initializable {
         } catch (IOException e) {
             e.printStackTrace();
             showStatus("Login succeeded, but the dashboard could not be opened.");
+        }
+    }
+
+    private void mirrorCentralDataAfterLogin(User user, String password) {
+        try {
+            ServiceRegistry.getRemoteMirrorCoordinator().handleRemoteLogin(user, password);
+        } catch (Exception exception) {
+            showStatus("Login succeeded. Local database mirror refresh failed: " + resolveMessage(exception));
         }
     }
 
@@ -215,6 +224,7 @@ public class LoginController implements Initializable {
 
         try {
             authService.resetPasswordWithCode(identifier, resetCode, newPassword);
+            ServiceRegistry.getRemoteMirrorCoordinator().updateMirroredPassword(identifier, newPassword);
             Session.clear();
             txtEmail.setText(identifier);
             txtPassword.clear();
@@ -322,6 +332,12 @@ public class LoginController implements Initializable {
 
     private String normalized(String value) {
         return value == null ? "" : value.trim();
+    }
+
+    private String resolveMessage(Exception exception) {
+        return exception == null || exception.getMessage() == null || exception.getMessage().isBlank()
+                ? "Unknown error"
+                : exception.getMessage();
     }
 
     private void showAlert(String title, String message) {
