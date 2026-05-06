@@ -71,6 +71,7 @@
                                                 <Label text="Equipment Name" styleClass="input-label" GridPane.rowIndex="0" GridPane.columnIndex="0"/>
                                                 <TextField fx:id="txtName"
                                                            promptText="Example: Tablet"
+                                                           onAction="#saveEquipment"
                                                            GridPane.rowIndex="0"
                                                            GridPane.columnIndex="1"/>
 
@@ -83,12 +84,14 @@
                                                 <Label text="IMEI / Serial Number" styleClass="input-label" GridPane.rowIndex="1" GridPane.columnIndex="0"/>
                                                 <TextField fx:id="txtSerialNumber"
                                                            promptText="Enter manufacturer serial number"
+                                                           onAction="#saveEquipment"
                                                            GridPane.rowIndex="1"
                                                            GridPane.columnIndex="1"/>
 
                                                 <Label text="Source" styleClass="input-label" GridPane.rowIndex="1" GridPane.columnIndex="2"/>
                                                 <TextField fx:id="txtSource"
                                                            promptText="Example: World Bank"
+                                                           onAction="#saveEquipment"
                                                            GridPane.rowIndex="1"
                                                            GridPane.columnIndex="3"/>
 
@@ -111,6 +114,7 @@
                                                         onAction="#clearForm"
                                                         styleClass="secondary-button"/>
                                                 <Button text="Save Equipment"
+                                                        defaultButton="true"
                                                         onAction="#saveEquipment"
                                                         styleClass="action-button"/>
                                             </children>

@@ -80,6 +80,7 @@
                                 <Label text="Assigned To:" GridPane.rowIndex="1"/>
                                 <TextField fx:id="txtName"
                                            promptText="Enter assigned person"
+                                           onAction="#addManualAssignment"
                                            GridPane.rowIndex="1"
                                            GridPane.columnIndex="1"/>
 
@@ -87,6 +88,7 @@
                                 <Label text="Phone:" GridPane.rowIndex="2"/>
                                 <TextField fx:id="txtPhone"
                                            promptText="Enter phone number"
+                                           onAction="#addManualAssignment"
                                            GridPane.rowIndex="2"
                                            GridPane.columnIndex="1"/>
 
@@ -94,12 +96,14 @@
                                 <Label text="NID:" GridPane.rowIndex="3"/>
                                 <TextField fx:id="txtNid"
                                            promptText="Enter national ID"
+                                           onAction="#addManualAssignment"
                                            GridPane.rowIndex="3"
                                            GridPane.columnIndex="1"/>
 
                                 <!-- ADD BUTTON -->
                                 <Button text="Add"
                                         fx:id="btnAdd"
+                                        defaultButton="true"
                                         onAction="#addManualAssignment"
                                         GridPane.rowIndex="4"
                                         GridPane.columnIndex="1"
@@ -112,6 +116,7 @@
 
                                     <Button text="Save"
                                             fx:id="btnSave"
+                                            defaultButton="true"
                                             onAction="#saveEquipment"
                                             style="-fx-background-color:#2ecc71; -fx-text-fill:white;"/>
 

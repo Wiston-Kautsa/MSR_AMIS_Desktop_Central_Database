@@ -83,6 +83,7 @@
                                                         <Label text="Email" styleClass="login-input-label"/>
                                                         <TextField fx:id="txtEmail"
                                                                    promptText="Enter your email"
+                                                                   onAction="#handleLogin"
                                                                    prefHeight="44.0"
                                                                    maxWidth="1.7976931348623157E308"
                                                                    styleClass="login-input"/>
@@ -96,11 +97,13 @@
                                                             <children>
                                                                 <PasswordField fx:id="txtPassword"
                                                                                promptText="Enter your password"
+                                                                               onAction="#handleLogin"
                                                                                prefHeight="44.0"
                                                                                maxWidth="1.7976931348623157E308"
                                                                                styleClass="login-input"/>
                                                                 <TextField fx:id="txtPasswordVisible"
                                                                            promptText="Enter your password"
+                                                                           onAction="#handleLogin"
                                                                            prefHeight="44.0"
                                                                            maxWidth="1.7976931348623157E308"
                                                                            managed="false"
@@ -118,6 +121,7 @@
                                                 <Button text="LOGIN"
                                                         prefHeight="46.0"
                                                         maxWidth="1.7976931348623157E308"
+                                                        defaultButton="true"
                                                         onAction="#handleLogin"
                                                         styleClass="login-primary-button"/>
 
@@ -208,6 +212,7 @@
                                                                         <Label text="Email or Username" styleClass="login-input-label"/>
                                                                         <TextField fx:id="txtResetIdentifier"
                                                                                    promptText="Enter your registered email or username"
+                                                                                   onAction="#handleSendResetCode"
                                                                                    prefHeight="44.0"
                                                                                    maxWidth="1.7976931348623157E308"
                                                                                    styleClass="login-input"/>
@@ -229,6 +234,7 @@
                                                                         text="Send Reset Code"
                                                                         prefHeight="42.0"
                                                                         maxWidth="1.7976931348623157E308"
+                                                                        defaultButton="true"
                                                                         onAction="#handleSendResetCode"
                                                                         styleClass="login-primary-button"/>
                                                             </children>
@@ -252,6 +258,7 @@
                                                                         <Label text="Reset Code" styleClass="login-input-label"/>
                                                                         <TextField fx:id="txtResetCode"
                                                                                    promptText="Enter 6-digit reset code"
+                                                                                   onAction="#handleSubmitPasswordReset"
                                                                                    prefHeight="44.0"
                                                                                    maxWidth="1.7976931348623157E308"
                                                                                    disable="true"
@@ -263,6 +270,7 @@
                                                                         <Label text="New Password" styleClass="login-input-label"/>
                                                                         <PasswordField fx:id="txtResetNewPassword"
                                                                                        promptText="Enter new password"
+                                                                                       onAction="#handleSubmitPasswordReset"
                                                                                        prefHeight="44.0"
                                                                                        maxWidth="1.7976931348623157E308"
                                                                                        disable="true"
@@ -274,6 +282,7 @@
                                                                         <Label text="Confirm Password" styleClass="login-input-label"/>
                                                                         <PasswordField fx:id="txtResetConfirmPassword"
                                                                                        promptText="Confirm new password"
+                                                                                       onAction="#handleSubmitPasswordReset"
                                                                                        prefHeight="44.0"
                                                                                        maxWidth="1.7976931348623157E308"
                                                                                        disable="true"
@@ -288,6 +297,7 @@
                                                                                 maxWidth="1.7976931348623157E308"
                                                                                 HBox.hgrow="ALWAYS"
                                                                                 disable="true"
+                                                                                defaultButton="true"
                                                                                 onAction="#handleSubmitPasswordReset"
                                                                                 styleClass="login-primary-button"/>
                                                                         <Button text="Clear Fields"

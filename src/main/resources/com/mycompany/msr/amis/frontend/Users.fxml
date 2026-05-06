@@ -72,12 +72,14 @@
                                         <Label text="Full Name" styleClass="input-label" GridPane.rowIndex="0" GridPane.columnIndex="0"/>
                                         <TextField fx:id="txtName"
                                                    promptText="Enter full name"
+                                                   onAction="#handleAddUser"
                                                    GridPane.rowIndex="0"
                                                    GridPane.columnIndex="1"/>
 
                                         <Label text="Email" styleClass="input-label" GridPane.rowIndex="1" GridPane.columnIndex="0"/>
                                         <TextField fx:id="txtEmail"
                                                    promptText="name@example.com"
+                                                   onAction="#handleAddUser"
                                                    GridPane.rowIndex="1"
                                                    GridPane.columnIndex="1"/>
 
@@ -99,9 +101,11 @@
                                               GridPane.columnIndex="3">
                                             <children>
                                                 <PasswordField fx:id="txtPassword"
+                                                               onAction="#handleAddUser"
                                                                promptText="Set a temporary password"/>
                                                 <TextField fx:id="txtPasswordVisible"
                                                            promptText="Set a temporary password"
+                                                           onAction="#handleAddUser"
                                                            visible="false"
                                                            managed="false"/>
                                                 <CheckBox fx:id="chkShowPassword"
@@ -124,9 +128,11 @@
                                                 text="Finish Setup"
                                                 managed="false"
                                                 visible="false"
+                                                defaultButton="true"
                                                 onAction="#handleCompleteSetup"
                                                 styleClass="action-button"/>
                                         <Button text="Add User"
+                                                defaultButton="true"
                                                 onAction="#handleAddUser"
                                                 styleClass="action-button"/>
                                         <Button text="Refresh Users"

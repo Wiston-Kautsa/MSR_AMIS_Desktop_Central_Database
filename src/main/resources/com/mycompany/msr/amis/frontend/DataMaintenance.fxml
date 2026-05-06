@@ -118,10 +118,12 @@
                                                    styleClass="helper-text"/>
                                             <Label text="Type RESET RETURNS DATA" styleClass="input-label"/>
                                             <TextField fx:id="txtReturnsConfirmation"
+                                                       onAction="#handleResetReturns"
                                                        promptText="RESET RETURNS DATA"/>
                                             <Button fx:id="btnResetReturns"
                                                     text="Reset Returns Data"
                                                     disable="true"
+                                                    defaultButton="true"
                                                     onAction="#handleResetReturns"
                                                     styleClass="action-button"/>
                                         </children>
@@ -139,10 +141,12 @@
                                                    styleClass="helper-text"/>
                                             <Label text="Type RESET DISTRIBUTION DATA" styleClass="input-label"/>
                                             <TextField fx:id="txtDistributionConfirmation"
+                                                       onAction="#handleResetDistribution"
                                                        promptText="RESET DISTRIBUTION DATA"/>
                                             <Button fx:id="btnResetDistribution"
                                                     text="Reset Distribution Data"
                                                     disable="true"
+                                                    defaultButton="true"
                                                     onAction="#handleResetDistribution"
                                                     styleClass="action-button"/>
                                         </children>
@@ -160,10 +164,12 @@
                                                    styleClass="helper-text"/>
                                             <Label text="Type RESET ASSIGNMENTS DATA" styleClass="input-label"/>
                                             <TextField fx:id="txtAssignmentsConfirmation"
+                                                       onAction="#handleResetAssignments"
                                                        promptText="RESET ASSIGNMENTS DATA"/>
                                             <Button fx:id="btnResetAssignments"
                                                     text="Reset Assignment Data"
                                                     disable="true"
+                                                    defaultButton="true"
                                                     onAction="#handleResetAssignments"
                                                     styleClass="action-button"/>
                                         </children>
@@ -185,10 +191,12 @@
                                                    styleClass="helper-text"/>
                                             <Label text="Type RESET EQUIPMENT DATA" styleClass="input-label"/>
                                             <TextField fx:id="txtEquipmentConfirmation"
+                                                       onAction="#handleResetEquipment"
                                                        promptText="RESET EQUIPMENT DATA"/>
                                             <Button fx:id="btnResetEquipment"
                                                     text="Reset Equipment Data"
                                                     disable="true"
+                                                    defaultButton="true"
                                                     onAction="#handleResetEquipment"
                                                     styleClass="action-button"/>
                                         </children>
@@ -206,10 +214,12 @@
                                                    styleClass="helper-text"/>
                                             <Label text="Type RESET AUDIT LOG DATA" styleClass="input-label"/>
                                             <TextField fx:id="txtAuditLogConfirmation"
+                                                       onAction="#handleResetAuditLog"
                                                        promptText="RESET AUDIT LOG DATA"/>
                                             <Button fx:id="btnResetAuditLog"
                                                     text="Reset Audit Log Data"
                                                     disable="true"
+                                                    defaultButton="true"
                                                     onAction="#handleResetAuditLog"
                                                     styleClass="action-button"/>
                                         </children>
@@ -227,10 +237,12 @@
                                                    styleClass="helper-text"/>
                                             <Label text="Type RESET FULL OPERATIONAL DATA" styleClass="input-label"/>
                                             <TextField fx:id="txtFullOperationalConfirmation"
+                                                       onAction="#handleResetFullOperationalData"
                                                        promptText="RESET FULL OPERATIONAL DATA"/>
                                             <Button fx:id="btnResetFullOperational"
                                                     text="Reset Full Operational Data"
                                                     disable="true"
+                                                    defaultButton="true"
                                                     onAction="#handleResetFullOperationalData"
                                                     styleClass="action-button"/>
                                         </children>

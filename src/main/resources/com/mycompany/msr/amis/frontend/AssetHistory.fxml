@@ -23,8 +23,8 @@
         <Label text="Asset History" styleClass="header-title"/>
 
         <HBox spacing="10">
-            <TextField fx:id="txtAssetCode" promptText="Enter Asset Code" prefWidth="220"/>
-            <Button text="Search" onAction="#handleSearch"/>
+            <TextField fx:id="txtAssetCode" promptText="Enter Asset Code" prefWidth="220" onAction="#handleSearch"/>
+            <Button text="Search" defaultButton="true" onAction="#handleSearch"/>
             <Button text="Clear" onAction="#handleClear"/>
             <Region HBox.hgrow="ALWAYS"/>
             <Button text="Export" onAction="#handleExport"/>

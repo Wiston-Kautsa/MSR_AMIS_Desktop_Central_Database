@@ -59,9 +59,11 @@
                                     <children>
                                         <TextField fx:id="txtSearch"
                                                    promptText="Search by serial number, name, asset code, or category"
+                                                   onAction="#searchEquipment"
                                                    prefWidth="360.0"/>
 
                                         <Button text="Search"
+                                                defaultButton="true"
                                                 onAction="#searchEquipment"
                                                 styleClass="secondary-button"/>
 

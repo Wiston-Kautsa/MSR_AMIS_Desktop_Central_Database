@@ -75,34 +75,34 @@
                         </columnConstraints>
 
                         <Label text="Asset Code / New IMEI:" GridPane.rowIndex="0"/>
-                        <TextField fx:id="txtAssetCode" maxWidth="1.7976931348623157E308" GridPane.rowIndex="0" GridPane.columnIndex="1"/>
+                        <TextField fx:id="txtAssetCode" onAction="#handleReturn" maxWidth="1.7976931348623157E308" GridPane.rowIndex="0" GridPane.columnIndex="1"/>
 
                         <Label text="Responsible Officer:" GridPane.rowIndex="1"/>
-                        <TextField fx:id="txtOfficer" maxWidth="1.7976931348623157E308" GridPane.rowIndex="1" GridPane.columnIndex="1"/>
+                        <TextField fx:id="txtOfficer" onAction="#handleReturn" maxWidth="1.7976931348623157E308" GridPane.rowIndex="1" GridPane.columnIndex="1"/>
 
                         <Label text="Equipment Type:" GridPane.rowIndex="2"/>
-                        <TextField fx:id="txtEquipmentType" maxWidth="1.7976931348623157E308" GridPane.rowIndex="2" GridPane.columnIndex="1"/>
+                        <TextField fx:id="txtEquipmentType" onAction="#handleReturn" maxWidth="1.7976931348623157E308" GridPane.rowIndex="2" GridPane.columnIndex="1"/>
 
                         <Label text="Returned By:" GridPane.rowIndex="3"/>
-                        <TextField fx:id="txtReturnedBy" maxWidth="1.7976931348623157E308" GridPane.rowIndex="3" GridPane.columnIndex="1"/>
+                        <TextField fx:id="txtReturnedBy" onAction="#handleReturn" maxWidth="1.7976931348623157E308" GridPane.rowIndex="3" GridPane.columnIndex="1"/>
 
                         <Label text="Phone:" GridPane.rowIndex="4"/>
-                        <TextField fx:id="txtPhone" maxWidth="1.7976931348623157E308" GridPane.rowIndex="4" GridPane.columnIndex="1"/>
+                        <TextField fx:id="txtPhone" onAction="#handleReturn" maxWidth="1.7976931348623157E308" GridPane.rowIndex="4" GridPane.columnIndex="1"/>
 
                         <Label text="NID:" GridPane.rowIndex="5"/>
-                        <TextField fx:id="txtNid" maxWidth="1.7976931348623157E308" GridPane.rowIndex="5" GridPane.columnIndex="1"/>
+                        <TextField fx:id="txtNid" onAction="#handleReturn" maxWidth="1.7976931348623157E308" GridPane.rowIndex="5" GridPane.columnIndex="1"/>
 
                         <Label text="Condition:" GridPane.rowIndex="6"/>
                         <ComboBox fx:id="cmbCondition" maxWidth="1.7976931348623157E308" GridPane.rowIndex="6" GridPane.columnIndex="1"/>
 
                         <Label text="Remarks:" GridPane.rowIndex="7"/>
-                        <TextField fx:id="txtRemarks" maxWidth="1.7976931348623157E308" GridPane.rowIndex="7" GridPane.columnIndex="1"/>
+                        <TextField fx:id="txtRemarks" onAction="#handleReturn" maxWidth="1.7976931348623157E308" GridPane.rowIndex="7" GridPane.columnIndex="1"/>
 
                     </GridPane>
 
                     <HBox spacing="10">
-                        <Button text="Add Return" onAction="#handleReturn"/>
-                        <Button fx:id="btnSaveReturns" text="Save" onAction="#saveReturns"/>
+                        <Button text="Add Return" defaultButton="true" onAction="#handleReturn"/>
+                        <Button fx:id="btnSaveReturns" text="Save" defaultButton="true" onAction="#saveReturns"/>
                         <Button text="Clear" onAction="#clearForm"/>
                     </HBox>
 

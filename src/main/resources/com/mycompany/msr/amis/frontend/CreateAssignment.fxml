@@ -58,6 +58,7 @@
                                 <Label text="Department:" GridPane.rowIndex="1"/>
                                 <TextField fx:id="txtDepartment"
                                            promptText="Department"
+                                           onAction="#saveAssignment"
                                            GridPane.rowIndex="1"
                                            GridPane.columnIndex="1"/>
 
@@ -78,11 +79,13 @@
                                 <Label text="Reason:" GridPane.rowIndex="3"/>
                                 <TextField fx:id="txtReason"
                                            promptText="Reason for assignment"
+                                           onAction="#saveAssignment"
                                            GridPane.rowIndex="3"
                                            GridPane.columnIndex="1"/>
 
                                 <Label text="Quantity:" GridPane.rowIndex="4"/>
                                 <TextField fx:id="txtQuantity"
+                                           onAction="#saveAssignment"
                                            GridPane.rowIndex="4"
                                            GridPane.columnIndex="1"/>
 
@@ -95,6 +98,7 @@
                     <HBox spacing="15.0" alignment="CENTER_RIGHT">
 
                         <Button text="Save Assignment"
+                                defaultButton="true"
                                 onAction="#saveAssignment"
                                 styleClass="btn-success"/>
 
