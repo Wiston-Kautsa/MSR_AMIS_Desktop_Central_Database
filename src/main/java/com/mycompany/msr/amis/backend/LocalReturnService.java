@@ -44,10 +44,10 @@ public final class LocalReturnService implements ReturnService {
     }
 
     @Override
-    public ReturnSaveResult saveReturns(int assignmentId, String equipmentType, List<ReturnDraft> items, String outstandingRemark) throws Exception {
+    public ReturnSaveResult saveReturns(int assignmentId, String equipmentType, List<ReturnDraft> items, Map<String, String> outstandingRemarks) throws Exception {
         if (remoteMirrorCoordinator.hasRemoteSession()) {
             ReturnSaveResult result = remoteMirrorCoordinator.getRemoteReturnService()
-                    .saveReturns(assignmentId, equipmentType, items, outstandingRemark);
+                    .saveReturns(assignmentId, equipmentType, items, outstandingRemarks);
             remoteMirrorCoordinator.synchronizeFromRemote(java.util.Map.of());
             return result;
         }
@@ -56,7 +56,10 @@ public final class LocalReturnService implements ReturnService {
         List<String> remainingAssets = new ArrayList<>(DatabaseHandler.getOutstandingAssetCodesForAssignment(assignmentId));
 
         for (ReturnDraft item : items) {
-            remainingAssets.remove(item.getOriginalAssetCode());
+            String originalAssetCode = item.getOriginalAssetCode();
+            if (!removeOutstandingAsset(remainingAssets, originalAssetCode)) {
+                throw new Exception("Asset is not outstanding for the selected assignment or was already returned: " + originalAssetCode);
+            }
 
             String remarks = item.getRemarks();
             if (item.isReplacement()) {
@@ -84,13 +87,13 @@ public final class LocalReturnService implements ReturnService {
         }
 
         if (!remainingAssets.isEmpty()) {
-            DatabaseHandler.updateOutstandingReturnRemarks(remainingAssets, outstandingRemark);
+            DatabaseHandler.updateOutstandingReturnRemarks(outstandingRemarks);
         }
 
         Map<String, Object> payload = new LinkedHashMap<>();
         payload.put("assignment", assignmentPayload(assignment));
         payload.put("equipmentType", equipmentType);
-        payload.put("outstandingRemark", outstandingRemark);
+        payload.put("outstandingRemarks", outstandingRemarks);
         payload.put("items", returnPayloads(items));
         ServiceRegistry.getSyncCenterService().queueOperation(
                 "RETURN",
@@ -109,6 +112,17 @@ public final class LocalReturnService implements ReturnService {
             return extraRemark;
         }
         return existingRemarks + " | " + extraRemark;
+    }
+
+    private boolean removeOutstandingAsset(List<String> remainingAssets, String assetCode) {
+        for (int i = 0; i < remainingAssets.size(); i++) {
+            String remainingAsset = remainingAssets.get(i);
+            if (remainingAsset != null && assetCode != null && remainingAsset.trim().equalsIgnoreCase(assetCode.trim())) {
+                remainingAssets.remove(i);
+                return true;
+            }
+        }
+        return false;
     }
 
     private Assignment findAssignment(int id) {

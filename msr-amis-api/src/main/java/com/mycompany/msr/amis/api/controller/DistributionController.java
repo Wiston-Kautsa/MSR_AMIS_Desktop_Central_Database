@@ -5,6 +5,7 @@ import com.mycompany.msr.amis.api.dto.distribution.DistributionResponse;
 import com.mycompany.msr.amis.api.service.OperationsService;
 import jakarta.validation.Valid;
 import java.util.List;
+import org.springframework.security.core.Authentication;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -41,7 +42,7 @@ public class DistributionController {
 
     @PostMapping("/batch")
     @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMIN')")
-    public void distributeBatch(@Valid @RequestBody DistributionBatchRequest request) {
-        operationsService.distributeBatch(request);
+    public void distributeBatch(Authentication authentication, @Valid @RequestBody DistributionBatchRequest request) {
+        operationsService.distributeBatch(authentication.getName(), request);
     }
 }

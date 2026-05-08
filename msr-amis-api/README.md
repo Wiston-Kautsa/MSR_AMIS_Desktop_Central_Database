@@ -4,7 +4,9 @@ This module is the centralized backend for MSR-AMIS.
 
 Current target architecture:
 
-`JavaFX Desktop -> Spring Boot API -> PostgreSQL`
+`JavaFX Desktop -> local SQLite mirror -> Spring Boot API -> PostgreSQL`
+
+The API and PostgreSQL run on the server. Desktop clients call the API when online and use their local SQLite mirror when offline.
 
 ## What is included
 
@@ -34,6 +36,33 @@ Main settings:
 - `MSR_AMIS_JWT_EXPIRATION_SECONDS`
 
 Start from the root [.env.example](/D:/School/JAVA/MSR-AMIS_destop_application/.env.example).
+
+## Server deployment notes
+
+On the server, configure:
+
+```env
+MSR_AMIS_API_PORT=8090
+MSR_AMIS_DB_URL=jdbc:postgresql://localhost:5432/msr_amis
+MSR_AMIS_DB_USERNAME=postgres
+MSR_AMIS_DB_PASSWORD=your_password
+MSR_AMIS_JWT_SECRET=your_base64_secret
+MSR_AMIS_JWT_EXPIRATION_SECONDS=28800
+```
+
+Run the packaged API jar:
+
+```powershell
+java -jar msr-amis-api-0.0.1-SNAPSHOT.jar
+```
+
+Check health:
+
+```powershell
+Invoke-RestMethod http://localhost:8090/actuator/health
+```
+
+Client desktops should point to the server API URL, not `localhost`, unless the API is running on the same computer.
 
 ## Endpoints
 
@@ -116,4 +145,4 @@ Start from the root [.env.example](/D:/School/JAVA/MSR-AMIS_destop_application/.
 
 - The API is intended to sit behind the desktop client as the system authority.
 - Desktop clients should not connect directly to PostgreSQL in production.
-- If true offline synchronization is needed later, that will require additional sync-engine work beyond the current centralized API design.
+- Offline desktop work is uploaded later through Sync Center. The API remains the only write path to PostgreSQL.

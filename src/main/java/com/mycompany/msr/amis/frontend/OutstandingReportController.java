@@ -14,6 +14,7 @@ import javafx.scene.control.Alert;
 import javafx.scene.control.ComboBox;
 import javafx.scene.control.ContextMenu;
 import javafx.scene.control.MenuItem;
+import javafx.scene.control.TableCell;
 import javafx.scene.control.TableColumn;
 import javafx.scene.control.TableView;
 import javafx.scene.control.cell.PropertyValueFactory;
@@ -24,6 +25,7 @@ public class OutstandingReportController implements Initializable {
 
     @FXML private ComboBox<String> cmbPerson;
     @FXML private TableView<Distribution> tableOutstanding;
+    @FXML private TableColumn<Distribution, Void> colNo;
     @FXML private TableColumn<Distribution, String> colAssetCode;
     @FXML private TableColumn<Distribution, String> colAssignedTo;
     @FXML private TableColumn<Distribution, String> colPhone;
@@ -38,6 +40,7 @@ public class OutstandingReportController implements Initializable {
 
     @Override
     public void initialize(URL url, ResourceBundle rb) {
+        TableNumbering.install(colNo);
         colAssetCode.setCellValueFactory(new PropertyValueFactory<>("assetCode"));
         colAssignedTo.setCellValueFactory(new PropertyValueFactory<>("assignedTo"));
         colPhone.setCellValueFactory(new PropertyValueFactory<>("phone"));
@@ -46,6 +49,17 @@ public class OutstandingReportController implements Initializable {
         colDate.setCellValueFactory(new PropertyValueFactory<>("date"));
         colStatus.setCellValueFactory(new PropertyValueFactory<>("status"));
         colOutstandingRemarks.setCellValueFactory(new PropertyValueFactory<>("outstandingRemarks"));
+        colOutstandingRemarks.setCellFactory(column -> new TableCell<>() {
+            @Override
+            protected void updateItem(String item, boolean empty) {
+                super.updateItem(item, empty);
+                if (empty) {
+                    setText(null);
+                    return;
+                }
+                setText(item == null || item.trim().isEmpty() ? "No outstanding reason recorded" : item);
+            }
+        });
 
         setupContextMenu();
         loadData();

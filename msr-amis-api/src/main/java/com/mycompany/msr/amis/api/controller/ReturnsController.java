@@ -6,6 +6,7 @@ import com.mycompany.msr.amis.api.dto.returns.ReturnResponse;
 import com.mycompany.msr.amis.api.service.OperationsService;
 import jakarta.validation.Valid;
 import java.util.List;
+import org.springframework.security.core.Authentication;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -30,7 +31,7 @@ public class ReturnsController {
 
     @PostMapping("/complete")
     @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMIN')")
-    public ReturnBatchResponse completeReturns(@Valid @RequestBody ReturnBatchRequest request) {
-        return operationsService.completeReturns(request);
+    public ReturnBatchResponse completeReturns(Authentication authentication, @Valid @RequestBody ReturnBatchRequest request) {
+        return operationsService.completeReturns(authentication.getName(), request);
     }
 }

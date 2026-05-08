@@ -31,6 +31,7 @@
 
         <TableView fx:id="tableOutstanding" VBox.vgrow="ALWAYS">
             <columns>
+                <TableColumn fx:id="colNo" text="No." prefWidth="55"/>
                 <TableColumn fx:id="colAssetCode" text="Asset Code" prefWidth="120"/>
                 <TableColumn fx:id="colAssignedTo" text="Assigned To" prefWidth="150"/>
                 <TableColumn fx:id="colPhone" text="Phone" prefWidth="120"/>

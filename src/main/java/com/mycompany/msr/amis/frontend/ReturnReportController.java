@@ -25,6 +25,7 @@ public class ReturnReportController implements Initializable {
     @FXML private ComboBox<String> cmbPerson;
     @FXML private ComboBox<String> cmbCondition;
     @FXML private TableView<ReturnRecord> tableReturns;
+    @FXML private TableColumn<ReturnRecord, Void> colNo;
     @FXML private TableColumn<ReturnRecord, String> colAssetCode;
     @FXML private TableColumn<ReturnRecord, String> colSerialNumber;
     @FXML private TableColumn<ReturnRecord, String> colEquipmentName;
@@ -45,6 +46,7 @@ public class ReturnReportController implements Initializable {
 
     @Override
     public void initialize(URL url, ResourceBundle rb) {
+        TableNumbering.install(colNo);
         colAssetCode.setCellValueFactory(new PropertyValueFactory<>("assetCode"));
         colSerialNumber.setCellValueFactory(new PropertyValueFactory<>("serialNumber"));
         colEquipmentName.setCellValueFactory(new PropertyValueFactory<>("equipmentName"));

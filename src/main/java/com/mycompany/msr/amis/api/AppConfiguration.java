@@ -62,7 +62,9 @@ public final class AppConfiguration {
 
     private static DataAccessMode resolveEffectiveMode(DataAccessMode configuredMode, String apiBaseUrl) {
         if (configuredMode == DataAccessMode.AUTO) {
-            return isApiReachable(apiBaseUrl) ? DataAccessMode.REMOTE_API : DataAccessMode.LOCAL_DATABASE;
+            return isApiReachable(apiBaseUrl)
+                    ? DataAccessMode.REMOTE_API
+                    : DataAccessMode.LOCAL_DATABASE;
         }
         return configuredMode;
     }

@@ -225,7 +225,8 @@
 
                         <Separator/>
 
-                        <Button text="Logout"
+                        <Button fx:id="btnLogout"
+                                text="Logout"
                                 styleClass="sidebar-button"
                                 onAction="#openLogout"/>
 

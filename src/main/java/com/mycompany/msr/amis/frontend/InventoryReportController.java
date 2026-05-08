@@ -25,6 +25,7 @@ public class InventoryReportController implements Initializable {
     @FXML private ComboBox<String> cmbCategory;
     @FXML private ComboBox<String> cmbStatus;
     @FXML private TableView<Equipment> tableInventory;
+    @FXML private TableColumn<Equipment, Void> colNo;
     @FXML private TableColumn<Equipment, String> colAssetCode;
     @FXML private TableColumn<Equipment, String> colName;
     @FXML private TableColumn<Equipment, String> colCategory;
@@ -39,6 +40,7 @@ public class InventoryReportController implements Initializable {
 
     @Override
     public void initialize(URL url, ResourceBundle rb) {
+        TableNumbering.install(colNo);
         colAssetCode.setCellValueFactory(new PropertyValueFactory<>("assetCode"));
         colName.setCellValueFactory(new PropertyValueFactory<>("name"));
         colCategory.setCellValueFactory(new PropertyValueFactory<>("category"));

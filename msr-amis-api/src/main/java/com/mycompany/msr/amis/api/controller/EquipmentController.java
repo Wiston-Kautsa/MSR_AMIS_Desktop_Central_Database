@@ -7,6 +7,7 @@ import com.mycompany.msr.amis.api.dto.equipment.EquipmentStatusUpdateRequest;
 import com.mycompany.msr.amis.api.service.EquipmentFacadeService;
 import jakarta.validation.Valid;
 import java.util.List;
+import org.springframework.security.core.Authentication;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -48,27 +49,30 @@ public class EquipmentController {
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMIN')")
-    public EquipmentResponse create(@Valid @RequestBody EquipmentRequest request) {
-        return equipmentFacadeService.create(request);
+    public EquipmentResponse create(Authentication authentication, @Valid @RequestBody EquipmentRequest request) {
+        return equipmentFacadeService.create(authentication.getName(), request);
     }
 
     @PutMapping("/{assetCode}")
     @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMIN')")
-    public EquipmentResponse update(@PathVariable String assetCode, @Valid @RequestBody EquipmentRequest request) {
-        return equipmentFacadeService.update(assetCode, request);
+    public EquipmentResponse update(Authentication authentication,
+                                    @PathVariable String assetCode,
+                                    @Valid @RequestBody EquipmentRequest request) {
+        return equipmentFacadeService.update(authentication.getName(), assetCode, request);
     }
 
     @PatchMapping("/{assetCode}/status")
     @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMIN')")
-    public EquipmentResponse updateStatus(@PathVariable String assetCode,
+    public EquipmentResponse updateStatus(Authentication authentication,
+                                          @PathVariable String assetCode,
                                           @Valid @RequestBody EquipmentStatusUpdateRequest request) {
-        return equipmentFacadeService.updateStatus(assetCode, request.status());
+        return equipmentFacadeService.updateStatus(authentication.getName(), assetCode, request.status());
     }
 
     @DeleteMapping("/{assetCode}")
     @PreAuthorize("hasRole('SUPER_ADMIN')")
-    public CommonMessageResponse delete(@PathVariable String assetCode) {
-        equipmentFacadeService.delete(assetCode);
+    public CommonMessageResponse delete(Authentication authentication, @PathVariable String assetCode) {
+        equipmentFacadeService.delete(authentication.getName(), assetCode);
         return new CommonMessageResponse(true, "Equipment deleted successfully.");
     }
 }

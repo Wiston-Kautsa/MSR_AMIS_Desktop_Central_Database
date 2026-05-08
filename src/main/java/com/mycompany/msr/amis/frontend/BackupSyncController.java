@@ -50,17 +50,20 @@ public class BackupSyncController implements Initializable {
     @FXML private VBox feedbackPanel;
 
     @FXML private TableView<BackupSyncRecord> tblSubmissions;
+    @FXML private TableColumn<BackupSyncRecord, Void> colSubmissionNo;
     @FXML private TableColumn<BackupSyncRecord, String> colSubmissionFileName;
     @FXML private TableColumn<BackupSyncRecord, String> colSubmissionBy;
     @FXML private TableColumn<BackupSyncRecord, String> colSubmissionDate;
     @FXML private TableColumn<BackupSyncRecord, String> colSubmissionStatus;
 
     @FXML private TableView<BackupSyncRecord> tblOfficialHistory;
+    @FXML private TableColumn<BackupSyncRecord, Void> colOfficialNo;
     @FXML private TableColumn<BackupSyncRecord, String> colOfficialFileName;
     @FXML private TableColumn<BackupSyncRecord, String> colOfficialDate;
     @FXML private TableColumn<BackupSyncRecord, String> colOfficialBy;
 
     @FXML private TableView<BackupSyncRecord> tblMyBackups;
+    @FXML private TableColumn<BackupSyncRecord, Void> colMyBackupNo;
     @FXML private TableColumn<BackupSyncRecord, String> colMyBackupFileName;
     @FXML private TableColumn<BackupSyncRecord, String> colMyBackupDate;
     @FXML private TableColumn<BackupSyncRecord, String> colMyBackupLocation;
@@ -254,6 +257,7 @@ public class BackupSyncController implements Initializable {
 
     private void configureTables() {
         if (colSubmissionFileName != null) {
+            TableNumbering.install(colSubmissionNo);
             colSubmissionFileName.setCellValueFactory(new PropertyValueFactory<>("fileName"));
             colSubmissionBy.setCellValueFactory(new PropertyValueFactory<>("actor"));
             colSubmissionDate.setCellValueFactory(new PropertyValueFactory<>("timestamp"));
@@ -261,12 +265,14 @@ public class BackupSyncController implements Initializable {
         }
 
         if (colOfficialFileName != null) {
+            TableNumbering.install(colOfficialNo);
             colOfficialFileName.setCellValueFactory(new PropertyValueFactory<>("fileName"));
             colOfficialDate.setCellValueFactory(new PropertyValueFactory<>("timestamp"));
             colOfficialBy.setCellValueFactory(new PropertyValueFactory<>("actor"));
         }
 
         if (colMyBackupFileName != null) {
+            TableNumbering.install(colMyBackupNo);
             colMyBackupFileName.setCellValueFactory(new PropertyValueFactory<>("fileName"));
             colMyBackupDate.setCellValueFactory(new PropertyValueFactory<>("timestamp"));
             colMyBackupLocation.setCellValueFactory(new PropertyValueFactory<>("location"));

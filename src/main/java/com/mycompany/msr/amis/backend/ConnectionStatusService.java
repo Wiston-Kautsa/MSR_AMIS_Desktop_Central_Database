@@ -13,14 +13,25 @@ public final class ConnectionStatusService {
             .build();
 
     public ConnectionStatus checkStatus() {
-        if (ServiceRegistry.getConfiguration().usesLocalDatabase()) {
-            if (ServiceRegistry.getConfiguration().isUsingLocalFallback()) {
+        String baseUrl = ServiceRegistry.getConfiguration().getApiBaseUrl();
+        boolean centralReachable = isReachable(joinPath(baseUrl, "/actuator/health")) || isReachable(joinPath(baseUrl, "/"));
+
+        if (ServiceRegistry.getConfiguration().isAutomaticMode()) {
+            if (centralReachable) {
                 return new ConnectionStatus(
-                        "OFFLINE (AUTO)",
-                        "Central API is unreachable. Working against the local SQLite database for this session.",
-                        "connection-status-offline"
+                        "ONLINE (AUTO)",
+                        "PostgreSQL is reachable through the API. Local SQLite is kept as the working mirror and offline safety copy.",
+                        "connection-status-online"
                 );
             }
+            return new ConnectionStatus(
+                    "OFFLINE (AUTO)",
+                    "Central API is unreachable. Working against SQLite and queuing changes for PostgreSQL sync.",
+                    "connection-status-offline"
+            );
+        }
+
+        if (ServiceRegistry.getConfiguration().usesLocalDatabase()) {
             return new ConnectionStatus(
                     "LOCAL DATABASE",
                     "Working against the local desktop database.",
@@ -28,15 +39,7 @@ public final class ConnectionStatusService {
             );
         }
 
-        String baseUrl = ServiceRegistry.getConfiguration().getApiBaseUrl();
-        if (isReachable(joinPath(baseUrl, "/actuator/health")) || isReachable(joinPath(baseUrl, "/"))) {
-            if (ServiceRegistry.getConfiguration().isAutomaticMode()) {
-                return new ConnectionStatus(
-                        "ONLINE (AUTO)",
-                        "Central API is reachable. Working against PostgreSQL through the API.",
-                        "connection-status-online"
-                );
-            }
+        if (centralReachable) {
             return new ConnectionStatus(
                     "ONLINE",
                     "Connected to the central database server.",

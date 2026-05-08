@@ -112,6 +112,7 @@
                                 <children>
                                     <TableView fx:id="tblQueue" VBox.vgrow="ALWAYS">
                                         <columns>
+                                            <TableColumn fx:id="colQueueNo" text="No." prefWidth="55.0"/>
                                             <TableColumn fx:id="colQueueId" text="ID" prefWidth="70.0"/>
                                             <TableColumn fx:id="colQueueEntity" text="Entity" prefWidth="120.0"/>
                                             <TableColumn fx:id="colQueueOperation" text="Operation" prefWidth="130.0"/>
@@ -133,6 +134,7 @@
                                 <children>
                                     <TableView fx:id="tblAudit" VBox.vgrow="ALWAYS">
                                         <columns>
+                                            <TableColumn fx:id="colAuditNo" text="No." prefWidth="55.0"/>
                                             <TableColumn fx:id="colAuditId" text="ID" prefWidth="60.0"/>
                                             <TableColumn fx:id="colAuditQueueId" text="Queue" prefWidth="80.0"/>
                                             <TableColumn fx:id="colAuditAction" text="Action" prefWidth="150.0"/>

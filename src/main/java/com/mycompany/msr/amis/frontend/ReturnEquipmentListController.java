@@ -25,6 +25,7 @@ public class ReturnEquipmentListController implements Initializable {
     @FXML private ComboBox<String> cmbPerson;
     @FXML private ComboBox<String> cmbCondition;
     @FXML private TableView<ReturnRecord> tableReturns;
+    @FXML private TableColumn<ReturnRecord, Void> colNo;
     @FXML private TableColumn<ReturnRecord, String> colAssetCode;
     @FXML private TableColumn<ReturnRecord, String> colResponsibleOfficer;
     @FXML private TableColumn<ReturnRecord, String> colEquipmentType;
@@ -41,6 +42,7 @@ public class ReturnEquipmentListController implements Initializable {
 
     @Override
     public void initialize(URL url, ResourceBundle rb) {
+        TableNumbering.install(colNo);
         colAssetCode.setCellValueFactory(new PropertyValueFactory<>("assetCode"));
         colResponsibleOfficer.setCellValueFactory(new PropertyValueFactory<>("responsibleOfficer"));
         colEquipmentType.setCellValueFactory(new PropertyValueFactory<>("assignmentEquipmentType"));

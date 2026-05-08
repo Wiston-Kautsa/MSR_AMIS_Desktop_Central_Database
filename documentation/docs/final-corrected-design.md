@@ -2,18 +2,19 @@
 
 ## 1. System Overview
 
-MSR-AMIS is a JavaFX desktop application that operates against a centralized backend API and central PostgreSQL database.
+MSR-AMIS is a JavaFX desktop application that operates with a local SQLite mirror, a centralized backend API, and a central PostgreSQL database.
 
 Final architecture:
 
-`JavaFX Desktop -> Spring Boot API -> PostgreSQL`
+`JavaFX Desktop -> local SQLite mirror -> Spring Boot API -> PostgreSQL`
 
 ## 2. Design Principles
 
 - Desktop handles UI only
 - Backend handles security, business logic, and persistence
-- Database is the single source of truth
-- Production should use centralized API mode
+- PostgreSQL is the single source of truth
+- SQLite is an offline mirror and queue store
+- Production desktops should normally use `AUTO` mode
 
 ## 3. Roles
 
@@ -122,19 +123,28 @@ The centralized backend provides:
 ### Backup
 
 - in centralized mode, backup must be treated as a server responsibility
-- desktop backup synchronization actions are intentionally disabled in `REMOTE_API` mode
+- PostgreSQL backups are the official system backup
+- SQLite can contain unsynced offline work from one desktop, but it is not the official database
 
 ## 10. Mode Policy
 
+### `AUTO`
+
+- recommended day-to-day mode
+- uses SQLite as the local mirror
+- uses the backend API and PostgreSQL when reachable
+- queues offline work when unreachable
+- refreshes SQLite from PostgreSQL after sync
+
 ### `REMOTE_API`
 
-- intended production mode
+- strict online mode
 - uses the backend API as the authority
+- cannot continue if the API is unreachable
 
 ### `LOCAL_DATABASE`
 
-- retained only for development or controlled fallback scenarios
-- not the target production model
+- retained for development or controlled local-only scenarios
 
 ## 11. Production Direction
 
@@ -143,7 +153,8 @@ The correct production state is:
 - one backend deployment
 - one PostgreSQL database
 - many desktop clients
-- no silent local split-brain behavior between users
+- desktop clients configured in `AUTO` mode for offline continuity
+- PostgreSQL wins when local offline changes conflict with central changes
 
 ## 12. Current Project Stage
 
@@ -154,4 +165,4 @@ The main remaining work is:
 - deployment hardening
 - centralized environment setup
 - end-to-end operational validation
-- cleanup of legacy local-only support where no longer needed
+- operational validation of Sync Center workflows

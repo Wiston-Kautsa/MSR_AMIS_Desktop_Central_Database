@@ -36,14 +36,14 @@ public final class ApiUserService implements UserService {
 
     @Override
     public void createUser(String name, String password, String role, String department, String email) throws Exception {
-        String username = deriveUsername(email);
+        String username = normalizeUsername(email);
         apiClient.post("/api/users", new UserRequest(name, username, email, role, department, "", password), UserPayload.class);
         refreshLocalMirror();
     }
 
     @Override
     public boolean updateUser(int id, String name, String password, String role, String department, String email) throws Exception {
-        String username = deriveUsername(email);
+        String username = normalizeUsername(email);
         apiClient.put("/api/users/" + id, new UserRequest(name, username, email, role, department, "", password), UserPayload.class);
         refreshLocalMirror();
         return true;
@@ -72,12 +72,11 @@ public final class ApiUserService implements UserService {
         ServiceRegistry.getRemoteMirrorCoordinator().refreshAfterRemoteMutation();
     }
 
-    private String deriveUsername(String email) {
+    private String normalizeUsername(String email) {
         if (email == null || email.isBlank()) {
             return "";
         }
-        int atIndex = email.indexOf('@');
-        return atIndex > 0 ? email.substring(0, atIndex).trim().toLowerCase() : email.trim().toLowerCase();
+        return email.trim().toLowerCase();
     }
 
     private String resolveMessage(Exception exception) {

@@ -103,7 +103,7 @@ public class OperationsService {
     }
 
     @Transactional
-    public AssignmentResponse createAssignment(AssignmentRequest request) {
+    public AssignmentResponse createAssignment(String actor, AssignmentRequest request) {
         validateAssignmentRequest(request);
         if (request.quantity() > getAvailableStock(request.equipmentType())) {
             throw new ApiException(HttpStatus.BAD_REQUEST, "Requested quantity exceeds available stock.");
@@ -129,11 +129,21 @@ public class OperationsService {
         if (id == null) {
             throw new ApiException(HttpStatus.INTERNAL_SERVER_ERROR, "Failed to create assignment.");
         }
-        return getAssignmentById(id.intValue());
+        AssignmentResponse response = getAssignmentById(id.intValue());
+        actionAuditService.log(
+                actor,
+                "CREATE_ASSIGNMENT",
+                "ASSIGNMENTS",
+                Integer.toString(response.id()),
+                "Assignment created for " + response.person() + ". Department: " + response.department() +
+                        ", equipment: " + response.equipmentType() + ", quantity: " + response.quantity() +
+                        ", reason: " + response.reason()
+        );
+        return response;
     }
 
     @Transactional
-    public AssignmentResponse updateAssignment(int id, AssignmentRequest request) {
+    public AssignmentResponse updateAssignment(String actor, int id, AssignmentRequest request) {
         validateAssignmentRequest(request);
         assertAssignmentMutable(id);
         if (getDistributedCountForAssignment(id) > 0) {
@@ -143,6 +153,7 @@ public class OperationsService {
             throw new ApiException(HttpStatus.BAD_REQUEST, "Requested quantity exceeds available stock.");
         }
 
+        AssignmentResponse oldAssignment = getAssignmentById(id);
         int updated = jdbcTemplate.update(
                 "UPDATE assignments SET person=?, department=?, equipment_type=?, reason=?, quantity=? WHERE id=?",
                 request.person().trim(), request.department().trim(), request.equipmentType().trim(),
@@ -151,12 +162,21 @@ public class OperationsService {
         if (updated == 0) {
             throw new ApiException(HttpStatus.NOT_FOUND, "Assignment not found.");
         }
-        return getAssignmentById(id);
+        AssignmentResponse response = getAssignmentById(id);
+        actionAuditService.log(
+                actor,
+                "EDIT_ASSIGNMENT",
+                "ASSIGNMENTS",
+                Integer.toString(id),
+                "Assignment edited. Old: " + assignmentSnapshot(oldAssignment) + ". New: " + assignmentSnapshot(response)
+        );
+        return response;
     }
 
     @Transactional
-    public void deleteAssignment(int id) {
+    public void deleteAssignment(String actor, int id) {
         assertAssignmentMutable(id);
+        AssignmentResponse oldAssignment = getAssignmentById(id);
         Integer count = jdbcTemplate.queryForObject("SELECT COUNT(*) FROM distribution WHERE assignment_id = ?", Integer.class, id);
         if (count != null && count > 0) {
             throw new ApiException(HttpStatus.BAD_REQUEST, "Assignments that already have distributed equipment cannot be deleted.");
@@ -165,17 +185,18 @@ public class OperationsService {
         if (deleted == 0) {
             throw new ApiException(HttpStatus.NOT_FOUND, "Assignment not found.");
         }
+        actionAuditService.log(actor, "DELETE_ASSIGNMENT", "ASSIGNMENTS", Integer.toString(id), "Assignment deleted. Old: " + assignmentSnapshot(oldAssignment));
     }
 
     @Transactional
-    public AssignmentResponse updateAssignmentStatus(int id, String rawStatus) {
+    public AssignmentResponse updateAssignmentStatus(String actor, int id, String rawStatus) {
         String nextStatus = parseAssignmentStatus(rawStatus);
         int updated = jdbcTemplate.update("UPDATE assignments SET status = ? WHERE id = ?", nextStatus, id);
         if (updated == 0) {
             throw new ApiException(HttpStatus.NOT_FOUND, "Assignment not found.");
         }
         actionAuditService.log(
-                "",
+                actor,
                 "ASSIGNMENT_" + nextStatus,
                 "ASSIGNMENTS",
                 Integer.toString(id),
@@ -232,7 +253,8 @@ public class OperationsService {
     }
 
     @Transactional
-    public void distributeBatch(DistributionBatchRequest request) {
+    public void distributeBatch(String actor, DistributionBatchRequest request) {
+        List<String> distributedAssetCodes = new ArrayList<>();
         for (var distribution : request.distributions()) {
             validateDistribution(request.assignmentId(), distribution);
             jdbcTemplate.update(
@@ -241,7 +263,16 @@ public class OperationsService {
                     distribution.phone().trim(), distribution.nid().trim(), Date.valueOf(LocalDate.now())
             );
             jdbcTemplate.update("UPDATE equipment SET status = 'ASSIGNED' WHERE asset_code = ?", distribution.assetCode().trim());
+            distributedAssetCodes.add(distribution.assetCode().trim());
         }
+        actionAuditService.log(
+                actor,
+                "DISTRIBUTE_EQUIPMENT_BATCH",
+                "DISTRIBUTION",
+                Integer.toString(request.assignmentId()),
+                "Distributed " + distributedAssetCodes.size() + " equipment item(s) under assignment " +
+                        request.assignmentId() + ": " + String.join(", ", distributedAssetCodes)
+        );
     }
 
     public List<String> getOutstandingAssetCodes(int assignmentId) {
@@ -267,12 +298,17 @@ public class OperationsService {
     }
 
     @Transactional
-    public ReturnBatchResponse completeReturns(ReturnBatchRequest request) {
+    public ReturnBatchResponse completeReturns(String actor, ReturnBatchRequest request) {
         List<String> outstandingAssets = new ArrayList<>(getOutstandingAssetCodes(request.assignmentId()));
         List<String> replacementAssetCodes = new ArrayList<>();
 
         for (ReturnItemRequest item : request.items()) {
-            outstandingAssets.remove(item.originalAssetCode());
+            if (!removeOutstandingAsset(outstandingAssets, item.originalAssetCode())) {
+                throw new ApiException(
+                        HttpStatus.BAD_REQUEST,
+                        "Asset is not outstanding for the selected assignment or was already returned: " + item.originalAssetCode()
+                );
+            }
             String remarks = normalize(item.remarks());
 
             if (item.replacement()) {
@@ -294,12 +330,20 @@ public class OperationsService {
             );
             jdbcTemplate.update("UPDATE equipment SET status = 'AVAILABLE', item_condition = ? WHERE asset_code = ?",
                     item.condition().trim(), item.originalAssetCode());
+            actionAuditService.log(
+                    actor,
+                    "RETURN_EQUIPMENT",
+                    "RETURNS",
+                    item.originalAssetCode(),
+                    "Equipment returned by " + item.returnedBy().trim() + ". Condition: " + item.condition().trim() +
+                            ", phone: " + item.phone().trim() + ", NID: " + item.nid().trim()
+            );
         }
 
         if (!outstandingAssets.isEmpty()) {
             for (String assetCode : outstandingAssets) {
                 jdbcTemplate.update("UPDATE distribution SET outstanding_remarks = ? WHERE asset_code = ? AND returned = FALSE",
-                        normalize(request.outstandingRemark()), assetCode);
+                        resolveOutstandingRemark(request, assetCode), assetCode);
             }
         }
 
@@ -334,6 +378,20 @@ public class OperationsService {
             status = distributedCount == 0 ? "PENDING" : distributedCount < quantity ? "PARTIAL" : "COMPLETE";
         }
         return new AssignmentResponse(id, person, department, equipmentType, reason, quantity, date, distributedCount, status);
+    }
+
+    private String assignmentSnapshot(AssignmentResponse assignment) {
+        if (assignment == null) {
+            return "not found";
+        }
+        return "id=" + assignment.id() +
+                ", person=" + normalize(assignment.person()) +
+                ", department=" + normalize(assignment.department()) +
+                ", equipment=" + normalize(assignment.equipmentType()) +
+                ", quantity=" + assignment.quantity() +
+                ", status=" + normalize(assignment.status()) +
+                ", date=" + normalize(assignment.date()) +
+                ", reason=" + normalize(assignment.reason());
     }
 
     private void validateAssignmentRequest(AssignmentRequest request) {
@@ -412,6 +470,10 @@ public class OperationsService {
 
     private String insertReplacementEquipment(String equipmentType, String serialNumber, String source) {
         String normalizedType = normalize(equipmentType);
+        String normalizedSerialNumber = normalize(serialNumber);
+        if (equipmentIdentifierExists(normalizedSerialNumber)) {
+            throw new ApiException(HttpStatus.CONFLICT, "Asset code or serial number already exists: " + normalizedSerialNumber);
+        }
         KeyHolder keyHolder = new GeneratedKeyHolder();
         jdbcTemplate.update(connection -> {
             var ps = connection.prepareStatement(
@@ -422,7 +484,7 @@ public class OperationsService {
             ps.setString(1, "TMP-" + normalizedType.toUpperCase(Locale.ROOT).replace(" ", "") + "-" + System.nanoTime());
             ps.setString(2, normalizedType);
             ps.setString(3, normalizedType);
-            ps.setString(4, normalize(serialNumber));
+            ps.setString(4, normalizedSerialNumber);
             ps.setString(5, "New");
             ps.setString(6, normalize(source));
             ps.setDate(7, Date.valueOf(LocalDate.now()));
@@ -439,8 +501,51 @@ public class OperationsService {
         return assetCode;
     }
 
+    private boolean equipmentIdentifierExists(String identifier) {
+        String normalizedIdentifier = normalize(identifier);
+        if (normalizedIdentifier.isBlank()) {
+            return false;
+        }
+        Integer count = jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM equipment " +
+                        "WHERE LOWER(TRIM(asset_code)) = LOWER(TRIM(?)) " +
+                        "OR LOWER(TRIM(serial_number)) = LOWER(TRIM(?))",
+                Integer.class,
+                normalizedIdentifier,
+                normalizedIdentifier
+        );
+        return count != null && count > 0;
+    }
+
     private String normalize(String value) {
         return value == null ? "" : value.trim();
+    }
+
+    private boolean removeOutstandingAsset(List<String> outstandingAssets, String assetCode) {
+        for (int i = 0; i < outstandingAssets.size(); i++) {
+            String outstandingAsset = outstandingAssets.get(i);
+            if (outstandingAsset != null && assetCode != null && outstandingAsset.trim().equalsIgnoreCase(assetCode.trim())) {
+                outstandingAssets.remove(i);
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private String resolveOutstandingRemark(ReturnBatchRequest request, String assetCode) {
+        Map<String, String> outstandingRemarks = request.outstandingRemarks();
+        if (outstandingRemarks != null) {
+            String directRemark = outstandingRemarks.get(assetCode);
+            if (directRemark != null) {
+                return normalize(directRemark);
+            }
+            for (Map.Entry<String, String> entry : outstandingRemarks.entrySet()) {
+                if (entry.getKey() != null && entry.getKey().trim().equalsIgnoreCase(assetCode)) {
+                    return normalize(entry.getValue());
+                }
+            }
+        }
+        return normalize(request.outstandingRemark());
     }
 
     private String appendRemark(String existing, String extra) {

@@ -27,6 +27,7 @@ public class AssignmentReportController implements Initializable {
     @FXML private ComboBox<String> cmbEquipmentType;
     @FXML private ComboBox<String> cmbStatus;
     @FXML private TableView<Assignment> tableAssignments;
+    @FXML private TableColumn<Assignment, Void> colNo;
     @FXML private TableColumn<Assignment, String> colPerson;
     @FXML private TableColumn<Assignment, String> colDepartment;
     @FXML private TableColumn<Assignment, String> colEquipment;
@@ -40,6 +41,7 @@ public class AssignmentReportController implements Initializable {
 
     @Override
     public void initialize(URL url, ResourceBundle rb) {
+        TableNumbering.install(colNo);
         colPerson.setCellValueFactory(new PropertyValueFactory<>("person"));
         colDepartment.setCellValueFactory(new PropertyValueFactory<>("department"));
         colEquipment.setCellValueFactory(new PropertyValueFactory<>("equipmentType"));

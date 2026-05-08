@@ -121,9 +121,19 @@ public final class LocalReportService implements ReportService {
     public List<Distribution> getOutstandingReport() {
         remoteMirrorCoordinator.synchronizeQuietlyIfOnline();
         List<Distribution> data = new ArrayList<>();
+        String sql =
+                "SELECT d.* FROM distribution d " +
+                        "WHERE d.returned = 0 " +
+                        "AND d.id = (" +
+                        "SELECT d2.id FROM distribution d2 " +
+                        "WHERE LOWER(TRIM(d2.asset_code)) = LOWER(TRIM(d.asset_code)) " +
+                        "AND d2.returned = 0 " +
+                        "ORDER BY d2.date DESC, d2.id DESC LIMIT 1" +
+                        ") " +
+                        "ORDER BY d.date DESC, d.id DESC";
         try (Connection conn = DatabaseHandler.getConnection();
              Statement st = conn.createStatement();
-             ResultSet rs = st.executeQuery("SELECT * FROM distribution WHERE returned = 0")) {
+             ResultSet rs = st.executeQuery(sql)) {
             while (rs.next()) {
                 Distribution distribution = new Distribution(
                         rs.getString("asset_code"),

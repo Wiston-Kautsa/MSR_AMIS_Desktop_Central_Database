@@ -27,9 +27,14 @@ Supported aliases for development convenience:
 Example:
 
 ```env
-MSR_AMIS_DATA_MODE=REMOTE_API
-MSR_AMIS_API_BASE_URL=http://localhost:8090
+MSR_AMIS_DATA_MODE=AUTO
+MSR_AMIS_API_BASE_URL=http://192.168.1.10:8090
+
+APP_MODE=AUTO
+API_BASE_URL=http://192.168.1.10:8090
 ```
+
+Use `localhost` only when the API is running on the same computer as the desktop app. Client machines should point to the server IP address or DNS name.
 
 ## API Configuration
 
@@ -57,13 +62,23 @@ MSR_AMIS_API_PORT=8090
 
 ### `REMOTE_API`
 
-- preferred production mode
+- strict online mode
 - requires a reachable API base URL
+- shows an API unreachable error if the API is down
+- useful for testing fully centralized behavior
+
+### `AUTO`
+
+- recommended day-to-day desktop mode
+- keeps SQLite as the local working mirror
+- sends changes to PostgreSQL through the API when online
+- queues changes locally when offline
+- requires Sync Center processing after offline work
 
 ### `LOCAL_DATABASE`
 
-- available for development or controlled fallback
-- not the intended shared production model
+- available for development or controlled local-only fallback
+- does not automatically share changes unless used with the sync queue through `AUTO`
 
 ## Guidance
 
@@ -71,3 +86,5 @@ MSR_AMIS_API_PORT=8090
 - use real environment variables in server deployment
 - do not commit real secrets into the repository
 - keep `.env` local; it is ignored by git
+- configure desktop clients with the server API URL, not `localhost`, unless the API is installed locally
+- use `AUTO` for normal users who may experience network outages

@@ -63,6 +63,7 @@
 
         <TableView fx:id="tableHistory" VBox.vgrow="ALWAYS">
             <columns>
+                <TableColumn fx:id="colNo" text="No." prefWidth="55"/>
                 <TableColumn fx:id="colActivityDate" text="Activity Date" prefWidth="150"/>
                 <TableColumn fx:id="colEventType" text="Event Type" prefWidth="150"/>
                 <TableColumn fx:id="colActor" text="Actor" prefWidth="220"/>

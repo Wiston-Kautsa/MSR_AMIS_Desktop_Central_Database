@@ -7,6 +7,7 @@ Main documents:
 - [Architecture](</D:/School/JAVA/MSR-AMIS_destop_application/documentation/docs/architecture.md>)
 - [Configuration](</D:/School/JAVA/MSR-AMIS_destop_application/documentation/docs/configuration.md>)
 - [Deployment](</D:/School/JAVA/MSR-AMIS_destop_application/documentation/docs/deployment.md>)
+- [Daily Operations](</D:/School/JAVA/MSR-AMIS_destop_application/documentation/docs/daily-operations.md>)
 - [Current System Alignment](</D:/School/JAVA/MSR-AMIS_destop_application/documentation/docs/current-system-alignment.md>)
 - [Final Corrected Design](</D:/School/JAVA/MSR-AMIS_destop_application/documentation/docs/final-corrected-design.md>)
 - [API Migration Plan](</D:/School/JAVA/MSR-AMIS_destop_application/documentation/docs/api-migration-plan.md>)

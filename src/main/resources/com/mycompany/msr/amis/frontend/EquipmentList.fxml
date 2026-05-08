@@ -77,6 +77,9 @@
 
                                 <TableView fx:id="equipmentTable" VBox.vgrow="ALWAYS">
                                     <columns>
+                                        <TableColumn fx:id="colNo"
+                                                     text="No."
+                                                     prefWidth="55.0"/>
                                         <TableColumn fx:id="colAssetCode"
                                                      text="System Serial No."
                                                      prefWidth="120.0"/>

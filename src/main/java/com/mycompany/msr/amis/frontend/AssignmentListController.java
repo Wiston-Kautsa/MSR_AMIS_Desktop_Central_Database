@@ -28,6 +28,7 @@ public class AssignmentListController implements Initializable {
 
     @FXML private TextField txtSearch;
     @FXML private TableView<Assignment> tableAssignments;
+    @FXML private TableColumn<Assignment, Void> colNo;
     @FXML private TableColumn<Assignment, Integer> colId;
     @FXML private TableColumn<Assignment, String> colPerson;
     @FXML private TableColumn<Assignment, String> colDepartment;
@@ -44,6 +45,7 @@ public class AssignmentListController implements Initializable {
     @Override
     public void initialize(URL url, ResourceBundle rb) {
 
+        TableNumbering.install(colNo);
         colId.setCellValueFactory(new PropertyValueFactory<>("id"));
         colPerson.setCellValueFactory(new PropertyValueFactory<>("person"));
         colDepartment.setCellValueFactory(new PropertyValueFactory<>("department"));
@@ -115,50 +117,6 @@ public class AssignmentListController implements Initializable {
             MenuItem restore = new MenuItem("Restore Assignment");
             MenuItem refresh = new MenuItem("Refresh Assignment List");
 
-            edit.disableProperty().bind(Bindings.createBooleanBinding(
-                    () -> {
-                        Assignment assignment = row.getItem();
-                        return assignment == null
-                                || assignment.getDistributedCount() > 0
-                                || AccessControl.STATUS_FROZEN.equalsIgnoreCase(assignment.getStatus())
-                                || AccessControl.STATUS_RETIRED.equalsIgnoreCase(assignment.getStatus());
-                    },
-                    row.itemProperty()
-            ));
-            freeze.disableProperty().bind(Bindings.createBooleanBinding(
-                    () -> {
-                        Assignment assignment = row.getItem();
-                        return assignment == null
-                                || AccessControl.STATUS_FROZEN.equalsIgnoreCase(assignment.getStatus())
-                                || AccessControl.STATUS_RETIRED.equalsIgnoreCase(assignment.getStatus());
-                    },
-                    row.itemProperty()
-            ));
-            unfreeze.disableProperty().bind(Bindings.createBooleanBinding(
-                    () -> {
-                        Assignment assignment = row.getItem();
-                        return assignment == null
-                                || !AccessControl.STATUS_FROZEN.equalsIgnoreCase(assignment.getStatus());
-                    },
-                    row.itemProperty()
-            ));
-            retire.disableProperty().bind(Bindings.createBooleanBinding(
-                    () -> {
-                        Assignment assignment = row.getItem();
-                        return assignment == null
-                                || AccessControl.STATUS_RETIRED.equalsIgnoreCase(assignment.getStatus());
-                    },
-                    row.itemProperty()
-            ));
-            restore.disableProperty().bind(Bindings.createBooleanBinding(
-                    () -> {
-                        Assignment assignment = row.getItem();
-                        return assignment == null
-                                || !AccessControl.STATUS_RETIRED.equalsIgnoreCase(assignment.getStatus());
-                    },
-                    row.itemProperty()
-            ));
-
             edit.setOnAction(event -> editAssignment(row.getItem()));
             freeze.setOnAction(event -> updateAssignmentStatus(row.getItem(), AccessControl.STATUS_FROZEN));
             unfreeze.setOnAction(event -> updateAssignmentStatus(row.getItem(), AccessControl.STATUS_ACTIVE));
@@ -167,14 +125,10 @@ public class AssignmentListController implements Initializable {
             refresh.setOnAction(event -> refreshTable());
 
             menu.getItems().add(edit);
-            if (AccessControl.canManageLifecycleRecords()) {
-                menu.getItems().addAll(freeze, unfreeze, retire, restore);
-            }
-            if (AccessControl.canDeleteRecords()) {
-                MenuItem delete = new MenuItem("Delete Assignment");
-                delete.setOnAction(event -> deleteAssignment(row.getItem()));
-                menu.getItems().add(delete);
-            }
+            menu.getItems().addAll(freeze, unfreeze, retire, restore);
+            MenuItem delete = new MenuItem("Delete Assignment");
+            delete.setOnAction(event -> deleteAssignment(row.getItem()));
+            menu.getItems().add(delete);
             menu.getItems().add(refresh);
 
             row.contextMenuProperty().bind(

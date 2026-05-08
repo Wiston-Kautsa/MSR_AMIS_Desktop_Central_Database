@@ -57,6 +57,7 @@ public class UsersController implements Initializable {
 
     @FXML private TableView<User> tableUsers;
 
+    @FXML private TableColumn<User, Void> colNo;
     @FXML private TableColumn<User, Integer> colId;
     @FXML private TableColumn<User, String> colName;
     @FXML private TableColumn<User, String> colRole;
@@ -77,6 +78,7 @@ public class UsersController implements Initializable {
         configurePasswordToggle();
         configureSetupMode();
 
+        TableNumbering.install(colNo);
         colId.setCellValueFactory(new PropertyValueFactory<>("id"));
         colName.setCellValueFactory(new PropertyValueFactory<>("fullName"));
         colRole.setCellValueFactory(new PropertyValueFactory<>("role"));
@@ -154,59 +156,22 @@ public class UsersController implements Initializable {
             ContextMenu menu = new ContextMenu();
 
             MenuItem edit = new MenuItem("Edit User");
-            edit.disableProperty().bind(Bindings.createBooleanBinding(
-                    () -> {
-                        User user = row.getItem();
-                        return user == null || !AccessControl.canManageTarget(user);
-                    },
-                    row.itemProperty()
-            ));
             edit.setOnAction(e -> editUser(row.getItem()));
 
-            MenuItem delete = null;
-            if (AccessControl.canDeleteRecords()) {
-                delete = new MenuItem("Delete User");
-                delete.disableProperty().bind(Bindings.createBooleanBinding(
-                        () -> {
-                            User user = row.getItem();
-                            return user == null || !AccessControl.canManageTarget(user);
-                        },
-                        row.itemProperty()
-                ));
-                delete.setOnAction(e -> deleteUser(row.getItem()));
-            }
+            MenuItem delete = new MenuItem("Delete User");
+            delete.setOnAction(e -> deleteUser(row.getItem()));
 
             MenuItem freeze = new MenuItem("Freeze User");
-            freeze.disableProperty().bind(Bindings.createBooleanBinding(
-                    () -> {
-                        User user = row.getItem();
-                        return user == null
-                                || !AccessControl.canManageTarget(user)
-                                || AccessControl.STATUS_FROZEN.equalsIgnoreCase(user.getStatus());
-                    },
-                    row.itemProperty()
-            ));
             freeze.setOnAction(e -> updateUserStatus(row.getItem(), AccessControl.STATUS_FROZEN));
 
             MenuItem unfreeze = new MenuItem("Unfreeze User");
-            unfreeze.disableProperty().bind(Bindings.createBooleanBinding(
-                    () -> {
-                        User user = row.getItem();
-                        return user == null
-                                || !AccessControl.canManageTarget(user)
-                                || !AccessControl.STATUS_FROZEN.equalsIgnoreCase(user.getStatus());
-                    },
-                    row.itemProperty()
-            ));
             unfreeze.setOnAction(e -> updateUserStatus(row.getItem(), AccessControl.STATUS_ACTIVE));
 
             MenuItem refresh = new MenuItem("Refresh Users");
             refresh.setOnAction(e -> refreshUsers());
 
             menu.getItems().add(edit);
-            if (delete != null) {
-                menu.getItems().add(delete);
-            }
+            menu.getItems().add(delete);
             menu.getItems().addAll(freeze, unfreeze, refresh);
 
             row.contextMenuProperty().bind(
@@ -377,13 +342,14 @@ public class UsersController implements Initializable {
         grid.add(passwordField, 1, 4);
 
         dialog.getDialogPane().setContent(grid);
+        ButtonType saveButton = new ButtonType("Save", ButtonBar.ButtonData.OK_DONE);
         dialog.getDialogPane().getButtonTypes().addAll(
-                new ButtonType("Save", ButtonBar.ButtonData.OK_DONE),
+                saveButton,
                 ButtonType.CANCEL
         );
 
         Optional<ButtonType> result = dialog.showAndWait();
-        if (result.isEmpty() || result.get() != ButtonType.OK) {
+        if (result.isEmpty() || result.get() != saveButton) {
             return;
         }
 
@@ -421,7 +387,7 @@ public class UsersController implements Initializable {
             showAlert("Access Denied", e.getMessage());
         } catch (Exception e) {
             e.printStackTrace();
-            showAlert("Error", "User update failed.");
+            showAlert("Error", resolveUserCreationError(e));
         }
     }
 

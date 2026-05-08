@@ -285,6 +285,7 @@
                                                 <children>
                                                     <TableView fx:id="tblSubmissions" VBox.vgrow="ALWAYS">
                                                         <columns>
+                                                            <TableColumn fx:id="colSubmissionNo" text="No." prefWidth="55.0"/>
                                                             <TableColumn fx:id="colSubmissionFileName" text="File Name" prefWidth="280.0"/>
                                                             <TableColumn fx:id="colSubmissionBy" text="Submitted By" prefWidth="140.0"/>
                                                             <TableColumn fx:id="colSubmissionDate" text="Submitted At" prefWidth="170.0"/>
@@ -303,6 +304,7 @@
                                                 <children>
                                                     <TableView fx:id="tblOfficialHistory" prefHeight="180.0">
                                                         <columns>
+                                                            <TableColumn fx:id="colOfficialNo" text="No." prefWidth="55.0"/>
                                                             <TableColumn fx:id="colOfficialFileName" text="Official File" prefWidth="320.0"/>
                                                             <TableColumn fx:id="colOfficialDate" text="Published At" prefWidth="180.0"/>
                                                             <TableColumn fx:id="colOfficialBy" text="Published By" prefWidth="160.0"/>
@@ -327,6 +329,7 @@
                         <children>
                             <TableView fx:id="tblMyBackups" prefHeight="170.0">
                                 <columns>
+                                    <TableColumn fx:id="colMyBackupNo" text="No." prefWidth="55.0"/>
                                     <TableColumn fx:id="colMyBackupFileName" text="Backup File" prefWidth="350.0"/>
                                     <TableColumn fx:id="colMyBackupDate" text="Created At" prefWidth="180.0"/>
                                     <TableColumn fx:id="colMyBackupLocation" text="Location" prefWidth="300.0"/>

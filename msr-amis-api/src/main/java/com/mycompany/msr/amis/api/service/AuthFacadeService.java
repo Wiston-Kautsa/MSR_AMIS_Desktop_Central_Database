@@ -36,6 +36,7 @@ public class AuthFacadeService {
     private final PasswordEncoder passwordEncoder;
     private final PasswordResetEmailService passwordResetEmailService;
     private final JdbcTemplate jdbcTemplate;
+    private final ActionAuditService actionAuditService;
     private final boolean exposeResetCodeOnEmailFailure;
 
     public AuthFacadeService(UserRepository userRepository,
@@ -43,6 +44,7 @@ public class AuthFacadeService {
                              PasswordEncoder passwordEncoder,
                              PasswordResetEmailService passwordResetEmailService,
                              JdbcTemplate jdbcTemplate,
+                             ActionAuditService actionAuditService,
                              @Value("${app.security.password-reset.expose-code-when-email-disabled:true}")
                              boolean exposeResetCodeOnEmailFailure) {
         this.userRepository = userRepository;
@@ -50,6 +52,7 @@ public class AuthFacadeService {
         this.passwordEncoder = passwordEncoder;
         this.passwordResetEmailService = passwordResetEmailService;
         this.jdbcTemplate = jdbcTemplate;
+        this.actionAuditService = actionAuditService;
         this.exposeResetCodeOnEmailFailure = exposeResetCodeOnEmailFailure;
     }
 
@@ -57,9 +60,13 @@ public class AuthFacadeService {
     public LoginResponse login(LoginRequest request) {
         UserAccount account = userRepository
                 .findByEmailIgnoreCaseOrUsernameIgnoreCase(request.identifier(), request.identifier())
-                .orElseThrow(() -> new ApiException(HttpStatus.UNAUTHORIZED, "Invalid email or password."));
+                .orElseThrow(() -> {
+                    actionAuditService.log(request.identifier(), "LOGIN_FAILED", "AUTH", request.identifier(), "Unknown login identifier.");
+                    return new ApiException(HttpStatus.UNAUTHORIZED, "Invalid email or password.");
+                });
 
         if (isPrimarySuperAdmin(account) && account.isMustChangePassword()) {
+            actionAuditService.log(account.getEmail(), "LOGIN_FAILED", "AUTH", account.getEmail(), "Primary super admin must reset password before sign in.");
             throw new ApiException(
                     HttpStatus.FORBIDDEN,
                     "The primary super admin must reset the password before signing in."
@@ -67,10 +74,12 @@ public class AuthFacadeService {
         }
 
         if (!passwordEncoder.matches(request.password(), account.getPasswordHash())) {
+            actionAuditService.log(account.getEmail(), "LOGIN_FAILED", "AUTH", account.getEmail(), "Invalid password.");
             throw new ApiException(HttpStatus.UNAUTHORIZED, "Invalid email or password.");
         }
 
         if (account.getStatus() != UserStatus.ACTIVE) {
+            actionAuditService.log(account.getEmail(), "LOGIN_FAILED", "AUTH", account.getEmail(), "Inactive account login blocked.");
             throw new ApiException(HttpStatus.FORBIDDEN, "This account is not active.");
         }
 
@@ -89,6 +98,7 @@ public class AuthFacadeService {
                 principal
         );
 
+        actionAuditService.log(account.getEmail(), "LOGIN_SUCCESS", "AUTH", account.getEmail(), "User logged in successfully.");
         return new LoginResponse(token, toProfile(account));
     }
 
@@ -103,11 +113,13 @@ public class AuthFacadeService {
         UserAccount account = userRepository.findByEmailIgnoreCaseOrUsernameIgnoreCase(request.identifier(), request.identifier())
                 .orElseThrow(() -> {
                     logPasswordResetEvent(null, request.identifier(), "REQUEST_PASSWORD_RESET", "FAILED", "Account not found.");
+                    actionAuditService.log(request.identifier(), "PASSWORD_RESET_REQUEST_FAILED", "AUTH", request.identifier(), "Password reset requested for unknown account.");
                     return new ApiException(HttpStatus.NOT_FOUND, "User not found.");
                 });
         OffsetDateTime now = OffsetDateTime.now();
         if (account.getResetRequestedAt() != null && account.getResetRequestedAt().plusMinutes(1).isAfter(now)) {
             logPasswordResetEvent(account.getId(), request.identifier(), "REQUEST_PASSWORD_RESET", "FAILED", "Reset requested too frequently.");
+            actionAuditService.log(account.getEmail(), "PASSWORD_RESET_REQUEST_FAILED", "AUTH", account.getEmail(), "Password reset requested too frequently.");
             throw new ApiException(HttpStatus.BAD_REQUEST, "A reset code was already requested recently. Wait one minute and try again.");
         }
         String generatedCode = generateResetCode();
@@ -122,15 +134,18 @@ public class AuthFacadeService {
                 account.setResetExpiry(null);
                 account.setResetRequestedAt(null);
                 logPasswordResetEvent(account.getId(), request.identifier(), "REQUEST_PASSWORD_RESET", "FAILED", "Reset code cleared after email delivery failure.");
+                actionAuditService.log(account.getEmail(), "PASSWORD_RESET_REQUEST_FAILED", "AUTH", account.getEmail(), "Password reset email delivery failed.");
                 throw exception;
             }
             logPasswordResetEvent(account.getId(), request.identifier(), "REQUEST_PASSWORD_RESET", "SUCCESS", "Reset code issued while email delivery is unavailable.");
+            actionAuditService.log(account.getEmail(), "PASSWORD_RESET_REQUESTED", "AUTH", account.getEmail(), "Password reset code issued while email delivery is unavailable.");
             return new CommonMessageResponse(
                     true,
                     "Email reset is unavailable. Use this reset code: " + generatedCode + ". It expires in 10 minutes."
             );
         }
         logPasswordResetEvent(account.getId(), request.identifier(), "REQUEST_PASSWORD_RESET", "SUCCESS", "Reset code issued to registered email.");
+        actionAuditService.log(account.getEmail(), "PASSWORD_RESET_REQUESTED", "AUTH", account.getEmail(), "Password reset requested.");
         return new CommonMessageResponse(true, "Password reset code sent to the registered email address.");
     }
 
@@ -158,6 +173,7 @@ public class AuthFacadeService {
         account.setLastPasswordReset(OffsetDateTime.now());
         account.setMustChangePassword(false);
         logPasswordResetEvent(account.getId(), request.identifier(), "RESET_PASSWORD_SUCCESS", "SUCCESS", "Password reset completed.");
+        actionAuditService.log(account.getEmail(), "PASSWORD_RESET_SUCCESS", "AUTH", account.getEmail(), "Password reset completed.");
         return new CommonMessageResponse(true, "Password updated successfully.");
     }
 
@@ -176,6 +192,7 @@ public class AuthFacadeService {
         account.setResetExpiry(null);
         account.setResetRequestedAt(null);
         account.setLastPasswordReset(OffsetDateTime.now());
+        actionAuditService.log(account.getEmail(), "INITIAL_PASSWORD_CHANGED", "AUTH", account.getEmail(), "Initial password changed successfully.");
         return new CommonMessageResponse(true, "Password updated successfully.");
     }
 

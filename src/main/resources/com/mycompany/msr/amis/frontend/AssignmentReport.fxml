@@ -33,6 +33,7 @@
 
         <TableView fx:id="tableAssignments" VBox.vgrow="ALWAYS">
             <columns>
+                <TableColumn fx:id="colNo" text="No." prefWidth="55"/>
                 <TableColumn fx:id="colPerson" text="Responsible Person" prefWidth="180"/>
                 <TableColumn fx:id="colDepartment" text="Department" prefWidth="160"/>
                 <TableColumn fx:id="colEquipment" text="Equipment" prefWidth="180"/>

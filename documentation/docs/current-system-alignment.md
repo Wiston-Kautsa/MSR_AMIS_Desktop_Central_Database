@@ -8,13 +8,14 @@ This document corrects earlier draft documentation and states how the current sy
 
 The implemented architecture is:
 
-`Desktop Client -> REST API -> Central PostgreSQL Database`
+`Desktop Client -> local SQLite mirror -> REST API -> Central PostgreSQL Database`
 
-The desktop is not the source of truth in production mode. The backend is.
+The desktop is not the source of truth. PostgreSQL is the source of truth, and the backend API controls access to it.
 
 ## Production Mode Reality
 
-- `REMOTE_API` is the intended production mode
+- `AUTO` is the intended day-to-day desktop mode
+- `REMOTE_API` remains available as strict online mode
 - missing mode configuration no longer silently drops the app back to local SQLite assumptions
 - the login screen in API mode no longer presents the local setup account as the normal production path
 
@@ -82,11 +83,11 @@ The desktop now primarily handles:
 - session token usage
 - displaying results from the backend
 
-Main controllers no longer directly query SQLite for the primary centralized flows.
+In `AUTO` mode, controllers use service abstractions that can work against the local SQLite mirror and route remote work through the API when a central session is available.
 
 ## Current Exceptions and Legacy Support
 
-Some local implementations still exist for `LOCAL_DATABASE` mode:
+Local implementations exist for `AUTO` and `LOCAL_DATABASE` behavior:
 
 - local auth
 - local equipment
@@ -99,16 +100,23 @@ Some local implementations still exist for `LOCAL_DATABASE` mode:
 - local asset history
 - local audit fallback
 
-These are development or fallback paths, not the intended production model.
+In `AUTO` mode these paths provide the local mirror and offline queue behavior. In `LOCAL_DATABASE` mode they are local-only.
 
 ## Backup and Sync Correction
 
-In `REMOTE_API` mode:
+In strict `REMOTE_API` mode:
 
 - desktop backup/restore/publish actions are intentionally disabled
 - centralized data should be backed up on the server side
 
-Older desktop-centric backup assumptions should not be treated as correct for centralized deployment.
+In `AUTO` mode:
+
+- offline changes are stored in SQLite and queued
+- Sync Center uploads valid queued changes through the API
+- rejected changes remain visible for review
+- SQLite is refreshed from PostgreSQL after sync
+
+Older desktop-centric backup assumptions should not be treated as correct for centralized deployment. PostgreSQL server backups remain the official backup path.
 
 ## Authentication Correction
 
@@ -124,6 +132,8 @@ At the time of this document:
 - PostgreSQL is running locally
 - the backend API is running successfully
 - desktop login works against the centralized backend
+- desktop `AUTO` mode supports local SQLite fallback when the API is unreachable
+- Sync Center is responsible for replaying offline changes and refreshing SQLite from PostgreSQL
 
 ## Conclusion
 

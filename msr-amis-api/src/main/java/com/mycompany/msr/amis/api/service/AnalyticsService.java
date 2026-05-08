@@ -135,8 +135,11 @@ public class AnalyticsService {
 
     public List<DistributionReportItemResponse> getOutstandingReport() {
         return jdbcTemplate.query(
-                "SELECT id, asset_code, assigned_to, phone, nid, assignment_id, assigned_at, outstanding_remarks " +
-                        "FROM distribution WHERE returned = FALSE ORDER BY assigned_at DESC, id DESC",
+                "SELECT DISTINCT ON (LOWER(TRIM(asset_code))) " +
+                        "id, asset_code, assigned_to, phone, nid, assignment_id, assigned_at, outstanding_remarks " +
+                        "FROM distribution " +
+                        "WHERE returned = FALSE " +
+                        "ORDER BY LOWER(TRIM(asset_code)), assigned_at DESC, id DESC",
                 (rs, rowNum) -> mapDistributionReportItem(
                         rs.getInt("id"),
                         rs.getString("asset_code"),

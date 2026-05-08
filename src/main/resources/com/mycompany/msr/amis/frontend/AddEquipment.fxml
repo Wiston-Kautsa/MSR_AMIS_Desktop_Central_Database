@@ -168,6 +168,7 @@
                                     <children>
                                         <TableView fx:id="equipmentTable" prefHeight="320.0">
                                             <columns>
+                                                <TableColumn fx:id="colNo" text="No." prefWidth="55.0"/>
                                                 <TableColumn fx:id="colName" text="Name" prefWidth="170.0"/>
                                                 <TableColumn fx:id="colCategory" text="Category" prefWidth="140.0"/>
                                                 <TableColumn fx:id="colSerial" text="IMEI / Serial Number" prefWidth="220.0"/>

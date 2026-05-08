@@ -179,6 +179,10 @@
 
                                 <columns>
 
+                                    <TableColumn fx:id="colDistNo"
+                                                 text="No."
+                                                 prefWidth="55"/>
+
                                     <TableColumn fx:id="colDistAsset"
                                                  text="Asset Code"
                                                  prefWidth="150"/>

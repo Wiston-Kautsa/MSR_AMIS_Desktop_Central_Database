@@ -38,6 +38,9 @@ public class EquipmentListController implements Initializable {
     private TableView<Equipment> equipmentTable;
 
     @FXML
+    private TableColumn<Equipment, Void> colNo;
+
+    @FXML
     private TableColumn<Equipment, String> colAssetCode;
 
     @FXML
@@ -71,6 +74,7 @@ public class EquipmentListController implements Initializable {
 
         equipmentTable.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
 
+        TableNumbering.install(colNo);
         colAssetCode.setCellValueFactory(new PropertyValueFactory<>("assetCode"));
         colSerial.setCellValueFactory(new PropertyValueFactory<>("serialNumber"));
         colName.setCellValueFactory(new PropertyValueFactory<>("name"));
@@ -115,39 +119,17 @@ public class EquipmentListController implements Initializable {
             MenuItem retire = new MenuItem("Retire Equipment");
             MenuItem restore = new MenuItem("Restore Equipment");
 
-            retire.disableProperty().bind(Bindings.createBooleanBinding(
-                    () -> {
-                        Equipment equipment = row.getItem();
-                        return equipment == null
-                                || AccessControl.STATUS_RETIRED.equalsIgnoreCase(equipment.getStatus())
-                                || "ASSIGNED".equalsIgnoreCase(equipment.getStatus());
-                    },
-                    row.itemProperty()
-            ));
-            restore.disableProperty().bind(Bindings.createBooleanBinding(
-                    () -> {
-                        Equipment equipment = row.getItem();
-                        return equipment == null
-                                || !AccessControl.STATUS_RETIRED.equalsIgnoreCase(equipment.getStatus());
-                    },
-                    row.itemProperty()
-            ));
-
             edit.setOnAction(e -> editEquipment(row.getItem()));
             retire.setOnAction(e -> retireEquipment(row.getItem()));
             restore.setOnAction(e -> restoreEquipment(row.getItem()));
             refresh.setOnAction(e -> refreshEquipmentList());
 
             menu.getItems().add(edit);
-            if (AccessControl.canManageLifecycleRecords()) {
-                menu.getItems().add(retire);
-                menu.getItems().add(restore);
-            }
-            if (AccessControl.canDeleteRecords()) {
-                MenuItem delete = new MenuItem("Delete Equipment");
-                delete.setOnAction(e -> deleteEquipment(row.getItem()));
-                menu.getItems().add(delete);
-            }
+            menu.getItems().add(retire);
+            menu.getItems().add(restore);
+            MenuItem delete = new MenuItem("Delete Equipment");
+            delete.setOnAction(e -> deleteEquipment(row.getItem()));
+            menu.getItems().add(delete);
             menu.getItems().add(refresh);
 
             row.contextMenuProperty().bind(

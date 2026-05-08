@@ -40,31 +40,44 @@ public class EquipmentFacadeService {
     }
 
     @Transactional
-    public EquipmentResponse create(EquipmentRequest request) {
-        if (equipmentRepository.existsBySerialNumberIgnoreCase(request.serialNumber())) {
-            throw new ApiException(HttpStatus.CONFLICT, "Serial number already exists.");
-        }
+    public EquipmentResponse create(String actor, EquipmentRequest request) {
+        ensureEquipmentIdentifierAvailable(request.serialNumber(), null);
 
         EquipmentRecord record = new EquipmentRecord();
         record.setAssetCode(generatePlaceholderAssetCode(request.category()));
         applyRequest(record, request);
         EquipmentRecord saved = equipmentRepository.saveAndFlush(record);
         saved.setAssetCode(generateAssetCode(saved.getCategory(), saved.getId()));
-        return toResponse(equipmentRepository.save(saved));
+        EquipmentRecord persisted = equipmentRepository.save(saved);
+        actionAuditService.log(
+                actor,
+                "ADD_EQUIPMENT",
+                "EQUIPMENT",
+                persisted.getAssetCode(),
+                "Equipment added: " + persisted.getName() + ", category: " + persisted.getCategory() +
+                        ", serial: " + persisted.getSerialNumber()
+        );
+        return toResponse(persisted);
     }
 
     @Transactional
-    public EquipmentResponse update(String assetCode, EquipmentRequest request) {
+    public EquipmentResponse update(String actor, String assetCode, EquipmentRequest request) {
         EquipmentRecord record = findByAssetCode(assetCode);
-        if (equipmentRepository.existsBySerialNumberIgnoreCaseAndAssetCodeNotIgnoreCase(request.serialNumber(), assetCode)) {
-            throw new ApiException(HttpStatus.CONFLICT, "Serial number already exists.");
-        }
+        String oldSnapshot = equipmentSnapshot(record);
+        ensureEquipmentIdentifierAvailable(request.serialNumber(), assetCode);
         applyRequest(record, request);
+        actionAuditService.log(
+                actor,
+                "EDIT_EQUIPMENT",
+                "EQUIPMENT",
+                record.getAssetCode(),
+                "Equipment edited. Old: " + oldSnapshot + ". New: " + equipmentSnapshot(record)
+        );
         return toResponse(record);
     }
 
     @Transactional
-    public EquipmentResponse updateStatus(String assetCode, String rawStatus) {
+    public EquipmentResponse updateStatus(String actor, String assetCode, String rawStatus) {
         EquipmentRecord record = findByAssetCode(assetCode);
         EquipmentStatus nextStatus = parseStatus(rawStatus);
         if (record.getStatus() == EquipmentStatus.ASSIGNED) {
@@ -72,7 +85,7 @@ public class EquipmentFacadeService {
         }
         record.setStatus(nextStatus);
         actionAuditService.log(
-                "",
+                actor,
                 "EQUIPMENT_" + nextStatus.name(),
                 "EQUIPMENT",
                 record.getAssetCode(),
@@ -82,9 +95,11 @@ public class EquipmentFacadeService {
     }
 
     @Transactional
-    public void delete(String assetCode) {
+    public void delete(String actor, String assetCode) {
         EquipmentRecord record = findByAssetCode(assetCode);
+        String oldSnapshot = equipmentSnapshot(record);
         equipmentRepository.delete(record);
+        actionAuditService.log(actor, "DELETE_EQUIPMENT", "EQUIPMENT", assetCode, "Equipment deleted. Old: " + oldSnapshot);
     }
 
     private EquipmentRecord findByAssetCode(String assetCode) {
@@ -118,12 +133,41 @@ public class EquipmentFacadeService {
         );
     }
 
+    private String equipmentSnapshot(EquipmentRecord record) {
+        if (record == null) {
+            return "not found";
+        }
+        return "asset=" + normalizeOptional(record.getAssetCode()) +
+                ", name=" + normalizeOptional(record.getName()) +
+                ", category=" + normalizeOptional(record.getCategory()) +
+                ", serial=" + normalizeOptional(record.getSerialNumber()) +
+                ", condition=" + normalizeOptional(record.getItemCondition()) +
+                ", source=" + normalizeOptional(record.getSource()) +
+                ", status=" + (record.getStatus() == null ? "" : record.getStatus().name());
+    }
+
     private String normalizeRequired(String value, String message) {
         String normalized = normalizeOptional(value);
         if (normalized.isBlank()) {
             throw new ApiException(HttpStatus.BAD_REQUEST, message);
         }
         return normalized;
+    }
+
+    private void ensureEquipmentIdentifierAvailable(String identifier, String currentAssetCode) {
+        String normalizedIdentifier = normalizeRequired(identifier, "Serial number is required.");
+        if (currentAssetCode == null || currentAssetCode.isBlank()) {
+            if (equipmentRepository.existsBySerialNumberIgnoreCase(normalizedIdentifier)
+                    || equipmentRepository.existsByAssetCodeIgnoreCase(normalizedIdentifier)) {
+                throw new ApiException(HttpStatus.CONFLICT, "Asset code or serial number already exists.");
+            }
+            return;
+        }
+
+        if (equipmentRepository.existsBySerialNumberIgnoreCaseAndAssetCodeNotIgnoreCase(normalizedIdentifier, currentAssetCode)
+                || equipmentRepository.existsByAssetCodeIgnoreCaseAndAssetCodeNotIgnoreCase(normalizedIdentifier, currentAssetCode)) {
+            throw new ApiException(HttpStatus.CONFLICT, "Asset code or serial number already exists.");
+        }
     }
 
     private String normalizeOptional(String value) {

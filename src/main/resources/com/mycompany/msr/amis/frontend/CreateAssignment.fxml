@@ -132,6 +132,7 @@
 
                                         <columns>
 
+                                            <TableColumn fx:id="colNo" text="No." prefWidth="55"/>
                                             <TableColumn fx:id="colPerson" text="Person"/>
                                             <TableColumn fx:id="colDepartment" text="Department"/>
                                             <TableColumn fx:id="colEquipment" text="Equipment"/>

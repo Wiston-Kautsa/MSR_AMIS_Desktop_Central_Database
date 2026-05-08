@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import java.sql.Connection;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -36,7 +37,7 @@ public final class LocalSyncCenterService implements SyncCenterService {
         }
         boolean onlineReady = remoteMirrorCoordinator.hasRemoteSession();
         String message = onlineReady
-                ? "Central session is available. Pending offline actions can be replayed."
+                ? "Central session is available. Sync will replay valid offline actions, reject conflicts, then refresh SQLite from PostgreSQL."
                 : "Central session is not available. New offline actions will stay queued.";
         return new SyncCenterSummary(pending, applied, rejected, failed, onlineReady, message);
     }
@@ -124,6 +125,7 @@ public final class LocalSyncCenterService implements SyncCenterService {
 
         int applied = 0;
         int rejected = 0;
+        int failed = 0;
 
         try (Connection connection = DatabaseHandler.getConnection()) {
             connection.setAutoCommit(false);
@@ -169,6 +171,36 @@ public final class LocalSyncCenterService implements SyncCenterService {
                                 conflictException.getMessage()
                         );
                         rejected++;
+                    } catch (ApiClientException apiException) {
+                        if (isBusinessRejection(apiException)) {
+                            storageRepository.markRejected(connection, item.getId(), apiException.getMessage());
+                            storageRepository.insertAuditRecord(
+                                    connection,
+                                    item.getId(),
+                                    item.getActor(),
+                                    "SYNC_REJECTED_BY_CENTRAL_API",
+                                    "REJECTED",
+                                    apiException.getMessage()
+                            );
+                            DatabaseHandler.logAudit(
+                                    "SYNC_REJECTED_BY_CENTRAL_API",
+                                    "SYNC_QUEUE",
+                                    Long.toString(item.getId()),
+                                    apiException.getMessage()
+                            );
+                            rejected++;
+                        } else {
+                            storageRepository.markFailed(connection, item.getId(), safeMessage(apiException));
+                            storageRepository.insertAuditRecord(
+                                    connection,
+                                    item.getId(),
+                                    item.getActor(),
+                                    "SYNC_FAILED",
+                                    "FAILED",
+                                    safeMessage(apiException)
+                            );
+                            failed++;
+                        }
                     } catch (Exception exception) {
                         storageRepository.markFailed(connection, item.getId(), safeMessage(exception));
                         storageRepository.insertAuditRecord(
@@ -179,20 +211,21 @@ public final class LocalSyncCenterService implements SyncCenterService {
                                 "FAILED",
                                 safeMessage(exception)
                         );
-                        connection.commit();
-                        throw exception;
+                        failed++;
                     }
 
                     connection.commit();
                     connection.setAutoCommit(false);
-                    remoteMirrorCoordinator.synchronizeFromRemote(Map.of());
                 }
             } finally {
                 connection.setAutoCommit(true);
             }
         }
 
-        return "Sync finished. Applied: " + applied + ". Rejected: " + rejected + ".";
+        remoteMirrorCoordinator.synchronizeFromRemote(Map.of());
+
+        return "Sync finished. Applied: " + applied + ". Rejected: " + rejected + ". Failed: " + failed
+                + ". SQLite refreshed from PostgreSQL.";
     }
 
     private void applyQueueItem(SyncStorageRepository.StoredSyncQueueItem item) throws Exception {
@@ -357,8 +390,26 @@ public final class LocalSyncCenterService implements SyncCenterService {
                 assignment.getId(),
                 payload.path("equipmentType").asText(),
                 drafts,
-                payload.path("outstandingRemark").asText()
+                parseOutstandingRemarks(payload)
         );
+    }
+
+    private Map<String, String> parseOutstandingRemarks(JsonNode payload) {
+        Map<String, String> remarks = new LinkedHashMap<>();
+        JsonNode node = payload.path("outstandingRemarks");
+        if (node.isObject()) {
+            node.fields().forEachRemaining(entry -> remarks.put(entry.getKey(), entry.getValue().asText()));
+        }
+        if (remarks.isEmpty() && payload.has("outstandingRemark")) {
+            String legacyRemark = payload.path("outstandingRemark").asText();
+            for (JsonNode itemNode : payload.path("items")) {
+                String assetCode = itemNode.path("originalAssetCode").asText();
+                if (!assetCode.isBlank()) {
+                    remarks.put(assetCode, legacyRemark);
+                }
+            }
+        }
+        return remarks;
     }
 
     private void applyUser(SyncStorageRepository.StoredSyncQueueItem item, String operationType) throws Exception {
@@ -525,6 +576,14 @@ public final class LocalSyncCenterService implements SyncCenterService {
         return exception.getMessage() == null || exception.getMessage().isBlank()
                 ? "The sync operation failed."
                 : exception.getMessage();
+    }
+
+    private boolean isBusinessRejection(ApiClientException exception) {
+        int statusCode = exception.getStatusCode();
+        return statusCode == 400
+                || statusCode == 403
+                || statusCode == 404
+                || statusCode == 409;
     }
 
     private String normalize(String value) {

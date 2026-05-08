@@ -44,6 +44,8 @@
 
             <columns>
 
+                <TableColumn fx:id="colNo" text="No." prefWidth="55"/>
+
                 <TableColumn fx:id="colId" text="ID"/>
 
                 <TableColumn fx:id="colPerson" text="Officer"/>

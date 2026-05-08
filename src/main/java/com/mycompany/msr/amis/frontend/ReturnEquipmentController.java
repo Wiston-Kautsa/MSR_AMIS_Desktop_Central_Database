@@ -1,5 +1,6 @@
 package com.mycompany.msr.amis;
 
+import javafx.beans.property.SimpleStringProperty;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.event.ActionEvent;
@@ -7,14 +8,11 @@ import javafx.fxml.FXML;
 import javafx.fxml.Initializable;
 import javafx.scene.control.Alert;
 import javafx.scene.control.Button;
-import javafx.scene.control.ButtonBar;
-import javafx.scene.control.ButtonType;
 import javafx.scene.control.ComboBox;
-import javafx.scene.control.Dialog;
 import javafx.scene.control.Label;
-import javafx.scene.control.TextArea;
 import javafx.scene.control.TableColumn;
 import javafx.scene.control.TableView;
+import javafx.scene.control.TextArea;
 import javafx.scene.control.TextField;
 import javafx.scene.control.cell.PropertyValueFactory;
 import javafx.scene.layout.VBox;
@@ -22,11 +20,15 @@ import javafx.stage.FileChooser;
 import org.apache.poi.ss.usermodel.Cell;
 import org.apache.poi.ss.usermodel.CellStyle;
 import org.apache.poi.ss.usermodel.CellType;
+import org.apache.poi.ss.usermodel.DataValidation;
+import org.apache.poi.ss.usermodel.DataValidationConstraint;
+import org.apache.poi.ss.usermodel.DataValidationHelper;
 import org.apache.poi.ss.usermodel.DataFormatter;
 import org.apache.poi.ss.usermodel.Font;
 import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.ss.usermodel.Sheet;
 import org.apache.poi.ss.usermodel.Workbook;
+import org.apache.poi.ss.util.CellRangeAddressList;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 
 import java.io.File;
@@ -39,15 +41,23 @@ import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.ResourceBundle;
 import java.util.Set;
 import java.util.HashSet;
 
 public class ReturnEquipmentController implements Initializable {
-    private static final Set<String> ALLOWED_RETURN_CONDITIONS = new HashSet<>(
-            List.of("Returned", "Good", "Fair", "Damaged", "Faulty", "Lost")
+    private static final List<String> RETURN_CONDITION_ORDER = List.of(
+            "Returned", "Good", "Fair", "Damaged", "Faulty", "Lost"
     );
+    private static final Map<String, String> RETURN_CONDITION_LABELS = Map.of(
+            "Returned", "Returned to owner - borrowed external equipment handed back",
+            "Good", "Good - working and complete",
+            "Fair", "Fair - usable with minor wear",
+            "Damaged", "Damaged - physical damage",
+            "Faulty", "Faulty - not working correctly",
+            "Lost", "Lost - not physically returned"
+    );
+    private static final Set<String> ALLOWED_RETURN_CONDITIONS = new HashSet<>(RETURN_CONDITION_LABELS.keySet());
     private static final int BULK_HEADER_ROW_INDEX = 0;
     private static final int BULK_DATA_START_ROW_INDEX = BULK_HEADER_ROW_INDEX + 1;
     private static final String[] BULK_TEMPLATE_HEADERS = {
@@ -55,7 +65,7 @@ public class ReturnEquipmentController implements Initializable {
             "returned_by",
             "phone",
             "nid",
-            "condition",
+            "condition (choose: Returned to owner, Good, Fair, Damaged, Faulty, Lost)",
             "remarks"
     };
     private static final String[] BULK_TEMPLATE_SAMPLE = {
@@ -81,15 +91,33 @@ public class ReturnEquipmentController implements Initializable {
     @FXML private TextField txtOfficer;
     @FXML private TextField txtEquipmentType;
     @FXML private TableView<Return> tableReturns;
+    @FXML private TableColumn<Return, Void> colReturnNo;
     @FXML private TableColumn<Return, String> colAsset;
     @FXML private TableColumn<Return, String> colReturnedBy;
     @FXML private TableColumn<Return, String> colPhone;
     @FXML private TableColumn<Return, String> colCondition;
     @FXML private TableColumn<Return, String> colDate;
+    @FXML private VBox outstandingReasonPane;
+    @FXML private TableView<OutstandingAssetRow> tableOutstandingAssets;
+    @FXML private TableColumn<OutstandingAssetRow, Void> colOutstandingNo;
+    @FXML private TableColumn<OutstandingAssetRow, String> colOutstandingAsset;
+    @FXML private TableColumn<OutstandingAssetRow, String> colOutstandingUser;
+    @FXML private TableColumn<OutstandingAssetRow, String> colOutstandingPhone;
+    @FXML private TableColumn<OutstandingAssetRow, String> colOutstandingNid;
+    @FXML private TextArea txtOutstandingReason;
     @FXML private Label lblFileName;
     @FXML private Button btnSaveReturns;
+    @FXML private Button btnAddReturn;
+    @FXML private Button btnClear;
+    @FXML private Button btnDownloadTemplate;
+    @FXML private Button btnChooseFile;
+    @FXML private Button btnUpload;
+    @FXML private Button btnApplyOutstandingReason;
+    @FXML private VBox manualEntryPane;
+    @FXML private VBox bulkImportPane;
 
     private final ObservableList<Return> returnHistoryList = FXCollections.observableArrayList();
+    private final ObservableList<OutstandingAssetRow> outstandingAssetRows = FXCollections.observableArrayList();
     private final Map<String, Assignment> assignmentMap = new LinkedHashMap<>();
     private final List<String> outstandingAssetCodes = new ArrayList<>();
     private final Set<String> stagedResolvedAssetCodes = new LinkedHashSet<>();
@@ -99,19 +127,22 @@ public class ReturnEquipmentController implements Initializable {
     private Assignment selectedAssignment;
     private int requiredReturnQty = 0;
     private File selectedFile;
-    private String pendingOutstandingRemark;
+    private String pendingReturnStatisticsMessage = "";
     private final AssignmentService assignmentService = ServiceRegistry.getAssignmentService();
     private final DistributionService distributionService = ServiceRegistry.getDistributionService();
     private final ReturnService returnService = ServiceRegistry.getReturnService();
 
     @Override
     public void initialize(URL url, ResourceBundle rb) {
-        cmbCondition.getItems().addAll("Returned", "Good", "Fair", "Damaged", "Faulty", "Lost");
+        cmbCondition.setPromptText("Select actual return condition");
+        cmbCondition.getItems().addAll(getReturnConditionDisplayLabels());
 
         setupTable();
+        setupOutstandingAssetsTable();
         loadAssignmentsPendingReturn();
         loadReturnHistory();
         clearAssignmentDetails();
+        setAssignmentDependentState(false);
         updateSaveState();
 
         txtReturnedBy.setEditable(true);
@@ -121,6 +152,7 @@ public class ReturnEquipmentController implements Initializable {
 
     private void setupTable() {
         if (colAsset != null) {
+            TableNumbering.install(colReturnNo);
             colAsset.setCellValueFactory(new PropertyValueFactory<>("assetCode"));
             colReturnedBy.setCellValueFactory(new PropertyValueFactory<>("returnedBy"));
             colPhone.setCellValueFactory(new PropertyValueFactory<>("phone"));
@@ -128,6 +160,18 @@ public class ReturnEquipmentController implements Initializable {
             colDate.setCellValueFactory(new PropertyValueFactory<>("date"));
             tableReturns.setItems(returnHistoryList);
         }
+    }
+
+    private void setupOutstandingAssetsTable() {
+        if (tableOutstandingAssets == null) {
+            return;
+        }
+        TableNumbering.install(colOutstandingNo);
+        colOutstandingAsset.setCellValueFactory(cell -> cell.getValue().assetCodeProperty());
+        colOutstandingUser.setCellValueFactory(cell -> cell.getValue().assignedToProperty());
+        colOutstandingPhone.setCellValueFactory(cell -> cell.getValue().phoneProperty());
+        colOutstandingNid.setCellValueFactory(cell -> cell.getValue().nidProperty());
+        tableOutstandingAssets.setItems(outstandingAssetRows);
     }
 
     private void loadAssignmentsPendingReturn() {
@@ -169,6 +213,8 @@ public class ReturnEquipmentController implements Initializable {
             }
             clearAssignmentDetails();
             clearEntryFields();
+            refreshOutstandingReasonRows();
+            setAssignmentDependentState(false);
             updateSaveState();
             return;
         }
@@ -192,6 +238,8 @@ public class ReturnEquipmentController implements Initializable {
         }
 
         clearEntryFields();
+        refreshOutstandingReasonRows();
+        setAssignmentDependentState(true);
         updateSaveState();
     }
 
@@ -214,17 +262,17 @@ public class ReturnEquipmentController implements Initializable {
                     txtPhone.getText().trim(),
                     txtNid.getText().trim(),
                     cmbCondition.getValue(),
-                    txtRemarks.getText().trim()
+                    txtRemarks.getText().trim(),
+                    stagedResolvedAssetCodes,
+                    getStagedEnteredIdentifiers()
             );
 
             stagedReturnItems.add(item);
             stagedResolvedAssetCodes.add(item.originalAssetCode);
 
             clearEntryFields();
+            refreshOutstandingReasonRows();
             updateSaveState();
-            if (btnSaveReturns != null) {
-                btnSaveReturns.setDisable(false);
-            }
 
         } catch (Exception e) {
             showWarning(e.getMessage());
@@ -246,30 +294,26 @@ public class ReturnEquipmentController implements Initializable {
             return;
         }
 
-        if (requireOutstandingConfirmation && !confirmSaveWithRemainingItems()) {
+        Map<String, String> outstandingReasons = collectOutstandingReasons();
+        if (outstandingReasons == null) {
             return;
         }
+        int outstandingReasonCount = outstandingReasons.size();
 
         try {
             ReturnSaveResult result = returnService.saveReturns(
                     selectedAssignment.getId(),
                     selectedAssignment.getEquipmentType(),
                     toReturnDrafts(stagedReturnItems),
-                    pendingOutstandingRemark
+                    outstandingReasons
             );
 
             resetAfterSave();
             loadAssignmentsPendingReturn();
             loadReturnHistory();
 
-            if (result.getReplacementAssetCodes().isEmpty()) {
-                showInfo("Equipment returns saved successfully.");
-            } else {
-                showInfo(
-                        "Equipment returns saved successfully.\n\nNew replacement asset codes:\n" +
-                                String.join("\n", result.getReplacementAssetCodes())
-                );
-            }
+            showInfo(buildReturnSuccessMessage(outstandingReasonCount, result.getReplacementAssetCodes()));
+            pendingReturnStatisticsMessage = "";
 
         } catch (Exception e) {
             e.printStackTrace();
@@ -287,12 +331,16 @@ public class ReturnEquipmentController implements Initializable {
         if (lblFileName != null) {
             lblFileName.setText("No file selected");
         }
+        if (txtOutstandingReason != null) {
+            txtOutstandingReason.clear();
+        }
 
         if (selectedAssignment == null) {
             if (cmbAssignments != null) {
                 cmbAssignments.setValue(null);
             }
             clearAssignmentDetails();
+            setAssignmentDependentState(false);
         } else {
             if (txtOfficer != null) {
                 txtOfficer.setText(selectedAssignment.getPerson());
@@ -302,6 +350,7 @@ public class ReturnEquipmentController implements Initializable {
             }
         }
 
+        refreshOutstandingReasonRows();
         updateSaveState();
     }
 
@@ -320,6 +369,10 @@ public class ReturnEquipmentController implements Initializable {
             Sheet sheet = workbook.getSheetAt(0);
             List<StagedReturnItem> uploadedItems = new ArrayList<>();
             Set<String> uploadedResolvedAssets = new LinkedHashSet<>();
+            Set<String> uploadedEnteredIdentifiers = new LinkedHashSet<>();
+            List<String> acceptedAssetCodes = new ArrayList<>();
+            List<String> rejectedAlreadyReturned = new ArrayList<>();
+            List<String> rejectedOther = new ArrayList<>();
 
             // Row 1 is reserved for the bulk file headers; return entries start on row 2.
             for (int rowIndex = BULK_DATA_START_ROW_INDEX; rowIndex <= sheet.getLastRowNum(); rowIndex++) {
@@ -346,21 +399,34 @@ public class ReturnEquipmentController implements Initializable {
                     continue;
                 }
 
-                StagedReturnItem item = buildDraft(
-                        identifier,
-                        returnedBy,
-                        phone,
-                        nid,
-                        condition,
-                        remarks,
-                        uploadedResolvedAssets
-                );
-                uploadedItems.add(item);
-                uploadedResolvedAssets.add(item.originalAssetCode);
+                try {
+                    StagedReturnItem item = buildDraft(
+                            identifier,
+                            returnedBy,
+                            phone,
+                            nid,
+                            condition,
+                            remarks,
+                            uploadedResolvedAssets,
+                            uploadedEnteredIdentifiers
+                    );
+                    uploadedItems.add(item);
+                    uploadedResolvedAssets.add(item.originalAssetCode);
+                    uploadedEnteredIdentifiers.add(item.enteredIdentifier);
+                    acceptedAssetCodes.add(item.originalAssetCode);
+                } catch (ReturnEntryRejectedException e) {
+                    if (e.reason == RejectionReason.ALREADY_RETURNED_UNDER_ASSIGNMENT) {
+                        rejectedAlreadyReturned.add(identifier.trim());
+                    } else {
+                        rejectedOther.add(identifier.trim() + " - " + e.getMessage());
+                    }
+                } catch (Exception e) {
+                    rejectedOther.add(identifier.trim() + " - " + e.getMessage());
+                }
             }
 
             if (uploadedItems.isEmpty()) {
-                showWarning("The selected file does not contain any return rows.");
+                showWarning(buildReturnStatisticsMessage(acceptedAssetCodes, rejectedAlreadyReturned, rejectedOther));
                 return;
             }
 
@@ -368,9 +434,16 @@ public class ReturnEquipmentController implements Initializable {
             stagedReturnItems.addAll(uploadedItems);
             stagedResolvedAssetCodes.clear();
             stagedResolvedAssetCodes.addAll(uploadedResolvedAssets);
+            pendingReturnStatisticsMessage = buildReturnStatisticsMessage(
+                    acceptedAssetCodes,
+                    rejectedAlreadyReturned,
+                    rejectedOther
+            );
+            refreshOutstandingReasonRows();
             updateSaveState();
 
-            if (!confirmSaveWithRemainingItems()) {
+            if (!getRemainingAssets().isEmpty()) {
+                focusOutstandingReasons();
                 return;
             }
 
@@ -384,6 +457,11 @@ public class ReturnEquipmentController implements Initializable {
 
     @FXML
     private void downloadTemplate(ActionEvent event) {
+        if (selectedAssignment == null) {
+            showWarning("Select an assignment first.");
+            return;
+        }
+
         FileChooser chooser = new FileChooser();
         chooser.setTitle("Save Return Template");
         chooser.setInitialFileName("return_bulk_template.xlsx");
@@ -408,6 +486,7 @@ public class ReturnEquipmentController implements Initializable {
 
         try (Workbook workbook = new XSSFWorkbook()) {
             Sheet sheet = workbook.createSheet("Return Template");
+            Sheet conditionSheet = workbook.createSheet("Return Conditions");
 
             Row headerRow = sheet.createRow(BULK_HEADER_ROW_INDEX);
 
@@ -415,6 +494,7 @@ public class ReturnEquipmentController implements Initializable {
             Font headerFont = workbook.createFont();
             headerFont.setBold(true);
             headerStyle.setFont(headerFont);
+            headerStyle.setWrapText(true);
 
             for (int i = 0; i < BULK_TEMPLATE_HEADERS.length; i++) {
                 Cell headerCell = headerRow.createCell(i);
@@ -422,6 +502,10 @@ public class ReturnEquipmentController implements Initializable {
                 headerCell.setCellStyle(headerStyle);
                 sheet.autoSizeColumn(i);
             }
+            sheet.setColumnWidth(4, 12000);
+
+            addConditionDropdown(sheet);
+            writeConditionGuide(conditionSheet, headerStyle);
 
             try (FileOutputStream out = new FileOutputStream(targetFile)) {
                 workbook.write(out);
@@ -442,6 +526,11 @@ public class ReturnEquipmentController implements Initializable {
 
     @FXML
     private void chooseFile(ActionEvent event) {
+        if (selectedAssignment == null) {
+            showWarning("Select an assignment first.");
+            return;
+        }
+
         FileChooser chooser = new FileChooser();
         FileLocationHelper.useDownloadsDirectory(chooser);
         chooser.getExtensionFilters().add(
@@ -450,22 +539,126 @@ public class ReturnEquipmentController implements Initializable {
         selectedFile = chooser.showOpenDialog(null);
         if (selectedFile != null && lblFileName != null) {
             lblFileName.setText(selectedFile.getName());
+            updateSaveState();
             OperationFeedbackHelper.showInfo(
                     "File Selected",
                     "Ready to upload return data from:\n" + selectedFile.getName()
             );
         } else {
+            selectedFile = null;
+            if (lblFileName != null) {
+                lblFileName.setText("No file selected");
+            }
             OperationFeedbackHelper.showWarning(
                     "No File Selected",
                     "No Excel file was selected for return upload."
             );
+            updateSaveState();
         }
+    }
+
+    private String buildReturnSuccessMessage(int outstandingReasonCount, List<String> replacementAssetCodes) {
+        StringBuilder message = new StringBuilder("Equipment returns saved successfully.");
+        if (pendingReturnStatisticsMessage != null && !pendingReturnStatisticsMessage.isBlank()) {
+            message.append("\n\n").append(pendingReturnStatisticsMessage);
+        }
+        if (outstandingReasonCount > 0) {
+            message.append("\n\nOutstanding reason recorded for ")
+                    .append(outstandingReasonCount)
+                    .append(" equipment item(s).");
+        }
+        if (replacementAssetCodes != null && !replacementAssetCodes.isEmpty()) {
+            message.append("\n\nNew replacement asset codes:\n")
+                    .append(String.join("\n", replacementAssetCodes));
+        }
+        return message.toString();
+    }
+
+    private String buildReturnStatisticsMessage(List<String> acceptedAssetCodes,
+                                                List<String> rejectedAlreadyReturned,
+                                                List<String> rejectedOther) {
+        StringBuilder message = new StringBuilder("Return upload statistics");
+        message.append("\n\nAccepted as returned equipment: ")
+                .append(acceptedAssetCodes == null ? 0 : acceptedAssetCodes.size());
+        if (acceptedAssetCodes != null && !acceptedAssetCodes.isEmpty()) {
+            message.append("\n").append(String.join("\n", acceptedAssetCodes));
+        }
+
+        message.append("\n\nRejected because already returned under this assignment: ")
+                .append(rejectedAlreadyReturned == null ? 0 : rejectedAlreadyReturned.size());
+        if (rejectedAlreadyReturned != null && !rejectedAlreadyReturned.isEmpty()) {
+            message.append("\n").append(String.join("\n", rejectedAlreadyReturned));
+        }
+
+        if (rejectedOther != null && !rejectedOther.isEmpty()) {
+            message.append("\n\nRejected for other reasons: ")
+                    .append(rejectedOther.size())
+                    .append("\n")
+                    .append(String.join("\n", rejectedOther));
+        }
+        return message.toString();
+    }
+
+    private void focusOutstandingReasons() {
+        updateOutstandingReasonPanel();
+        if (txtOutstandingReason == null) {
+            return;
+        }
+        txtOutstandingReason.requestFocus();
+    }
+
+    @FXML
+    private void enterOutstandingReason(ActionEvent event) {
+        Map<String, String> outstandingReasons = collectOutstandingReasons();
+        if (outstandingReasons == null) {
+            return;
+        }
+        if (stagedReturnItems.isEmpty()) {
+            focusOutstandingReasons();
+            return;
+        }
+        saveReturns(false);
+    }
+
+    private void addConditionDropdown(Sheet sheet) {
+        DataValidationHelper validationHelper = sheet.getDataValidationHelper();
+        DataValidationConstraint conditionConstraint = validationHelper.createExplicitListConstraint(
+                getReturnConditionDisplayLabels().toArray(new String[0])
+        );
+        CellRangeAddressList conditionCells = new CellRangeAddressList(
+                BULK_DATA_START_ROW_INDEX,
+                1000,
+                4,
+                4
+        );
+        DataValidation validation = validationHelper.createValidation(conditionConstraint, conditionCells);
+        validation.setShowErrorBox(true);
+        validation.createErrorBox(
+                "Invalid Condition",
+                "Choose one of the listed return condition categories."
+        );
+        sheet.addValidationData(validation);
+    }
+
+    private void writeConditionGuide(Sheet conditionSheet, CellStyle headerStyle) {
+        Row titleRow = conditionSheet.createRow(0);
+        Cell titleCell = titleRow.createCell(0);
+        titleCell.setCellValue("Return condition categories");
+        titleCell.setCellStyle(headerStyle);
+
+        int rowIndex = 1;
+        for (String label : getReturnConditionDisplayLabels()) {
+            Row row = conditionSheet.createRow(rowIndex++);
+            row.createCell(0).setCellValue(label);
+        }
+
+        conditionSheet.autoSizeColumn(0);
     }
 
     private StagedReturnItem buildDraft(String identifier, String returnedBy, String phone, String nid,
                                         String condition, String remarks)
             throws Exception {
-        return buildDraft(identifier, returnedBy, phone, nid, condition, remarks, stagedResolvedAssetCodes);
+        return buildDraft(identifier, returnedBy, phone, nid, condition, remarks, stagedResolvedAssetCodes, getStagedEnteredIdentifiers());
     }
 
     private StagedReturnItem buildDraft(
@@ -475,7 +668,8 @@ public class ReturnEquipmentController implements Initializable {
             String nid,
             String condition,
             String remarks,
-            Set<String> reservedAssets
+            Set<String> reservedAssets,
+            Set<String> reservedIdentifiers
     ) throws Exception {
         if (identifier == null || identifier.isBlank()) {
             throw new Exception("Asset Code / New IMEI is required.");
@@ -489,10 +683,11 @@ public class ReturnEquipmentController implements Initializable {
         if (nid == null || nid.isBlank()) {
             throw new Exception("NID is required.");
         }
-        if (condition == null || condition.isBlank()) {
+        String normalizedCondition = normalizeReturnCondition(condition);
+        if (normalizedCondition.isBlank()) {
             throw new Exception("Please select a condition.");
         }
-        if (!ALLOWED_RETURN_CONDITIONS.contains(condition.trim())) {
+        if (!ALLOWED_RETURN_CONDITIONS.contains(normalizedCondition)) {
             throw new Exception(
                     "Invalid return condition: " + condition +
                             ". Use one of: " + String.join(", ", ALLOWED_RETURN_CONDITIONS) + "."
@@ -506,6 +701,13 @@ public class ReturnEquipmentController implements Initializable {
         if (directOutstandingReturn) {
             originalAssetCode = trimmedIdentifier;
         } else {
+            if (selectedAssignment != null
+                    && DatabaseHandler.wasAssetReturnedForAssignment(selectedAssignment.getId(), trimmedIdentifier)) {
+                throw new ReturnEntryRejectedException(
+                        RejectionReason.ALREADY_RETURNED_UNDER_ASSIGNMENT,
+                        "Rejected because this asset code was already returned under this assignment: " + trimmedIdentifier
+                );
+            }
             originalAssetCode = getNextOutstandingAssetCode(reservedAssets);
             if (originalAssetCode == null) {
                 throw new Exception("There are no remaining outstanding assets available for replacement.");
@@ -514,6 +716,24 @@ public class ReturnEquipmentController implements Initializable {
 
         if (reservedAssets.contains(originalAssetCode)) {
             throw new Exception("This asset has already been entered in the current save batch.");
+        }
+        if (!directOutstandingReturn) {
+            Distribution currentDistribution = distributionService.getCurrentDistributionForAsset(trimmedIdentifier);
+            if (currentDistribution != null) {
+                throw new Exception(
+                        "This asset is currently assigned under another record and cannot be used as a replacement: " +
+                                trimmedIdentifier
+                );
+            }
+            if (containsIgnoreCase(reservedIdentifiers, trimmedIdentifier)) {
+                throw new Exception("This IMEI/serial has already been entered in the current save batch: " + trimmedIdentifier);
+            }
+            if (DatabaseHandler.equipmentIdentifierExists(trimmedIdentifier)) {
+                throw new Exception(
+                        "This asset code or IMEI/serial already exists or was already returned. " +
+                                "Only assets listed for this assignment can be returned: " + trimmedIdentifier
+                );
+            }
         }
 
         String normalizedReturnedBy = returnedBy.trim();
@@ -524,10 +744,41 @@ public class ReturnEquipmentController implements Initializable {
                 normalizedReturnedBy,
                 phone,
                 nid,
-                condition,
+                normalizedCondition,
                 remarks,
                 !directOutstandingReturn
         );
+    }
+
+    private String normalizeReturnCondition(String condition) {
+        if (condition == null || condition.isBlank()) {
+            return "";
+        }
+
+        String trimmedCondition = condition.trim();
+        String normalizedText = trimmedCondition.toLowerCase();
+        if (normalizedText.equals("return to the owner")
+                || normalizedText.equals("returned to the owner")
+                || normalizedText.equals("return to owner")
+                || normalizedText.equals("returned to owner")) {
+            return "Returned";
+        }
+
+        for (Map.Entry<String, String> entry : RETURN_CONDITION_LABELS.entrySet()) {
+            if (entry.getKey().equalsIgnoreCase(trimmedCondition)
+                    || entry.getValue().equalsIgnoreCase(trimmedCondition)) {
+                return entry.getKey();
+            }
+        }
+        return trimmedCondition;
+    }
+
+    private List<String> getReturnConditionDisplayLabels() {
+        List<String> labels = new ArrayList<>();
+        for (String condition : RETURN_CONDITION_ORDER) {
+            labels.add(RETURN_CONDITION_LABELS.get(condition));
+        }
+        return labels;
     }
 
     private String getNextOutstandingAssetCode(Set<String> reservedAssets) {
@@ -539,95 +790,83 @@ public class ReturnEquipmentController implements Initializable {
         return null;
     }
 
-    private boolean confirmSaveWithRemainingItems() {
-        List<String> remainingAssets = getRemainingAssets();
-
-        long replacementCount = stagedReturnItems.stream().filter(item -> item.replacement).count();
-        if (remainingAssets.isEmpty() && replacementCount == 0) {
-            pendingOutstandingRemark = "";
-            return true;
+    private Set<String> getStagedEnteredIdentifiers() {
+        Set<String> identifiers = new LinkedHashSet<>();
+        for (StagedReturnItem item : stagedReturnItems) {
+            identifiers.add(item.enteredIdentifier);
         }
+        return identifiers;
+    }
 
-        Dialog<String> dialog = new Dialog<>();
-        dialog.setTitle("Complete Return Save");
-        dialog.setHeaderText("Capture the reason for equipment that is still outstanding.");
-
-        ButtonType saveButtonType = new ButtonType("Save Returns", ButtonBar.ButtonData.OK_DONE);
-        dialog.getDialogPane().getButtonTypes().addAll(saveButtonType, ButtonType.CANCEL);
-        dialog.getDialogPane().getStyleClass().add("reset-dialog");
-
-        VBox content = new VBox(14);
-        content.getStyleClass().add("reset-dialog-content");
-
-        Label title = new Label("Outstanding Items");
-        title.getStyleClass().add("reset-dialog-section-title");
-
-        Label helper = new Label(
-                remainingAssets.isEmpty()
-                        ? "All selected items will be saved now."
-                        : "The assets below will remain outstanding after this save. Enter a remark explaining why they were not returned."
-        );
-        helper.setWrapText(true);
-        helper.getStyleClass().add("reset-dialog-helper");
-
-        TextArea outstandingList = new TextArea(String.join("\n", remainingAssets));
-        outstandingList.setEditable(false);
-        outstandingList.setWrapText(true);
-        outstandingList.setPrefRowCount(Math.min(Math.max(remainingAssets.size(), 2), 6));
-        outstandingList.getStyleClass().add("feedback-content");
-        outstandingList.setManaged(!remainingAssets.isEmpty());
-        outstandingList.setVisible(!remainingAssets.isEmpty());
-
-        Label remarkLabel = new Label("Reason For Outstanding Equipment");
-        remarkLabel.getStyleClass().add("reset-dialog-field-label");
-        remarkLabel.setManaged(!remainingAssets.isEmpty());
-        remarkLabel.setVisible(!remainingAssets.isEmpty());
-
-        TextArea remarkArea = new TextArea();
-        remarkArea.setPromptText("Example: 4 tablets are still with field team and will be returned after supervision closes on Friday.");
-        remarkArea.setWrapText(true);
-        remarkArea.setPrefRowCount(4);
-        remarkArea.getStyleClass().add("reset-dialog-input");
-        remarkArea.setManaged(!remainingAssets.isEmpty());
-        remarkArea.setVisible(!remainingAssets.isEmpty());
-
-        Label replacementLabel = new Label(
-                replacementCount > 0
-                        ? replacementCount + " replacement item(s) will be added as new equipment and given new asset codes."
-                        : ""
-        );
-        replacementLabel.setWrapText(true);
-        replacementLabel.getStyleClass().add("reset-dialog-helper");
-        replacementLabel.setManaged(replacementCount > 0);
-        replacementLabel.setVisible(replacementCount > 0);
-
-        content.getChildren().addAll(title, helper, outstandingList, remarkLabel, remarkArea, replacementLabel);
-        dialog.getDialogPane().setContent(content);
-
-        Button saveButton = (Button) dialog.getDialogPane().lookupButton(saveButtonType);
-        if (saveButton != null) {
-            saveButton.setDisable(!remainingAssets.isEmpty());
-            remarkArea.textProperty().addListener((obs, oldValue, newValue) -> {
-                if (!remainingAssets.isEmpty()) {
-                    saveButton.setDisable(newValue == null || newValue.trim().isEmpty());
-                }
-            });
-        }
-
-        dialog.setResultConverter(button -> {
-            if (button == saveButtonType) {
-                return remarkArea.getText() == null ? "" : remarkArea.getText().trim();
-            }
-            return null;
-        });
-
-        Optional<String> result = dialog.showAndWait();
-        if (result.isEmpty()) {
+    private boolean containsIgnoreCase(Set<String> values, String target) {
+        if (values == null || target == null) {
             return false;
         }
+        for (String value : values) {
+            if (value != null && value.trim().equalsIgnoreCase(target.trim())) {
+                return true;
+            }
+        }
+        return false;
+    }
 
-        pendingOutstandingRemark = remainingAssets.isEmpty() ? "" : result.get();
-        return true;
+    private void refreshOutstandingReasonRows() {
+        updateOutstandingReasonPanel();
+        updateSaveState();
+    }
+
+    private void updateOutstandingReasonPanel() {
+        List<String> remainingAssets = getRemainingAssets();
+        boolean hasRemainingAssets = !remainingAssets.isEmpty() && !stagedReturnItems.isEmpty();
+
+        if (outstandingReasonPane != null) {
+            outstandingReasonPane.setVisible(hasRemainingAssets);
+            outstandingReasonPane.setManaged(hasRemainingAssets);
+        }
+        outstandingAssetRows.setAll(buildOutstandingAssetRows(remainingAssets));
+        if (!hasRemainingAssets && txtOutstandingReason != null) {
+            txtOutstandingReason.clear();
+        }
+    }
+
+    private List<OutstandingAssetRow> buildOutstandingAssetRows(List<String> assetCodes) {
+        List<OutstandingAssetRow> rows = new ArrayList<>();
+        for (String assetCode : assetCodes) {
+            Distribution distribution = distributionService.getCurrentDistributionForAsset(assetCode);
+            if (distribution == null) {
+                rows.add(new OutstandingAssetRow(assetCode, "", "", ""));
+                continue;
+            }
+            rows.add(new OutstandingAssetRow(
+                    assetCode,
+                    distribution.getAssignedTo(),
+                    distribution.getPhone(),
+                    distribution.getNid()
+            ));
+        }
+        return rows;
+    }
+
+    private Map<String, String> collectOutstandingReasons() {
+        Map<String, String> reasons = new LinkedHashMap<>();
+        List<String> remainingAssets = getRemainingAssets();
+        if (remainingAssets.isEmpty()) {
+            return reasons;
+        }
+
+        String reason = txtOutstandingReason == null || txtOutstandingReason.getText() == null
+                ? ""
+                : txtOutstandingReason.getText().trim();
+        if (reason.isEmpty()) {
+            showWarning("Enter the outstanding equipment reason before saving.");
+            focusOutstandingReasons();
+            return null;
+        }
+
+        for (String assetCode : remainingAssets) {
+            reasons.put(assetCode, reason);
+        }
+        return reasons;
     }
 
     private void showInfo(String msg) {
@@ -664,11 +903,42 @@ public class ReturnEquipmentController implements Initializable {
     }
 
     private void updateSaveState() {
+        boolean assignmentSelected = selectedAssignment != null;
         if (btnSaveReturns != null) {
-            btnSaveReturns.setDisable(selectedAssignment == null || stagedReturnItems.isEmpty());
+            btnSaveReturns.setDisable(!assignmentSelected || stagedReturnItems.isEmpty());
+        }
+        if (btnAddReturn != null) {
+            btnAddReturn.setDisable(!assignmentSelected || requiredReturnQty == 0 || stagedReturnItems.size() >= requiredReturnQty);
+        }
+        if (btnClear != null) {
+            btnClear.setDisable(!assignmentSelected && stagedReturnItems.isEmpty());
+        }
+        if (btnDownloadTemplate != null) {
+            btnDownloadTemplate.setDisable(!assignmentSelected);
+        }
+        if (btnChooseFile != null) {
+            btnChooseFile.setDisable(!assignmentSelected);
+        }
+        if (btnUpload != null) {
+            btnUpload.setDisable(!assignmentSelected || selectedFile == null);
         }
         if (lblReturnProgress != null) {
             lblReturnProgress.setText("Entered Returns: " + stagedReturnItems.size() + " / " + requiredReturnQty);
+        }
+    }
+
+    private void setAssignmentDependentState(boolean enabled) {
+        if (manualEntryPane != null) {
+            manualEntryPane.setDisable(!enabled);
+        }
+        if (bulkImportPane != null) {
+            bulkImportPane.setDisable(!enabled);
+        }
+        if (!enabled) {
+            selectedFile = null;
+            if (lblFileName != null) {
+                lblFileName.setText("No file selected");
+            }
         }
     }
 
@@ -686,8 +956,12 @@ public class ReturnEquipmentController implements Initializable {
             cmbAssignments.getSelectionModel().clearSelection();
         }
         clearAssignmentDetails();
+        setAssignmentDependentState(false);
         clearEntryFields();
-        pendingOutstandingRemark = "";
+        if (txtOutstandingReason != null) {
+            txtOutstandingReason.clear();
+        }
+        refreshOutstandingReasonRows();
         updateSaveState();
     }
 
@@ -758,7 +1032,7 @@ public class ReturnEquipmentController implements Initializable {
                 && BULK_TEMPLATE_HEADERS[1].equalsIgnoreCase(returnedBy)
                 && BULK_TEMPLATE_HEADERS[2].equalsIgnoreCase(phone)
                 && BULK_TEMPLATE_HEADERS[3].equalsIgnoreCase(nid)
-                && BULK_TEMPLATE_HEADERS[4].equalsIgnoreCase(condition)
+                && (BULK_TEMPLATE_HEADERS[4].equalsIgnoreCase(condition) || "condition".equalsIgnoreCase(condition))
                 && BULK_TEMPLATE_HEADERS[5].equalsIgnoreCase(remarks);
     }
 
@@ -802,4 +1076,49 @@ public class ReturnEquipmentController implements Initializable {
             this.replacement = replacement;
         }
     }
+
+    private enum RejectionReason {
+        ALREADY_RETURNED_UNDER_ASSIGNMENT,
+        OTHER
+    }
+
+    private static final class ReturnEntryRejectedException extends Exception {
+        private final RejectionReason reason;
+
+        private ReturnEntryRejectedException(RejectionReason reason, String message) {
+            super(message);
+            this.reason = reason;
+        }
+    }
+
+    public static final class OutstandingAssetRow {
+        private final SimpleStringProperty assetCode;
+        private final SimpleStringProperty assignedTo;
+        private final SimpleStringProperty phone;
+        private final SimpleStringProperty nid;
+
+        private OutstandingAssetRow(String assetCode, String assignedTo, String phone, String nid) {
+            this.assetCode = new SimpleStringProperty(assetCode == null ? "" : assetCode);
+            this.assignedTo = new SimpleStringProperty(assignedTo == null ? "" : assignedTo);
+            this.phone = new SimpleStringProperty(phone == null ? "" : phone);
+            this.nid = new SimpleStringProperty(nid == null ? "" : nid);
+        }
+
+        public SimpleStringProperty assetCodeProperty() {
+            return assetCode;
+        }
+
+        public SimpleStringProperty assignedToProperty() {
+            return assignedTo;
+        }
+
+        public SimpleStringProperty phoneProperty() {
+            return phone;
+        }
+
+        public SimpleStringProperty nidProperty() {
+            return nid;
+        }
+    }
+
 }

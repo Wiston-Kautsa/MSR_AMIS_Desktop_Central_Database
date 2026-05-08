@@ -2,6 +2,7 @@ package com.mycompany.msr.amis;
 
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 public final class ApiReturnService implements ReturnService {
@@ -35,11 +36,11 @@ public final class ApiReturnService implements ReturnService {
     }
 
     @Override
-    public ReturnSaveResult saveReturns(int assignmentId, String equipmentType, List<ReturnDraft> items, String outstandingRemark) throws Exception {
+    public ReturnSaveResult saveReturns(int assignmentId, String equipmentType, List<ReturnDraft> items, Map<String, String> outstandingRemarks) throws Exception {
         ReturnBatchRequest request = new ReturnBatchRequest();
         request.assignmentId = assignmentId;
         request.equipmentType = equipmentType;
-        request.outstandingRemark = outstandingRemark;
+        request.outstandingRemarks = outstandingRemarks;
         request.items = items.stream().map(ReturnItemRequest::from).collect(Collectors.toList());
         ReturnBatchResponse response = apiClient.post("/api/returns/complete", request, ReturnBatchResponse.class);
         ServiceRegistry.getRemoteMirrorCoordinator().refreshAfterRemoteMutation();
@@ -54,6 +55,7 @@ public final class ApiReturnService implements ReturnService {
         public int assignmentId;
         public String equipmentType;
         public String outstandingRemark;
+        public Map<String, String> outstandingRemarks;
         public List<ReturnItemRequest> items;
     }
 

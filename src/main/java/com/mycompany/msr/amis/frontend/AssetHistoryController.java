@@ -32,6 +32,7 @@ public class AssetHistoryController implements Initializable {
     @FXML private Label lblEntryDate;
     @FXML private Label lblCurrentStatus;
     @FXML private TableView<AssetHistoryRecord> tableHistory;
+    @FXML private TableColumn<AssetHistoryRecord, Void> colNo;
     @FXML private TableColumn<AssetHistoryRecord, String> colActivityDate;
     @FXML private TableColumn<AssetHistoryRecord, String> colEventType;
     @FXML private TableColumn<AssetHistoryRecord, String> colActor;
@@ -44,6 +45,7 @@ public class AssetHistoryController implements Initializable {
 
     @Override
     public void initialize(URL url, ResourceBundle resourceBundle) {
+        TableNumbering.install(colNo);
         colActivityDate.setCellValueFactory(new PropertyValueFactory<>("activityDate"));
         colEventType.setCellValueFactory(new PropertyValueFactory<>("eventType"));
         colActor.setCellValueFactory(new PropertyValueFactory<>("actor"));

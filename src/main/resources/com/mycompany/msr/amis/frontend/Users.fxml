@@ -163,6 +163,7 @@
 
                                 <TableView fx:id="tableUsers" VBox.vgrow="ALWAYS">
                                     <columns>
+                                        <TableColumn fx:id="colNo" text="No." prefWidth="55.0"/>
                                         <TableColumn fx:id="colId" text="ID" prefWidth="70.0"/>
                                         <TableColumn fx:id="colName" text="Full Name" prefWidth="190.0"/>
                                         <TableColumn fx:id="colRole" text="Role" prefWidth="120.0"/>

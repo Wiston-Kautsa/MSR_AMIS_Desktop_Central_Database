@@ -71,7 +71,16 @@ public class UserManagementService {
         user.setPhone(normalizeOptional(request.phone()));
         user.setPasswordHash(passwordEncoder.encode(password));
 
-        return toResponse(userRepository.save(user));
+        UserAccount saved = userRepository.save(user);
+        actionAuditService.log(
+                requester.getEmail(),
+                "CREATE_USER",
+                "USERS",
+                saved.getId().toString(),
+                "User created: " + saved.getEmail() + ", role: " + saved.getRole().name() +
+                        ", department: " + saved.getDepartment()
+        );
+        return toResponse(saved);
     }
 
     @Transactional
@@ -104,6 +113,7 @@ public class UserManagementService {
             throw new ApiException(HttpStatus.CONFLICT, "Username already exists.");
         }
 
+        String oldSnapshot = userSnapshot(target);
         target.setFullName(normalizeRequired(request.fullName(), "Full name is required."));
         target.setUsername(username);
         target.setEmail(email);
@@ -116,6 +126,14 @@ public class UserManagementService {
             target.setPasswordHash(passwordEncoder.encode(password));
         }
 
+        actionAuditService.log(
+                requester.getEmail(),
+                "EDIT_USER",
+                "USERS",
+                target.getId().toString(),
+                "User edited. Old: " + oldSnapshot + ". New: " + userSnapshot(target) +
+                        (password.isBlank() ? "" : ". Password changed.")
+        );
         return toResponse(target);
     }
 
@@ -168,7 +186,15 @@ public class UserManagementService {
             throw new ApiException(HttpStatus.BAD_REQUEST, "The last admin cannot be deleted.");
         }
 
+        String oldSnapshot = userSnapshot(target);
         userRepository.delete(target);
+        actionAuditService.log(
+                requester.getEmail(),
+                "DELETE_USER",
+                "USERS",
+                userId.toString(),
+                "User deleted. Old: " + oldSnapshot
+        );
         return new CommonMessageResponse(true, "User deleted successfully.");
     }
 
@@ -261,6 +287,19 @@ public class UserManagementService {
 
     private String normalizeOptional(String value) {
         return value == null ? "" : value.trim();
+    }
+
+    private String userSnapshot(UserAccount user) {
+        if (user == null) {
+            return "not found";
+        }
+        return "id=" + user.getId() +
+                ", email=" + normalizeOptional(user.getEmail()) +
+                ", username=" + normalizeOptional(user.getUsername()) +
+                ", fullName=" + normalizeOptional(user.getFullName()) +
+                ", role=" + (user.getRole() == null ? "" : user.getRole().name()) +
+                ", department=" + normalizeOptional(user.getDepartment()) +
+                ", status=" + (user.getStatus() == null ? "" : user.getStatus().name());
     }
 
     private String normalizeEmail(String email) {

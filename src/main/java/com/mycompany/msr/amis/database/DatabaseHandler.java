@@ -131,6 +131,10 @@ public class DatabaseHandler {
                             "CHECK(returned IN (0,1))" +
                     ")"
             );
+            stmt.execute(
+                    "CREATE UNIQUE INDEX IF NOT EXISTS ux_distribution_active_asset_code_ci " +
+                            "ON distribution (LOWER(TRIM(asset_code))) WHERE returned = 0"
+            );
 
             stmt.execute(
                     "CREATE TABLE IF NOT EXISTS returns (" +
@@ -616,10 +620,15 @@ public class DatabaseHandler {
         String source = normalizedOptional(eq.getSource());
         String entryDate = normalizedOptional(eq.getEntryDate());
 
+        try (Connection conn = getConnection()) {
+            ensureEquipmentIdentifierAvailable(conn, serialNumber, null);
+        }
+
         String sql = "INSERT INTO equipment " +
                 "(name, category, serial_number, condition, source, entry_date) " +
                 "VALUES (?, ?, ?, ?, ?, ?)";
 
+        String savedAssetCode;
         try (Connection conn = getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
 
@@ -631,7 +640,14 @@ public class DatabaseHandler {
             ps.setString(6, entryDate.isBlank() ? Equipment.today() : entryDate);
 
             ps.executeUpdate();
+            savedAssetCode = findAssetCodeBySerial(conn, serialNumber);
         }
+        logAudit(
+                "ADD_EQUIPMENT",
+                "EQUIPMENT",
+                savedAssetCode,
+                "Equipment added: " + name + ", category: " + category + ", serial: " + serialNumber
+        );
     }
 
     public static void updateEquipment(String assetCode, String serialNumber, String name, String category, String condition)
@@ -642,19 +658,30 @@ public class DatabaseHandler {
         String normalizedCategory = normalizeEquipmentCategory(category);
         String normalizedCondition = normalizedOptional(condition);
 
-        try (Connection conn = getConnection();
-             PreparedStatement ps = conn.prepareStatement(
-                     "UPDATE equipment SET serial_number=?, name=?, category=?, condition=? WHERE asset_code=?"
-             )) {
-            ps.setString(1, normalizedSerialNumber);
-            ps.setString(2, normalizedName);
-            ps.setString(3, normalizedCategory);
-            ps.setString(4, normalizedCondition);
-            ps.setString(5, normalizedAssetCode);
+        try (Connection conn = getConnection()) {
+            ensureEquipmentIdentifierAvailable(conn, normalizedSerialNumber, normalizedAssetCode);
+            String oldSnapshot = findEquipmentSnapshot(conn, normalizedAssetCode);
+            try (PreparedStatement ps = conn.prepareStatement(
+                    "UPDATE equipment SET serial_number=?, name=?, category=?, condition=? WHERE asset_code=?"
+            )) {
+                ps.setString(1, normalizedSerialNumber);
+                ps.setString(2, normalizedName);
+                ps.setString(3, normalizedCategory);
+                ps.setString(4, normalizedCondition);
+                ps.setString(5, normalizedAssetCode);
 
-            if (ps.executeUpdate() == 0) {
-                throw new Exception("Equipment record was not found.");
+                if (ps.executeUpdate() == 0) {
+                    throw new Exception("Equipment record was not found.");
+                }
             }
+            logAudit(
+                    "EDIT_EQUIPMENT",
+                    "EQUIPMENT",
+                    normalizedAssetCode,
+                    "Equipment edited. Old: " + oldSnapshot + ". New: name=" + normalizedName +
+                            ", category=" + normalizedCategory + ", serial=" + normalizedSerialNumber +
+                            ", condition=" + normalizedCondition
+            );
         }
     }
 
@@ -665,6 +692,7 @@ public class DatabaseHandler {
             if (hasDistributionHistory(conn, normalizedAssetCode)) {
                 throw new Exception("Equipment with assignment or return history cannot be deleted.");
             }
+            String oldSnapshot = findEquipmentSnapshot(conn, normalizedAssetCode);
 
             try (PreparedStatement ps = conn.prepareStatement("DELETE FROM equipment WHERE asset_code=?")) {
                 ps.setString(1, normalizedAssetCode);
@@ -672,10 +700,12 @@ public class DatabaseHandler {
                     throw new Exception("Equipment record was not found.");
                 }
             }
+            logAudit("DELETE_EQUIPMENT", "EQUIPMENT", normalizedAssetCode, "Equipment deleted. Old: " + oldSnapshot);
         }
     }
 
     public static String insertReplacementEquipment(String equipmentType, String serialNumber, String source) throws Exception {
+        String normalizedSerialNumber = normalizedRequired(serialNumber, "IMEI/Serial number is required.");
         String insertSql = "INSERT INTO equipment (name, category, serial_number, condition, source, entry_date) VALUES (?, ?, ?, ?, ?, DATE('now'))";
         String selectSql = "SELECT asset_code FROM equipment WHERE serial_number = ?";
 
@@ -683,15 +713,16 @@ public class DatabaseHandler {
             conn.setAutoCommit(false);
             try (PreparedStatement insert = conn.prepareStatement(insertSql);
                  PreparedStatement select = conn.prepareStatement(selectSql)) {
+                ensureEquipmentIdentifierAvailable(conn, normalizedSerialNumber, null);
 
                 insert.setString(1, equipmentType);
                 insert.setString(2, equipmentType);
-                insert.setString(3, serialNumber);
+                insert.setString(3, normalizedSerialNumber);
                 insert.setString(4, "New");
                 insert.setString(5, source);
                 insert.executeUpdate();
 
-                select.setString(1, serialNumber);
+                select.setString(1, normalizedSerialNumber);
                 try (ResultSet rs = select.executeQuery()) {
                     if (rs.next()) {
                         String assetCode = rs.getString("asset_code");
@@ -704,6 +735,77 @@ public class DatabaseHandler {
             } catch (Exception e) {
                 conn.rollback();
                 throw e;
+            }
+        }
+    }
+
+    public static boolean equipmentIdentifierExists(String identifier) {
+        String normalizedIdentifier = normalizedOptional(identifier);
+        if (normalizedIdentifier.isBlank()) {
+            return false;
+        }
+
+        String sql = "SELECT COUNT(*) FROM equipment " +
+                "WHERE LOWER(TRIM(asset_code)) = LOWER(TRIM(?)) " +
+                "OR LOWER(TRIM(serial_number)) = LOWER(TRIM(?))";
+
+        try (Connection conn = getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, normalizedIdentifier);
+            ps.setString(2, normalizedIdentifier);
+            try (ResultSet rs = ps.executeQuery()) {
+                return rs.next() && rs.getInt(1) > 0;
+            }
+        } catch (Exception e) {
+            throw new IllegalStateException("Failed to check equipment identifier.", e);
+        }
+    }
+
+    public static boolean wasAssetReturnedForAssignment(int assignmentId, String assetCode) {
+        String normalizedAssetCode = normalizedOptional(assetCode);
+        if (normalizedAssetCode.isBlank()) {
+            return false;
+        }
+
+        String sql = "SELECT COUNT(*) FROM distribution " +
+                "WHERE assignment_id = ? " +
+                "AND LOWER(TRIM(asset_code)) = LOWER(TRIM(?)) " +
+                "AND returned = 1";
+
+        try (Connection conn = getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setInt(1, assignmentId);
+            ps.setString(2, normalizedAssetCode);
+            try (ResultSet rs = ps.executeQuery()) {
+                return rs.next() && rs.getInt(1) > 0;
+            }
+        } catch (Exception e) {
+            throw new IllegalStateException("Failed to check returned asset for assignment.", e);
+        }
+    }
+
+    private static void ensureEquipmentIdentifierAvailable(Connection conn, String identifier, String currentAssetCode)
+            throws Exception {
+        String normalizedIdentifier = normalizedRequired(identifier, "IMEI/Serial number is required.");
+        String normalizedCurrentAssetCode = normalizedOptional(currentAssetCode);
+        String sql = "SELECT asset_code, serial_number FROM equipment " +
+                "WHERE (LOWER(TRIM(asset_code)) = LOWER(TRIM(?)) " +
+                "OR LOWER(TRIM(serial_number)) = LOWER(TRIM(?))) " +
+                "AND (? = '' OR LOWER(TRIM(asset_code)) <> LOWER(TRIM(?))) " +
+                "LIMIT 1";
+
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, normalizedIdentifier);
+            ps.setString(2, normalizedIdentifier);
+            ps.setString(3, normalizedCurrentAssetCode);
+            ps.setString(4, normalizedCurrentAssetCode);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    throw new Exception(
+                            "Equipment identifier already exists. Asset Code: " + rs.getString("asset_code") +
+                                    ", Serial/IMEI: " + rs.getString("serial_number")
+                    );
+                }
             }
         }
     }
@@ -745,7 +847,7 @@ public class DatabaseHandler {
         String sql = "INSERT INTO assignments (person, department, equipment_type, reason, quantity, status, date) VALUES (?, ?, ?, ?, ?, ?, DATE('now'))";
 
         try (Connection conn = getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql)) {
+             PreparedStatement ps = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
 
             ps.setString(1, person);
             ps.setString(2, dept);
@@ -755,6 +857,19 @@ public class DatabaseHandler {
             ps.setString(6, AccessControl.STATUS_ACTIVE);
 
             ps.executeUpdate();
+            String id = "";
+            try (ResultSet keys = ps.getGeneratedKeys()) {
+                if (keys.next()) {
+                    id = Integer.toString(keys.getInt(1));
+                }
+            }
+            logAudit(
+                    "CREATE_ASSIGNMENT",
+                    "ASSIGNMENTS",
+                    id,
+                    "Assignment created for " + person + ". Department: " + dept +
+                            ", equipment: " + type + ", quantity: " + qty + ", reason: " + reason
+            );
         }
     }
 
@@ -764,14 +879,18 @@ public class DatabaseHandler {
             if (hasAssignmentDistributionHistory(conn, id)) {
                 throw new Exception("Assignments that already have distributed equipment cannot be deleted.");
             }
+            String oldSnapshot = findAssignmentSnapshot(conn, id);
 
             String sql = "DELETE FROM assignments WHERE id=?";
 
             try (PreparedStatement ps = conn.prepareStatement(sql)) {
 
                 ps.setInt(1, id);
-                ps.executeUpdate();
+                if (ps.executeUpdate() == 0) {
+                    throw new Exception("Assignment record was not found.");
+                }
             }
+            logAudit("DELETE_ASSIGNMENT", "ASSIGNMENTS", Integer.toString(id), "Assignment deleted. Old: " + oldSnapshot);
         }
     }
 
@@ -795,6 +914,7 @@ public class DatabaseHandler {
             if (qty > available) {
                 throw new Exception("Only " + available + " " + normalizedType + " item(s) are currently available.");
             }
+            String oldSnapshot = findAssignmentSnapshot(conn, id);
 
             try (PreparedStatement ps = conn.prepareStatement(
                     "UPDATE assignments SET person=?, department=?, equipment_type=?, reason=?, quantity=? WHERE id=?"
@@ -810,6 +930,14 @@ public class DatabaseHandler {
                     throw new Exception("Assignment record was not found.");
                 }
             }
+            logAudit(
+                    "EDIT_ASSIGNMENT",
+                    "ASSIGNMENTS",
+                    Integer.toString(id),
+                    "Assignment edited. Old: " + oldSnapshot + ". New: person=" + normalizedPerson +
+                            ", department=" + normalizedDepartment + ", equipment=" + normalizedType +
+                            ", quantity=" + qty + ", reason=" + normalizedReason
+            );
         }
     }
 
@@ -924,16 +1052,19 @@ public class DatabaseHandler {
 
             try (ResultSet rs = ps.executeQuery()) {
                 if (!rs.next()) {
+                    AuditService.log(normalizedOptional(email), "LOGIN_FAILED", "AUTH", "Unknown login identifier.");
                     return null;
                 }
 
                 String status = normalizedOptional(rs.getString("status"));
                 if (AccessControl.STATUS_FROZEN.equalsIgnoreCase(status)) {
+                    AuditService.log(resolveAuditUsername(rs), "LOGIN_FAILED", "AUTH", "Frozen account login blocked.");
                     throw new SecurityException("This account is frozen. Contact an administrator.");
                 }
 
                 String storedPassword = rs.getString("password");
                 if (!PasswordUtils.verify(plainPassword, storedPassword)) {
+                    AuditService.log(resolveAuditUsername(rs), "LOGIN_FAILED", "AUTH", "Invalid password.");
                     return null;
                 }
 
@@ -943,6 +1074,7 @@ public class DatabaseHandler {
                     updateLastLogin.setInt(1, rs.getInt("id"));
                     updateLastLogin.executeUpdate();
                 }
+                AuditService.log(resolveAuditUsername(rs), "LOGIN_SUCCESS", "AUTH", "User logged in successfully.");
 
                 return new User(
                         rs.getInt("id"),
@@ -1073,6 +1205,7 @@ public class DatabaseHandler {
 
                 logPasswordResetEvent(conn, target.id, normalizedIdentifier, "RESET_PASSWORD_SUCCESS", "SUCCESS",
                         "Password reset completed.");
+                AuditService.log(target.email, "PASSWORD_RESET_SUCCESS", "AUTH", "Password reset completed.");
                 conn.commit();
             } catch (Exception e) {
                 conn.rollback();
@@ -1151,6 +1284,12 @@ public class DatabaseHandler {
 
             ps.executeUpdate();
         }
+        logAudit(
+                "CREATE_USER",
+                "USERS",
+                email,
+                "User created: " + name + ", role: " + role + ", department: " + department
+        );
     }
 
     public static boolean emailExists(String email) {
@@ -1317,6 +1456,7 @@ public class DatabaseHandler {
                 throw new Exception("User account not found.");
             }
         }
+        AuditService.log(normalizedEmail, "INITIAL_PASSWORD_CHANGED", "AUTH", "Initial password changed successfully.");
     }
 
     private static void logPasswordResetEvent(Connection conn, Integer userId, String identifier,
@@ -1370,8 +1510,17 @@ public class DatabaseHandler {
              PreparedStatement ps = conn.prepareStatement("DELETE FROM users WHERE id=?")) {
 
             ps.setInt(1, id);
-            ps.executeUpdate();
+            if (ps.executeUpdate() == 0) {
+                throw new Exception("User account not found.");
+            }
         }
+        logAudit(
+                "DELETE_USER",
+                "USERS",
+                Integer.toString(id),
+                "User deleted: " + (target == null ? id : target.getEmail()) +
+                        ", role: " + (target == null ? "" : target.getRole())
+        );
     }
 
     public static boolean updateUser(int id, String name, String password, String role, String department, String email) throws Exception {
@@ -1427,7 +1576,17 @@ public class DatabaseHandler {
                 ps.setInt(7, id);
             }
 
-            return ps.executeUpdate() > 0;
+            boolean updated = ps.executeUpdate() > 0;
+            if (updated) {
+                logAudit(
+                        "EDIT_USER",
+                        "USERS",
+                        Integer.toString(id),
+                        "User edited: " + email + ", role: " + role + ", department: " + department +
+                                (password == null || password.isBlank() ? "" : ". Password changed.")
+                );
+            }
+            return updated;
         }
     }
 
@@ -1728,6 +1887,7 @@ public class DatabaseHandler {
 
         try (Connection conn = getConnection()) {
             conn.setAutoCommit(false);
+            List<String> distributedAssetCodes = new ArrayList<>();
             try (PreparedStatement check = conn.prepareStatement(checkSql);
                  PreparedStatement insert = conn.prepareStatement(insertSql)) {
 
@@ -1754,9 +1914,17 @@ public class DatabaseHandler {
                     insert.setString(4, distribution.getPhone());
                     insert.setString(5, distribution.getNid());
                     insert.executeUpdate();
+                    distributedAssetCodes.add(distribution.getAssetCode());
                 }
 
                 conn.commit();
+                logAudit(
+                        "DISTRIBUTE_EQUIPMENT_BATCH",
+                        "DISTRIBUTION",
+                        Integer.toString(assignmentId),
+                        "Distributed " + distributedAssetCodes.size() + " equipment item(s) under assignment " +
+                                assignmentId + ": " + String.join(", ", distributedAssetCodes)
+                );
             } catch (Exception e) {
                 conn.rollback();
                 throw e;
@@ -1982,6 +2150,14 @@ public class DatabaseHandler {
                 }
 
                 conn.commit();
+                logAudit(
+                        "RETURN_EQUIPMENT",
+                        "RETURNS",
+                        assetCode,
+                        "Equipment returned by " + returnedBy + ". Condition: " + condition +
+                                ", phone: " + phone + ", NID: " + nid +
+                                (normalizedOptional(remarks).isBlank() ? "" : ", remarks: " + remarks)
+                );
             } catch (Exception e) {
                 conn.rollback();
                 throw e;
@@ -2056,6 +2232,24 @@ public class DatabaseHandler {
         }
     }
 
+    public static void updateOutstandingReturnRemarks(Map<String, String> assetRemarks) throws Exception {
+        if (assetRemarks == null || assetRemarks.isEmpty()) {
+            return;
+        }
+
+        String sql = "UPDATE distribution SET outstanding_remarks = ? WHERE asset_code = ? AND returned = 0";
+
+        try (Connection conn = getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            for (Map.Entry<String, String> entry : assetRemarks.entrySet()) {
+                ps.setString(1, normalizedOptional(entry.getValue()));
+                ps.setString(2, normalizedOptional(entry.getKey()));
+                ps.addBatch();
+            }
+            ps.executeBatch();
+        }
+    }
+
     private static void validateDistribution(Connection conn, int assignmentId, String assetCode, String name, String phone, String nid)
             throws Exception {
         String normalizedAssetCode = normalizedRequired(assetCode, "Asset code is required.");
@@ -2120,6 +2314,67 @@ public class DatabaseHandler {
             ResultSet rs = ps.executeQuery();
             return rs.next() && rs.getInt(1) > 0;
         }
+    }
+
+    private static String findAssetCodeBySerial(Connection conn, String serialNumber) throws SQLException {
+        try (PreparedStatement ps = conn.prepareStatement(
+                "SELECT asset_code FROM equipment WHERE LOWER(TRIM(serial_number)) = LOWER(TRIM(?)) ORDER BY id DESC LIMIT 1"
+        )) {
+            ps.setString(1, normalizedOptional(serialNumber));
+            try (ResultSet rs = ps.executeQuery()) {
+                return rs.next() ? normalizedOptional(rs.getString("asset_code")) : "";
+            }
+        }
+    }
+
+    private static String findEquipmentSnapshot(Connection conn, String assetCode) throws SQLException {
+        try (PreparedStatement ps = conn.prepareStatement(
+                "SELECT asset_code, name, category, serial_number, condition, source, status FROM equipment WHERE asset_code = ?"
+        )) {
+            ps.setString(1, normalizedOptional(assetCode));
+            try (ResultSet rs = ps.executeQuery()) {
+                if (!rs.next()) {
+                    return "not found";
+                }
+                return "asset=" + normalizedOptional(rs.getString("asset_code")) +
+                        ", name=" + normalizedOptional(rs.getString("name")) +
+                        ", category=" + normalizedOptional(rs.getString("category")) +
+                        ", serial=" + normalizedOptional(rs.getString("serial_number")) +
+                        ", condition=" + normalizedOptional(rs.getString("condition")) +
+                        ", source=" + normalizedOptional(rs.getString("source")) +
+                        ", status=" + normalizedOptional(rs.getString("status"));
+            }
+        }
+    }
+
+    private static String findAssignmentSnapshot(Connection conn, int assignmentId) throws SQLException {
+        try (PreparedStatement ps = conn.prepareStatement(
+                "SELECT id, person, department, equipment_type, reason, quantity, status, date FROM assignments WHERE id = ?"
+        )) {
+            ps.setInt(1, assignmentId);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (!rs.next()) {
+                    return "not found";
+                }
+                return "id=" + rs.getInt("id") +
+                        ", person=" + normalizedOptional(rs.getString("person")) +
+                        ", department=" + normalizedOptional(rs.getString("department")) +
+                        ", equipment=" + normalizedOptional(rs.getString("equipment_type")) +
+                        ", quantity=" + rs.getInt("quantity") +
+                        ", status=" + normalizedOptional(rs.getString("status")) +
+                        ", date=" + normalizedOptional(rs.getString("date")) +
+                        ", reason=" + normalizedOptional(rs.getString("reason"));
+            }
+        }
+    }
+
+    private static String resolveAuditUsername(ResultSet rs) throws SQLException {
+        String email = normalizedOptional(rs.getString("email"));
+        if (!email.isBlank()) {
+            return email;
+        }
+        String username = normalizedOptional(rs.getString("username"));
+        return username.isBlank() ? "unknown_user" : username;
     }
 
     private static boolean hasAssignmentDistributionHistory(Connection conn, int assignmentId) throws SQLException {

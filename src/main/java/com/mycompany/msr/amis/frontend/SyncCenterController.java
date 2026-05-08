@@ -23,6 +23,7 @@ public final class SyncCenterController implements Initializable {
     @FXML private Label lblSyncStatus;
     @FXML private Label lblSyncMode;
     @FXML private TableView<SyncQueueRecord> tblQueue;
+    @FXML private TableColumn<SyncQueueRecord, Void> colQueueNo;
     @FXML private TableColumn<SyncQueueRecord, Number> colQueueId;
     @FXML private TableColumn<SyncQueueRecord, String> colQueueEntity;
     @FXML private TableColumn<SyncQueueRecord, String> colQueueOperation;
@@ -31,6 +32,7 @@ public final class SyncCenterController implements Initializable {
     @FXML private TableColumn<SyncQueueRecord, String> colQueueCreatedAt;
     @FXML private TableColumn<SyncQueueRecord, String> colQueueError;
     @FXML private TableView<SyncAuditRecord> tblAudit;
+    @FXML private TableColumn<SyncAuditRecord, Void> colAuditNo;
     @FXML private TableColumn<SyncAuditRecord, Number> colAuditId;
     @FXML private TableColumn<SyncAuditRecord, Number> colAuditQueueId;
     @FXML private TableColumn<SyncAuditRecord, String> colAuditAction;
@@ -69,7 +71,7 @@ public final class SyncCenterController implements Initializable {
             lblRejectedCount.setText(Integer.toString(summary.getRejectedCount()));
             lblFailedCount.setText(Integer.toString(summary.getFailedCount()));
             lblSyncMode.setText(summary.isOnlineReady() ? "ONLINE READY" : "OFFLINE ONLY");
-            btnProcessPending.setDisable(!summary.isOnlineReady() || summary.getPendingCount() == 0);
+            btnProcessPending.setDisable(!summary.isOnlineReady());
 
             tblQueue.getItems().setAll(filterQueue(syncCenterService.getQueueRecords()));
             tblAudit.getItems().setAll(filterAudit(syncCenterService.getAuditRecords()));
@@ -100,6 +102,7 @@ public final class SyncCenterController implements Initializable {
     }
 
     private void configureTables() {
+        TableNumbering.install(colQueueNo);
         colQueueId.setCellValueFactory(new PropertyValueFactory<>("id"));
         colQueueEntity.setCellValueFactory(new PropertyValueFactory<>("entityType"));
         colQueueOperation.setCellValueFactory(new PropertyValueFactory<>("operationType"));
@@ -108,6 +111,7 @@ public final class SyncCenterController implements Initializable {
         colQueueCreatedAt.setCellValueFactory(new PropertyValueFactory<>("createdAt"));
         colQueueError.setCellValueFactory(new PropertyValueFactory<>("errorMessage"));
 
+        TableNumbering.install(colAuditNo);
         colAuditId.setCellValueFactory(new PropertyValueFactory<>("id"));
         colAuditQueueId.setCellValueFactory(new PropertyValueFactory<>("queueId"));
         colAuditAction.setCellValueFactory(new PropertyValueFactory<>("action"));

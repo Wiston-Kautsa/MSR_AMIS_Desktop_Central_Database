@@ -25,6 +25,7 @@ public class DistributionReportController implements Initializable {
     @FXML private ComboBox<String> cmbPerson;
     @FXML private ComboBox<String> cmbStatus;
     @FXML private TableView<Distribution> tableDistribution;
+    @FXML private TableColumn<Distribution, Void> colNo;
     @FXML private TableColumn<Distribution, String> colAssetCode;
     @FXML private TableColumn<Distribution, String> colResponsiblePerson;
     @FXML private TableColumn<Distribution, String> colAssignedTo;
@@ -38,6 +39,7 @@ public class DistributionReportController implements Initializable {
 
     @Override
     public void initialize(URL url, ResourceBundle rb) {
+        TableNumbering.install(colNo);
         colAssetCode.setCellValueFactory(new PropertyValueFactory<>("assetCode"));
         colResponsiblePerson.setCellValueFactory(new PropertyValueFactory<>("responsiblePerson"));
         colAssignedTo.setCellValueFactory(new PropertyValueFactory<>("assignedTo"));

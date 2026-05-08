@@ -63,6 +63,7 @@ public class DistributeEquipmentController implements Initializable {
     @FXML private TextField txtNid;
 
     @FXML private TableView<Distribution> distributionTable;
+    @FXML private TableColumn<Distribution, Void> colDistNo;
     @FXML private TableColumn<Distribution, String> colDistAsset;
     @FXML private TableColumn<Distribution, String> colDistName;
     @FXML private TableColumn<Distribution, String> colDistPhone;
@@ -101,6 +102,7 @@ public class DistributeEquipmentController implements Initializable {
     }
 
     private void setupTable() {
+        TableNumbering.install(colDistNo);
         colDistAsset.setCellValueFactory(cell -> cell.getValue().assetCodeProperty());
         colDistName.setCellValueFactory(cell -> cell.getValue().assignedToProperty());
         colDistPhone.setCellValueFactory(cell -> cell.getValue().phoneProperty());

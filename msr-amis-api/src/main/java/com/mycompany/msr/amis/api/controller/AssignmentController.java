@@ -7,6 +7,7 @@ import com.mycompany.msr.amis.api.service.OperationsService;
 import jakarta.validation.Valid;
 import java.util.List;
 import java.util.Map;
+import org.springframework.security.core.Authentication;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -58,26 +59,29 @@ public class AssignmentController {
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMIN')")
-    public AssignmentResponse createAssignment(@Valid @RequestBody AssignmentRequest request) {
-        return operationsService.createAssignment(request);
+    public AssignmentResponse createAssignment(Authentication authentication, @Valid @RequestBody AssignmentRequest request) {
+        return operationsService.createAssignment(authentication.getName(), request);
     }
 
     @PutMapping("/{id}")
     @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMIN')")
-    public AssignmentResponse updateAssignment(@PathVariable int id, @Valid @RequestBody AssignmentRequest request) {
-        return operationsService.updateAssignment(id, request);
+    public AssignmentResponse updateAssignment(Authentication authentication,
+                                               @PathVariable int id,
+                                               @Valid @RequestBody AssignmentRequest request) {
+        return operationsService.updateAssignment(authentication.getName(), id, request);
     }
 
     @PatchMapping("/{id}/status")
     @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMIN')")
-    public AssignmentResponse updateAssignmentStatus(@PathVariable int id,
+    public AssignmentResponse updateAssignmentStatus(Authentication authentication,
+                                                     @PathVariable int id,
                                                      @Valid @RequestBody AssignmentStatusUpdateRequest request) {
-        return operationsService.updateAssignmentStatus(id, request.status());
+        return operationsService.updateAssignmentStatus(authentication.getName(), id, request.status());
     }
 
     @DeleteMapping("/{id}")
     @PreAuthorize("hasRole('SUPER_ADMIN')")
-    public void deleteAssignment(@PathVariable int id) {
-        operationsService.deleteAssignment(id);
+    public void deleteAssignment(Authentication authentication, @PathVariable int id) {
+        operationsService.deleteAssignment(authentication.getName(), id);
     }
 }

@@ -109,6 +109,7 @@
                             <children>
                                 <TableView fx:id="tableAuditLogs" VBox.vgrow="ALWAYS">
                                     <columns>
+                                        <TableColumn fx:id="colNo" text="No." prefWidth="55.0"/>
                                         <TableColumn fx:id="colId" text="ID" prefWidth="70.0"/>
                                         <TableColumn fx:id="colUsername" text="Username" prefWidth="210.0"/>
                                         <TableColumn fx:id="colAction" text="Action" prefWidth="170.0"/>

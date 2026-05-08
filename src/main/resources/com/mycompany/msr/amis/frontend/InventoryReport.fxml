@@ -51,6 +51,8 @@
 
             <columns>
 
+                <TableColumn fx:id="colNo" text="No." prefWidth="55"/>
+
                 <TableColumn fx:id="colAssetCode" text="Asset Code"/>
 
                 <TableColumn fx:id="colName" text="Name"/>

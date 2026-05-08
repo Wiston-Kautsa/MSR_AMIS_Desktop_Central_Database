@@ -59,8 +59,41 @@
                     <ColumnConstraints percentWidth="50"/>
                 </columnConstraints>
 
+                <VBox fx:id="outstandingReasonPane"
+                      spacing="8"
+                      visible="false"
+                      managed="false"
+                      GridPane.columnIndex="0"
+                      GridPane.columnSpan="2"
+                      GridPane.rowIndex="0"
+                      fillWidth="true">
+                    <Label text="Outstanding Equipment Reason" styleClass="card-title"/>
+                    <Label text="These assigned equipment items are not included in this return. Enter one reason explaining why they are not being returned now."
+                           wrapText="true"/>
+                    <TableView fx:id="tableOutstandingAssets"
+                               prefHeight="125"
+                               maxWidth="1.7976931348623157E308">
+                        <columns>
+                            <TableColumn fx:id="colOutstandingNo" text="No." prefWidth="55"/>
+                            <TableColumn fx:id="colOutstandingAsset" text="Asset" prefWidth="160"/>
+                            <TableColumn fx:id="colOutstandingUser" text="Assigned To" prefWidth="220"/>
+                            <TableColumn fx:id="colOutstandingPhone" text="Phone" prefWidth="150"/>
+                            <TableColumn fx:id="colOutstandingNid" text="NID" prefWidth="180"/>
+                        </columns>
+                    </TableView>
+                    <TextArea fx:id="txtOutstandingReason"
+                              promptText="Example: Still with field team and will be returned after supervision closes."
+                              wrapText="true"
+                              prefRowCount="3"
+                              maxWidth="1.7976931348623157E308"/>
+                    <Button fx:id="btnApplyOutstandingReason"
+                            text="Enter Reason"
+                            maxWidth="180"
+                            onAction="#enterOutstandingReason"/>
+                </VBox>
+
                 <!-- LEFT: MANUAL -->
-                <VBox spacing="10" GridPane.columnIndex="0" fillWidth="true">
+                <VBox fx:id="manualEntryPane" spacing="10" GridPane.columnIndex="0" GridPane.rowIndex="1" fillWidth="true">
 
                     <Label text="Manual Entry" styleClass="card-title"/>
 
@@ -101,31 +134,34 @@
                     </GridPane>
 
                     <HBox spacing="10">
-                        <Button text="Add Return" defaultButton="true" onAction="#handleReturn"/>
+                        <Button fx:id="btnAddReturn" text="Add Return" defaultButton="true" onAction="#handleReturn"/>
                         <Button fx:id="btnSaveReturns" text="Save" defaultButton="true" onAction="#saveReturns"/>
-                        <Button text="Clear" onAction="#clearForm"/>
+                        <Button fx:id="btnClear" text="Clear" onAction="#clearForm"/>
                     </HBox>
 
                 </VBox>
 
                 <!-- RIGHT: BULK -->
-                <VBox spacing="14" GridPane.columnIndex="1" fillWidth="true">
+                <VBox fx:id="bulkImportPane" spacing="14" GridPane.columnIndex="1" GridPane.rowIndex="1" fillWidth="true">
 
                     <Label text="Bulk Upload" styleClass="card-title"/>
                     <Label text="Upload many returns at once. Use the template so the system reads the file correctly."
                            wrapText="true"/>
 
                     <VBox spacing="10">
-                        <Button text="Download Template"
+                        <Button fx:id="btnDownloadTemplate"
+                                text="Download Template"
                                 maxWidth="1.7976931348623157E308"
                                 onAction="#downloadTemplate"/>
-                        <Button text="Choose File"
+                        <Button fx:id="btnChooseFile"
+                                text="Choose File"
                                 maxWidth="1.7976931348623157E308"
                                 onAction="#chooseFile"/>
                         <Label fx:id="lblFileName"
                                text="No file selected"
                                wrapText="true"/>
-                        <Button text="Upload"
+                        <Button fx:id="btnUpload"
+                                text="Upload"
                                 maxWidth="1.7976931348623157E308"
                                 onAction="#handleBulkUpload"/>
                         <Region VBox.vgrow="ALWAYS"/>
@@ -144,6 +180,7 @@
 
                 <columns>
 
+                    <TableColumn fx:id="colReturnNo" text="No." prefWidth="55"/>
                     <TableColumn fx:id="colAsset" text="Asset Code"/>
                     <TableColumn fx:id="colReturnedBy" text="Returned By"/>
                     <TableColumn fx:id="colPhone" text="Phone"/>

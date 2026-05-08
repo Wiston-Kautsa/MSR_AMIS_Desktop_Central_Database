@@ -26,6 +26,7 @@ public class AuditLogsController implements Initializable {
     @FXML private Label lblAuditScope;
     @FXML private Label lblAuditStatus;
     @FXML private TableView<AuditLog> tableAuditLogs;
+    @FXML private TableColumn<AuditLog, Void> colNo;
     @FXML private TableColumn<AuditLog, Number> colId;
     @FXML private TableColumn<AuditLog, String> colUsername;
     @FXML private TableColumn<AuditLog, String> colAction;
@@ -102,6 +103,7 @@ public class AuditLogsController implements Initializable {
     }
 
     private void configureTable() {
+        TableNumbering.install(colNo);
         colId.setCellValueFactory(new PropertyValueFactory<>("id"));
         colUsername.setCellValueFactory(new PropertyValueFactory<>("username"));
         colAction.setCellValueFactory(new PropertyValueFactory<>("action"));

@@ -18,6 +18,7 @@ import javafx.scene.chart.PieChart;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
 import javafx.scene.control.ProgressBar;
+import javafx.scene.control.Tooltip;
 import javafx.scene.layout.Region;
 import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
@@ -45,6 +46,7 @@ public class DashboardsController implements Initializable {
     @FXML private Button btnUsers;
     @FXML private Button btnDataMaintenance;
     @FXML private Button btnSyncCenter;
+    @FXML private Button btnLogout;
     @FXML private PieChart assetStatusPieChart;
     @FXML private ProgressBar progressUtilization;
     @FXML private ProgressBar progressAvailability;
@@ -79,10 +81,30 @@ public class DashboardsController implements Initializable {
             btnSyncCenter.setManaged(true);
             btnSyncCenter.setVisible(true);
         }
+        applyLoggedInUser();
         if (lblTotalAssets != null) {
             refreshDashboard();
         }
         startConnectionStatusMonitor();
+    }
+
+    private void applyLoggedInUser() {
+        if (btnLogout == null) {
+            return;
+        }
+        User user = Session.getCurrentUser();
+        if (user == null) {
+            btnLogout.setTooltip(new Tooltip("Logged in as Unknown user"));
+            return;
+        }
+
+        String name = user.getFullName();
+        if (name == null || name.isBlank()) {
+            name = user.getUsername();
+        }
+        String role = user.getRole() == null || user.getRole().isBlank() ? "" : " (" + user.getRole() + ")";
+        String displayName = (name == null || name.isBlank() ? "Unknown user" : name) + role;
+        btnLogout.setTooltip(new Tooltip("Logged in as " + displayName));
     }
 
     private void loadPage(String fxml) {
@@ -306,6 +328,11 @@ public class DashboardsController implements Initializable {
     private void openLogout(ActionEvent event) {
         try {
             stopConnectionStatusMonitor();
+            User user = Session.getCurrentUser();
+            String actor = user == null || user.getEmail() == null || user.getEmail().isBlank()
+                    ? "unknown_user"
+                    : user.getEmail().trim();
+            AuditService.log(actor, "LOGOUT", "AUTH", "User logged out.");
             Session.clear();
             App.showLoginPage();
         } catch (IOException e) {

@@ -19,7 +19,9 @@ import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.net.URL;
 import java.time.LocalDate;
+import java.util.LinkedHashSet;
 import java.util.ResourceBundle;
+import java.util.Set;
 
 public class AddEquipmentController implements Initializable {
     private static final int BULK_HEADER_ROW_INDEX = 0;
@@ -50,6 +52,7 @@ public class AddEquipmentController implements Initializable {
     @FXML private Label lblSelectedFile;
 
     @FXML private TableView<Equipment> equipmentTable;
+    @FXML private TableColumn<Equipment, Void> colNo;
     @FXML private TableColumn<Equipment, String> colName;
     @FXML private TableColumn<Equipment, String> colCategory;
     @FXML private TableColumn<Equipment, String> colSerial;
@@ -79,6 +82,7 @@ public class AddEquipmentController implements Initializable {
     // ================= TABLE =================
     private void setupTable() {
 
+        TableNumbering.install(colNo);
         colName.setCellValueFactory(cell -> cell.getValue().nameProperty());
         colCategory.setCellValueFactory(cell -> cell.getValue().categoryProperty());
         colSerial.setCellValueFactory(cell -> cell.getValue().serialNumberProperty());
@@ -266,6 +270,9 @@ public class AddEquipmentController implements Initializable {
             }
 
             int inserted = 0;
+            int skipped = 0;
+            Set<String> fileSerials = new LinkedHashSet<>();
+            StringBuilder skippedDetails = new StringBuilder();
 
             // Row 1 is reserved for column titles; actual bulk data starts on row 2.
             for (int i = BULK_DATA_START_ROW_INDEX; i <= sheet.getLastRowNum(); i++) {
@@ -283,6 +290,12 @@ public class AddEquipmentController implements Initializable {
                 if (name.isEmpty() || category.isEmpty() || serial.isEmpty()) continue;
                 if (isHeaderLikeRow(name, category, serial, source, condition)) continue;
                 if (isSampleRow(name, category, serial, source, condition)) continue;
+                if (containsIgnoreCase(fileSerials, serial)) {
+                    skipped++;
+                    appendSkipped(skippedDetails, i + 1, serial, "Duplicate serial/IMEI inside the uploaded file.");
+                    continue;
+                }
+                fileSerials.add(serial);
 
                 Equipment eq = new Equipment(
                         name,
@@ -297,7 +310,8 @@ public class AddEquipmentController implements Initializable {
                     equipmentService.createEquipment(eq);
                     inserted++;
                 } catch (Exception e) {
-                    e.printStackTrace();
+                    skipped++;
+                    appendSkipped(skippedDetails, i + 1, serial, e.getMessage());
                 }
             }
 
@@ -305,7 +319,9 @@ public class AddEquipmentController implements Initializable {
             loadCategories();
             OperationFeedbackHelper.showInfo(
                     "Upload Complete",
-                    "Equipment upload completed.\n\nImported records: " + inserted
+                    "Equipment upload completed.\n\nImported records: " + inserted +
+                            "\nSkipped records: " + skipped +
+                            (skippedDetails.length() == 0 ? "" : "\n\nSkipped details:\n" + skippedDetails)
             );
 
         } catch (Exception e) {
@@ -364,6 +380,28 @@ public class AddEquipmentController implements Initializable {
                 && BULK_TEMPLATE_SAMPLE[2].equalsIgnoreCase(serial)
                 && BULK_TEMPLATE_SAMPLE[3].equalsIgnoreCase(source)
                 && BULK_TEMPLATE_SAMPLE[4].equalsIgnoreCase(condition);
+    }
+
+    private boolean containsIgnoreCase(Set<String> values, String target) {
+        for (String value : values) {
+            if (value != null && target != null && value.trim().equalsIgnoreCase(target.trim())) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private void appendSkipped(StringBuilder details, int rowNumber, String serial, String reason) {
+        if (details.length() > 1200) {
+            return;
+        }
+        details.append("Row ")
+                .append(rowNumber)
+                .append(" (")
+                .append(serial == null || serial.isBlank() ? "no serial" : serial)
+                .append("): ")
+                .append(reason == null || reason.isBlank() ? "Duplicate or invalid record." : reason)
+                .append("\n");
     }
 
     // ================= ALERTS =================
