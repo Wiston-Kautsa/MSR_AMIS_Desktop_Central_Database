@@ -42,10 +42,20 @@ import java.util.HashSet;
 public class DistributeEquipmentController implements Initializable {
     private static final int BULK_HEADER_ROW_INDEX = 0;
     private static final int BULK_DATA_START_ROW_INDEX = BULK_HEADER_ROW_INDEX + 1;
-    private static final String[] BULK_TEMPLATE_HEADERS = {"asset_code", "assigned_to", "phone", "nid"};
-    private static final String SAMPLE_ASSET_CODE = "MSR-LTP-001";
-    private static final String SAMPLE_PHONE = "0991234567";
-    private static final String SAMPLE_NID = "MW123456";
+    private static final String[] BULK_TEMPLATE_HEADERS = {
+            "asset_code",
+            "assigned_to",
+            "phone",
+            "nid",
+            "distribution_date"
+    };
+    private static final String[] BULK_TEMPLATE_SAMPLE = {
+            "MSR-LTP-001",
+            "Jane Banda",
+            "0991234567",
+            "MW123456",
+            LocalDate.now().toString()
+    };
 
 
     @FXML private ComboBox<String> cmbAssignments;
@@ -68,6 +78,7 @@ public class DistributeEquipmentController implements Initializable {
     @FXML private TableColumn<Distribution, String> colDistName;
     @FXML private TableColumn<Distribution, String> colDistPhone;
     @FXML private TableColumn<Distribution, String> colDistNid;
+    @FXML private TableColumn<Distribution, String> colDistDate;
 
     @FXML private Button btnSave;
     @FXML private Button btnAdd;
@@ -107,6 +118,7 @@ public class DistributeEquipmentController implements Initializable {
         colDistName.setCellValueFactory(cell -> cell.getValue().assignedToProperty());
         colDistPhone.setCellValueFactory(cell -> cell.getValue().phoneProperty());
         colDistNid.setCellValueFactory(cell -> cell.getValue().nidProperty());
+        colDistDate.setCellValueFactory(cell -> new javafx.beans.property.SimpleStringProperty(cell.getValue().getDate()));
         distributionTable.setItems(currentDistributionData);
     }
 
@@ -396,6 +408,14 @@ public class DistributeEquipmentController implements Initializable {
                 Cell headerCell = headerRow.createCell(i);
                 headerCell.setCellValue(BULK_TEMPLATE_HEADERS[i]);
                 headerCell.setCellStyle(headerStyle);
+            }
+
+            Row sampleRow = sheet.createRow(BULK_DATA_START_ROW_INDEX);
+            for (int i = 0; i < BULK_TEMPLATE_SAMPLE.length; i++) {
+                sampleRow.createCell(i).setCellValue(BULK_TEMPLATE_SAMPLE[i]);
+            }
+
+            for (int i = 0; i < BULK_TEMPLATE_HEADERS.length; i++) {
                 sheet.autoSizeColumn(i);
             }
 
@@ -452,7 +472,7 @@ public class DistributeEquipmentController implements Initializable {
             if (!hasRequiredHeaders(columnIndex)) {
                 OperationFeedbackHelper.showError(
                         "Invalid File",
-                        "The Excel file must contain these columns: asset_code, assigned_to, phone, nid."
+                        "The Excel file must contain these columns: " + String.join(", ", BULK_TEMPLATE_HEADERS) + "."
                 );
                 return;
             }
@@ -471,21 +491,35 @@ public class DistributeEquipmentController implements Initializable {
                 String assignedTo = getCellValue(row, columnIndex.get("assigned_to"));
                 String phone = getCellValue(row, columnIndex.get("phone"));
                 String nid = getCellValue(row, columnIndex.get("nid"));
+                String distributionDateText = getCellValue(row, columnIndex.get("distribution_date"));
 
-                if (assetCode.isEmpty() && assignedTo.isEmpty() && phone.isEmpty() && nid.isEmpty()) {
+                if (assetCode.isEmpty() && assignedTo.isEmpty() && phone.isEmpty() && nid.isEmpty()
+                        && distributionDateText.isEmpty()) {
                     continue;
                 }
-                if (isHeaderLikeDataRow(assetCode, assignedTo, phone, nid)) {
+                if (isHeaderLikeDataRow(assetCode, assignedTo, phone, nid, distributionDateText)) {
                     continue;
                 }
-                if (isSampleRow(assetCode, assignedTo, phone, nid)) {
+                if (isSampleRow(assetCode, assignedTo, phone, nid, distributionDateText)) {
                     continue;
                 }
 
-                if (assetCode.isEmpty() || assignedTo.isEmpty() || phone.isEmpty() || nid.isEmpty()) {
+                if (assetCode.isEmpty() || assignedTo.isEmpty() || phone.isEmpty() || nid.isEmpty()
+                        || distributionDateText.isEmpty()) {
                     OperationFeedbackHelper.showError(
                             "Invalid Row",
-                            "Each uploaded distribution row must include asset code, name, phone, and NID."
+                            "Each uploaded distribution row must include asset code, name, phone, NID, and distribution date."
+                    );
+                    return;
+                }
+
+                LocalDate distributionDate;
+                try {
+                    distributionDate = LocalDate.parse(distributionDateText);
+                } catch (Exception exception) {
+                    OperationFeedbackHelper.showError(
+                            "Invalid Row",
+                            "Distribution date must use yyyy-MM-dd format. Check row " + (rowIndex + 1) + "."
                     );
                     return;
                 }
@@ -497,7 +531,7 @@ public class DistributeEquipmentController implements Initializable {
                         assignedTo,
                         phone,
                         nid,
-                        LocalDate.now()
+                        distributionDate
                 ));
                 countedRowDetails.add("Row " + (rowIndex + 1) + ": " + assetCode + " -> " + assignedTo);
             }
@@ -578,18 +612,20 @@ public class DistributeEquipmentController implements Initializable {
         return true;
     }
 
-    private boolean isHeaderLikeDataRow(String assetCode, String assignedTo, String phone, String nid) {
+    private boolean isHeaderLikeDataRow(String assetCode, String assignedTo, String phone, String nid, String distributionDate) {
         return BULK_TEMPLATE_HEADERS[0].equalsIgnoreCase(assetCode)
                 && BULK_TEMPLATE_HEADERS[1].equalsIgnoreCase(assignedTo)
                 && BULK_TEMPLATE_HEADERS[2].equalsIgnoreCase(phone)
-                && BULK_TEMPLATE_HEADERS[3].equalsIgnoreCase(nid);
+                && BULK_TEMPLATE_HEADERS[3].equalsIgnoreCase(nid)
+                && BULK_TEMPLATE_HEADERS[4].equalsIgnoreCase(distributionDate);
     }
 
-    private boolean isSampleRow(String assetCode, String assignedTo, String phone, String nid) {
-        return SAMPLE_ASSET_CODE.equalsIgnoreCase(assetCode)
-                && !assignedTo.isBlank()
-                && SAMPLE_PHONE.equalsIgnoreCase(phone)
-                && SAMPLE_NID.equalsIgnoreCase(nid);
+    private boolean isSampleRow(String assetCode, String assignedTo, String phone, String nid, String distributionDate) {
+        return BULK_TEMPLATE_SAMPLE[0].equalsIgnoreCase(assetCode)
+                && BULK_TEMPLATE_SAMPLE[1].equalsIgnoreCase(assignedTo)
+                && BULK_TEMPLATE_SAMPLE[2].equalsIgnoreCase(phone)
+                && BULK_TEMPLATE_SAMPLE[3].equalsIgnoreCase(nid)
+                && BULK_TEMPLATE_SAMPLE[4].equalsIgnoreCase(distributionDate);
     }
 
     private String buildAssignmentLabel(Assignment assignment, int distributed) {

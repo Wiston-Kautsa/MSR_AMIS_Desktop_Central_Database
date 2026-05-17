@@ -34,6 +34,14 @@
                       promptText="Select Status"
                       prefWidth="180"/>
 
+            <DatePicker fx:id="dpFrom"
+                        promptText="From"
+                        prefWidth="130"/>
+
+            <DatePicker fx:id="dpTo"
+                        promptText="To"
+                        prefWidth="130"/>
+
             <Button text="Filter"
                     onAction="#handleFilter"/>
 
@@ -42,6 +50,9 @@
             <!-- EXPORT BUTTON -->
             <Button text="Export"
                     onAction="#handleExport"/>
+
+            <Button text="PDF"
+                    onAction="#handleExportPdf"/>
 
         </HBox>
 
@@ -53,21 +64,29 @@
 
                 <TableColumn fx:id="colNo" text="No." prefWidth="55"/>
 
-                <TableColumn fx:id="colAssetCode" text="Asset Code"/>
+                <TableColumn fx:id="colAssetCode" text="Asset Code" prefWidth="130"/>
 
-                <TableColumn fx:id="colName" text="Name"/>
+                <TableColumn fx:id="colName" text="Name" prefWidth="160"/>
 
-                <TableColumn fx:id="colCategory" text="Category"/>
+                <TableColumn fx:id="colCategory" text="Category" prefWidth="130"/>
 
-                <TableColumn fx:id="colSerial" text="IMEI/Serial Number"/>
+                <TableColumn fx:id="colSerial" text="IMEI/Serial Number" prefWidth="180"/>
 
-                <TableColumn fx:id="colCondition" text="Condition"/>
+                <TableColumn fx:id="colCondition" text="Condition" prefWidth="130"/>
 
-                <TableColumn fx:id="colStatus" text="Status"/>
+                <TableColumn fx:id="colStatus" text="Status" prefWidth="120"/>
 
-                <TableColumn fx:id="colSource" text="Source"/>
+                 <TableColumn fx:id="colSource" text="Source" prefWidth="130"/>
 
-                <TableColumn fx:id="colDate" text="Entry Date"/>
+                 <TableColumn fx:id="colPurchaseCost" text="Purchase Cost" prefWidth="150"/>
+
+                 <TableColumn fx:id="colLocation" text="Location" prefWidth="140"/>
+
+                 <TableColumn fx:id="colWarrantyExpiry" text="Warranty Expiry" prefWidth="160"/>
+
+                 <TableColumn fx:id="colSupplier" text="Supplier" prefWidth="140"/>
+
+                 <TableColumn fx:id="colDate" text="Entry Date" prefWidth="130"/>
 
             </columns>
 

@@ -25,16 +25,19 @@
         <HBox spacing="10">
             <ComboBox fx:id="cmbPerson" promptText="Assigned To" prefWidth="180"/>
             <ComboBox fx:id="cmbStatus" promptText="Status" prefWidth="150"/>
+            <DatePicker fx:id="dpFrom" promptText="From" prefWidth="130"/>
+            <DatePicker fx:id="dpTo" promptText="To" prefWidth="130"/>
             <Button text="Filter" onAction="#handleFilter"/>
             <Region HBox.hgrow="ALWAYS"/>
             <Button text="Export" onAction="#handleExport"/>
+            <Button text="PDF" onAction="#handleExportPdf"/>
         </HBox>
 
         <TableView fx:id="tableDistribution" VBox.vgrow="ALWAYS">
             <columns>
                 <TableColumn fx:id="colNo" text="No." prefWidth="55"/>
                 <TableColumn fx:id="colAssetCode" text="Asset Code" prefWidth="120"/>
-                <TableColumn fx:id="colResponsiblePerson" text="Responsible Person" prefWidth="160"/>
+                <TableColumn fx:id="colResponsiblePerson" text="Responsible Person" prefWidth="190"/>
                 <TableColumn fx:id="colAssignedTo" text="Assigned To" prefWidth="150"/>
                 <TableColumn fx:id="colPhone" text="Phone" prefWidth="120"/>
                 <TableColumn fx:id="colNID" text="NID" prefWidth="130"/>

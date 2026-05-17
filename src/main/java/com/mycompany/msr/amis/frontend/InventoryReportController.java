@@ -1,8 +1,7 @@
 package com.mycompany.msr.amis;
 
-import java.io.File;
-import java.io.FileWriter;
 import java.net.URL;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.ResourceBundle;
 import javafx.collections.FXCollections;
@@ -13,6 +12,7 @@ import javafx.fxml.Initializable;
 import javafx.scene.control.Alert;
 import javafx.scene.control.ComboBox;
 import javafx.scene.control.ContextMenu;
+import javafx.scene.control.DatePicker;
 import javafx.scene.control.MenuItem;
 import javafx.scene.control.TableColumn;
 import javafx.scene.control.TableView;
@@ -24,6 +24,8 @@ public class InventoryReportController implements Initializable {
 
     @FXML private ComboBox<String> cmbCategory;
     @FXML private ComboBox<String> cmbStatus;
+    @FXML private DatePicker dpFrom;
+    @FXML private DatePicker dpTo;
     @FXML private TableView<Equipment> tableInventory;
     @FXML private TableColumn<Equipment, Void> colNo;
     @FXML private TableColumn<Equipment, String> colAssetCode;
@@ -33,6 +35,10 @@ public class InventoryReportController implements Initializable {
     @FXML private TableColumn<Equipment, String> colCondition;
     @FXML private TableColumn<Equipment, String> colStatus;
     @FXML private TableColumn<Equipment, String> colSource;
+    @FXML private TableColumn<Equipment, String> colPurchaseCost;
+    @FXML private TableColumn<Equipment, String> colLocation;
+    @FXML private TableColumn<Equipment, String> colWarrantyExpiry;
+    @FXML private TableColumn<Equipment, String> colSupplier;
     @FXML private TableColumn<Equipment, String> colDate;
 
     private final ObservableList<Equipment> data = FXCollections.observableArrayList();
@@ -48,6 +54,11 @@ public class InventoryReportController implements Initializable {
         colCondition.setCellValueFactory(new PropertyValueFactory<>("condition"));
         colStatus.setCellValueFactory(new PropertyValueFactory<>("status"));
         colSource.setCellValueFactory(new PropertyValueFactory<>("source"));
+        colPurchaseCost.setCellValueFactory(new PropertyValueFactory<>("purchaseCost"));
+        CurrencyFormatHelper.installCurrencyCellFactory(colPurchaseCost);
+        colLocation.setCellValueFactory(new PropertyValueFactory<>("location"));
+        colWarrantyExpiry.setCellValueFactory(new PropertyValueFactory<>("warrantyExpiry"));
+        colSupplier.setCellValueFactory(new PropertyValueFactory<>("supplier"));
         colDate.setCellValueFactory(new PropertyValueFactory<>("entryDate"));
 
         setupContextMenu();
@@ -87,6 +98,9 @@ public class InventoryReportController implements Initializable {
             if (!matchesFilter(equipment.getStatus(), status)) {
                 continue;
             }
+            if (!ReportFilterHelper.matchesDateRange(equipment.getEntryDate(), dpFrom, dpTo)) {
+                continue;
+            }
             data.add(equipment);
         }
         tableInventory.setItems(data);
@@ -95,6 +109,8 @@ public class InventoryReportController implements Initializable {
     private void handleRefresh() {
         cmbCategory.setValue(null);
         cmbStatus.setValue(null);
+        dpFrom.setValue(null);
+        dpTo.setValue(null);
         loadData();
         loadCategories();
         showAlert("Refresh", "Inventory report refreshed successfully.");
@@ -107,46 +123,29 @@ public class InventoryReportController implements Initializable {
             return;
         }
 
-        File file = FileLocationHelper.fileInDownloads("inventory_report.csv");
-        OperationFeedbackHelper.showInfo(
-                "Export Starting",
-                "Preparing inventory report export.\n\nRows to export: " + data.size()
-        );
-
-        try (FileWriter writer = new FileWriter(file)) {
-            writer.append("Asset Code,Name,Category,IMEI/Serial Number,Condition,Status,Source,Date\n");
-            for (Equipment equipment : data) {
-                writer.append(csvSafe(equipment.getAssetCode())).append(",")
-                        .append(csvSafe(equipment.getName())).append(",")
-                        .append(csvSafe(equipment.getCategory())).append(",")
-                        .append(csvSafe(equipment.getSerialNumber())).append(",")
-                        .append(csvSafe(equipment.getCondition())).append(",")
-                        .append(csvSafe(equipment.getStatus())).append(",")
-                        .append(csvSafe(equipment.getSource())).append(",")
-                        .append(csvSafe(equipment.getEntryDate())).append("\n");
-            }
-
-            OperationFeedbackHelper.showInfo(
-                    "Export Complete",
-                    "Inventory report exported successfully to:\n" + file.getAbsolutePath()
-            );
-        } catch (Exception e) {
-            e.printStackTrace();
-            OperationFeedbackHelper.showError(
-                    "Export Failed",
-                    "Inventory report export failed:\n" + e.getMessage()
-            );
-        }
+        ReportExportHelper.exportCsv("inventory_report", "Inventory Report", new ArrayList<>(data), columns());
     }
 
-    private String csvSafe(String value) {
-        if (value == null) {
-            return "";
-        }
-        if (value.contains(",") || value.contains("\"") || value.contains("\n")) {
-            return "\"" + value.replace("\"", "\"\"") + "\"";
-        }
-        return value;
+    @FXML
+    private void handleExportPdf(ActionEvent event) {
+        ReportExportHelper.exportPdf("inventory_report", "Inventory Report", new ArrayList<>(data), columns());
+    }
+
+    private List<ReportExportHelper.Column<Equipment>> columns() {
+        return List.of(
+                new ReportExportHelper.Column<>("Asset Code", Equipment::getAssetCode),
+                new ReportExportHelper.Column<>("Name", Equipment::getName),
+                new ReportExportHelper.Column<>("Category", Equipment::getCategory),
+                new ReportExportHelper.Column<>("IMEI/Serial Number", Equipment::getSerialNumber),
+                new ReportExportHelper.Column<>("Condition", Equipment::getCondition),
+                new ReportExportHelper.Column<>("Status", Equipment::getStatus),
+                new ReportExportHelper.Column<>("Source", Equipment::getSource),
+                new ReportExportHelper.Column<>("Purchase Cost", equipment -> CurrencyFormatHelper.formatLocalCurrency(equipment.getPurchaseCost())),
+                new ReportExportHelper.Column<>("Location", Equipment::getLocation),
+                new ReportExportHelper.Column<>("Warranty Expiry", Equipment::getWarrantyExpiry),
+                new ReportExportHelper.Column<>("Supplier", Equipment::getSupplier),
+                new ReportExportHelper.Column<>("Date", Equipment::getEntryDate)
+        );
     }
 
     private void setupContextMenu() {

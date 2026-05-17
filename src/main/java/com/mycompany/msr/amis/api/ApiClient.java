@@ -3,10 +3,12 @@ package com.mycompany.msr.amis;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.IOException;
+import java.net.ConnectException;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.net.http.HttpTimeoutException;
 import java.time.Duration;
 
 public final class ApiClient {
@@ -69,13 +71,21 @@ public final class ApiClient {
     }
 
     private <T> T send(HttpRequest request, Class<T> responseType) throws Exception {
-        HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+        HttpResponse<String> response;
+        try {
+            response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+        } catch (ConnectException | HttpTimeoutException exception) {
+            throw new ApiClientException(0, "API is not reachable at " + baseUrl + ". Start the API server and try again.");
+        }
         int status = response.statusCode();
         String body = response.body() == null ? "" : response.body();
 
         if (status >= 200 && status < 300) {
             if (responseType == Void.class || body.isBlank()) {
                 return null;
+            }
+            if (responseType == String.class) {
+                return responseType.cast(body);
             }
             return OBJECT_MAPPER.readValue(body, responseType);
         }
@@ -88,9 +98,7 @@ public final class ApiClient {
         if (body != null && !body.isBlank()) {
             try {
                 JsonNode jsonNode = OBJECT_MAPPER.readTree(body);
-                if (jsonNode.hasNonNull("message")) {
-                    message = jsonNode.get("message").asText();
-                }
+                message = extractErrorMessage(jsonNode, message);
             } catch (Exception ignored) {
                 message = body;
             }
@@ -100,5 +108,17 @@ public final class ApiClient {
             return new ApiClientException(status, message);
         }
         return new ApiClientException(status, message);
+    }
+
+    private String extractErrorMessage(JsonNode jsonNode, String fallback) {
+        for (String field : new String[]{"message", "error", "detail", "title"}) {
+            if (jsonNode.hasNonNull(field) && !jsonNode.get(field).asText().isBlank()) {
+                return jsonNode.get(field).asText();
+            }
+        }
+        if (jsonNode.hasNonNull("status")) {
+            return "Request failed with status " + jsonNode.get("status").asText() + ".";
+        }
+        return fallback;
     }
 }

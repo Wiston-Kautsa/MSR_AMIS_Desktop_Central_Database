@@ -3,17 +3,24 @@
 <?import java.net.URL?>
 <?import javafx.geometry.Insets?>
 <?import javafx.scene.control.Button?>
+<?import javafx.scene.control.CheckBox?>
 <?import javafx.scene.control.Label?>
+<?import javafx.scene.control.ProgressBar?>
+<?import javafx.scene.control.Tab?>
+<?import javafx.scene.control.TabPane?>
 <?import javafx.scene.control.TableColumn?>
 <?import javafx.scene.control.TableView?>
+<?import javafx.scene.control.TextArea?>
 <?import javafx.scene.control.TitledPane?>
 <?import javafx.scene.layout.AnchorPane?>
-<?import javafx.scene.layout.ColumnConstraints?>
+<?import javafx.scene.layout.FlowPane?>
 <?import javafx.scene.layout.GridPane?>
 <?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.Priority?>
+<?import javafx.scene.layout.Region?>
 <?import javafx.scene.layout.VBox?>
 
-<AnchorPane prefHeight="760.0" prefWidth="1200.0"
+<AnchorPane prefHeight="820.0" prefWidth="1320.0"
             xmlns="http://javafx.com/javafx/17"
             xmlns:fx="http://javafx.com/fxml/1"
             fx:controller="com.mycompany.msr.amis.SyncCenterController">
@@ -23,132 +30,424 @@
     </stylesheets>
 
     <children>
-        <VBox spacing="18.0"
-              AnchorPane.topAnchor="15.0"
-              AnchorPane.bottomAnchor="15.0"
-              AnchorPane.leftAnchor="15.0"
-              AnchorPane.rightAnchor="15.0">
+        <VBox spacing="12.0"
+              styleClass="sync-root"
+              AnchorPane.topAnchor="0.0"
+              AnchorPane.bottomAnchor="0.0"
+              AnchorPane.leftAnchor="0.0"
+              AnchorPane.rightAnchor="0.0">
 
             <padding>
-                <Insets top="10.0" right="10.0" bottom="10.0" left="10.0"/>
+                <Insets top="16.0" right="16.0" bottom="16.0" left="16.0"/>
             </padding>
 
-            <HBox alignment="CENTER_LEFT" spacing="14.0" styleClass="page-header">
+            <HBox alignment="CENTER_LEFT" spacing="16.0" styleClass="sync-header">
                 <children>
-                    <VBox spacing="4.0">
+                    <VBox spacing="3.0" HBox.hgrow="ALWAYS">
                         <children>
                             <Label text="Sync Center" styleClass="page-title"/>
-                            <Label text="Track offline changes, replay pending actions, and review sync audit outcomes"
-                                   styleClass="page-subtitle"/>
+                            <Label text="Central Server synchronization, queue governance, and conflict monitoring" styleClass="page-subtitle" wrapText="true"/>
                         </children>
                     </VBox>
-                    <Button text="Refresh"
-                            onAction="#handleRefresh"
-                            styleClass="secondary-button"/>
-                    <Button fx:id="btnProcessPending"
-                            text="Process Pending"
-                            onAction="#handleProcessPending"
-                            styleClass="action-button"/>
                 </children>
             </HBox>
 
-            <TitledPane text="Sync Summary" expanded="true" animated="false" styleClass="section-pane">
+            <TitledPane fx:id="paneSyncActions" text="Sync Actions" expanded="true" collapsible="true" styleClass="section-pane sync-actions-pane">
                 <content>
-                    <GridPane hgap="15.0" vgap="15.0">
-                        <columnConstraints>
-                            <ColumnConstraints percentWidth="20.0"/>
-                            <ColumnConstraints percentWidth="20.0"/>
-                            <ColumnConstraints percentWidth="20.0"/>
-                            <ColumnConstraints percentWidth="20.0"/>
-                            <ColumnConstraints percentWidth="20.0"/>
-                        </columnConstraints>
+                    <FlowPane hgap="8.0" vgap="8.0" styleClass="sync-actions">
                         <children>
-                            <VBox GridPane.columnIndex="0" spacing="8.0" styleClass="summary-card">
-                                <padding><Insets top="15" right="15" bottom="15" left="15"/></padding>
-                                <children>
-                                    <Label text="Pending" styleClass="card-title"/>
-                                    <Label fx:id="lblPendingCount" text="0" styleClass="card-value"/>
-                                </children>
-                            </VBox>
-                            <VBox GridPane.columnIndex="1" spacing="8.0" styleClass="summary-card">
-                                <padding><Insets top="15" right="15" bottom="15" left="15"/></padding>
-                                <children>
-                                    <Label text="Applied" styleClass="card-title"/>
-                                    <Label fx:id="lblAppliedCount" text="0" styleClass="card-value"/>
-                                </children>
-                            </VBox>
-                            <VBox GridPane.columnIndex="2" spacing="8.0" styleClass="summary-card">
-                                <padding><Insets top="15" right="15" bottom="15" left="15"/></padding>
-                                <children>
-                                    <Label text="Rejected" styleClass="card-title"/>
-                                    <Label fx:id="lblRejectedCount" text="0" styleClass="card-value"/>
-                                </children>
-                            </VBox>
-                            <VBox GridPane.columnIndex="3" spacing="8.0" styleClass="summary-card">
-                                <padding><Insets top="15" right="15" bottom="15" left="15"/></padding>
-                                <children>
-                                    <Label text="Failed" styleClass="card-title"/>
-                                    <Label fx:id="lblFailedCount" text="0" styleClass="card-value"/>
-                                </children>
-                            </VBox>
-                            <VBox GridPane.columnIndex="4" spacing="8.0" styleClass="summary-card">
-                                <padding><Insets top="15" right="15" bottom="15" left="15"/></padding>
-                                <children>
-                                    <Label text="Central Link" styleClass="card-title"/>
-                                    <Label fx:id="lblSyncMode" text="OFFLINE ONLY" styleClass="card-value"/>
-                                </children>
-                            </VBox>
+                            <Button text="Refresh" onAction="#handleRefresh" styleClass="secondary-button"/>
+                            <Button fx:id="btnProcessPending" text="Push Now" onAction="#handleProcessPending" styleClass="action-button"/>
+                            <Button fx:id="btnPullNow" text="Pull Latest" onAction="#handlePullNow" styleClass="secondary-button"/>
+                            <Button fx:id="btnRetryRejected" text="Retry Failed" onAction="#handleRetryRejected" styleClass="secondary-button"/>
+                            <Button text="Dry Run" onAction="#handleDryRun" styleClass="secondary-button"/>
+                            <Button fx:id="btnPauseSync" text="Pause Sync" onAction="#handlePauseSync" styleClass="secondary-button"/>
+                            <Button fx:id="btnResumeSync" text="Resume Sync" onAction="#handleResumeSync" styleClass="secondary-button"/>
                         </children>
-                    </GridPane>
+                        <padding>
+                            <Insets top="10.0" right="12.0" bottom="12.0" left="12.0"/>
+                        </padding>
+                    </FlowPane>
                 </content>
             </TitledPane>
 
-            <HBox spacing="15.0" VBox.vgrow="ALWAYS">
-                <children>
-                    <TitledPane text="Queued Actions" expanded="true" animated="false" styleClass="section-pane" HBox.hgrow="ALWAYS">
-                        <content>
-                            <VBox spacing="10.0" styleClass="content-card">
-                                <padding><Insets top="16" right="16" bottom="16" left="16"/></padding>
+            <TitledPane fx:id="paneSyncOverview" text="Sync Overview" expanded="true" collapsible="true" styleClass="section-pane">
+                <content>
+                    <VBox spacing="10.0" styleClass="sync-section-content">
+                        <children>
+                            <HBox spacing="10.0" styleClass="sync-overview-strip">
                                 <children>
-                                    <TableView fx:id="tblQueue" VBox.vgrow="ALWAYS">
+                                    <VBox spacing="5.0" styleClass="sync-link-card" HBox.hgrow="ALWAYS">
+                                        <children>
+                                            <Label text="Central API" styleClass="sync-card-title"/>
+                                            <Label fx:id="lblApiConnectivity" text="Offline" styleClass="sync-link-value"/>
+                                        </children>
+                                    </VBox>
+                                    <VBox spacing="5.0" styleClass="sync-metric-card" HBox.hgrow="ALWAYS">
+                                        <children>
+                                            <Label text="PostgreSQL Backend" styleClass="sync-card-title"/>
+                                            <Label fx:id="lblPostgresStatus" text="Unknown" styleClass="sync-metric-value sync-small-value"/>
+                                        </children>
+                                    </VBox>
+                                    <VBox spacing="5.0" styleClass="sync-metric-card" HBox.hgrow="ALWAYS">
+                                        <children>
+                                            <Label text="Queue Service" styleClass="sync-card-title"/>
+                                            <Label fx:id="lblQueueService" text="Running" styleClass="sync-metric-value sync-small-value"/>
+                                        </children>
+                                    </VBox>
+                                    <VBox spacing="5.0" styleClass="sync-metric-card" HBox.hgrow="ALWAYS">
+                                        <children>
+                                            <Label text="Last Sync" styleClass="sync-card-title"/>
+                                            <Label fx:id="lblLastSuccessfulSync" text="Never" styleClass="sync-metric-value sync-small-value"/>
+                                        </children>
+                                    </VBox>
+                                    <VBox spacing="5.0" styleClass="sync-metric-card" HBox.hgrow="ALWAYS">
+                                        <children>
+                                            <Label text="Pending Changes" styleClass="sync-card-title"/>
+                                            <Label fx:id="lblPendingCount" text="0" styleClass="sync-metric-value"/>
+                                        </children>
+                                    </VBox>
+                                    <VBox spacing="5.0" styleClass="sync-metric-card" HBox.hgrow="ALWAYS">
+                                        <children>
+                                            <Label text="Failed Items" styleClass="sync-card-title"/>
+                                            <Label fx:id="lblFailedCount" text="0" styleClass="sync-metric-value"/>
+                                        </children>
+                                    </VBox>
+                                </children>
+                            </HBox>
+
+                            <GridPane hgap="10.0" vgap="10.0" styleClass="sync-kpi-grid">
+                                <children>
+                                    <VBox spacing="4.0" styleClass="sync-mini-card" GridPane.columnIndex="0" GridPane.rowIndex="0">
+                                        <children>
+                                            <Label text="Total Queued" styleClass="sync-card-title"/>
+                                            <Label fx:id="lblTotalQueued" text="0" styleClass="sync-mini-value"/>
+                                        </children>
+                                    </VBox>
+                                    <VBox spacing="4.0" styleClass="sync-mini-card" GridPane.columnIndex="1" GridPane.rowIndex="0">
+                                        <children>
+                                            <Label text="Applied" styleClass="sync-card-title"/>
+                                            <Label fx:id="lblAppliedCount" text="0" styleClass="sync-mini-value"/>
+                                        </children>
+                                    </VBox>
+                                    <VBox spacing="4.0" styleClass="sync-mini-card" GridPane.columnIndex="2" GridPane.rowIndex="0">
+                                        <children>
+                                            <Label text="Rejected" styleClass="sync-card-title"/>
+                                            <Label fx:id="lblRejectedCount" text="0" styleClass="sync-mini-value"/>
+                                        </children>
+                                    </VBox>
+                                    <VBox spacing="4.0" styleClass="sync-mini-card" GridPane.columnIndex="3" GridPane.rowIndex="0">
+                                        <children>
+                                            <Label text="Conflicts" styleClass="sync-card-title"/>
+                                            <Label fx:id="lblConflictCount" text="0" styleClass="sync-mini-value"/>
+                                        </children>
+                                    </VBox>
+                                    <VBox spacing="4.0" styleClass="sync-mini-card" GridPane.columnIndex="4" GridPane.rowIndex="0">
+                                        <children>
+                                            <Label text="Pushed Session" styleClass="sync-card-title"/>
+                                            <Label fx:id="lblPushedThisSession" text="0" styleClass="sync-mini-value"/>
+                                        </children>
+                                    </VBox>
+                                    <VBox spacing="4.0" styleClass="sync-mini-card" GridPane.columnIndex="5" GridPane.rowIndex="0">
+                                        <children>
+                                            <Label text="Pulled Session" styleClass="sync-card-title"/>
+                                            <Label fx:id="lblPulledThisSession" text="0" styleClass="sync-mini-value"/>
+                                        </children>
+                                    </VBox>
+                                    <VBox spacing="4.0" styleClass="sync-mini-card" GridPane.columnIndex="6" GridPane.rowIndex="0">
+                                        <children>
+                                            <Label text="Retry Count" styleClass="sync-card-title"/>
+                                            <Label fx:id="lblRetryCount" text="0" styleClass="sync-mini-value"/>
+                                        </children>
+                                    </VBox>
+                                    <VBox spacing="4.0" styleClass="sync-mini-card" GridPane.columnIndex="7" GridPane.rowIndex="0">
+                                        <children>
+                                            <Label text="Sync Lock" styleClass="sync-card-title"/>
+                                            <Label fx:id="lblSyncLock" text="Inactive" styleClass="sync-mini-value sync-text-value"/>
+                                        </children>
+                                    </VBox>
+                                </children>
+                            </GridPane>
+
+                            <HBox alignment="CENTER_LEFT" spacing="12.0" styleClass="sync-control-strip">
+                                <children>
+                                    <Label text="Entity Scope" styleClass="sync-card-title"/>
+                                    <CheckBox fx:id="chkEquipment" text="Equipment" selected="true"/>
+                                    <CheckBox fx:id="chkAssignments" text="Assignments" selected="true"/>
+                                    <CheckBox fx:id="chkReturns" text="Returns" selected="true"/>
+                                    <CheckBox fx:id="chkUsers" text="Users" selected="false"/>
+                                    <CheckBox fx:id="chkAuditLogs" text="Audit Logs" selected="false"/>
+                                    <Region HBox.hgrow="ALWAYS"/>
+                                    <Label text="Progress" styleClass="sync-card-title"/>
+                                    <ProgressBar fx:id="progressSync" prefWidth="180.0" progress="0.0"/>
+                                    <Label fx:id="lblProgressText" text="0 / 0 records"/>
+                                </children>
+                            </HBox>
+                        </children>
+                    </VBox>
+                </content>
+            </TitledPane>
+
+            <TitledPane fx:id="paneQueueWorkbench" text="Queue and Conflict Workbench" expanded="true" collapsible="true" styleClass="section-pane" VBox.vgrow="ALWAYS">
+                <content>
+                    <VBox spacing="12.0" styleClass="sync-section-content" VBox.vgrow="ALWAYS">
+                        <children>
+                            <VBox spacing="10.0" styleClass="sync-table-panel" VBox.vgrow="ALWAYS">
+                                <padding>
+                                    <Insets top="12.0" right="12.0" bottom="12.0" left="12.0"/>
+                                </padding>
+                                <children>
+                                    <HBox alignment="CENTER_LEFT" spacing="8.0">
+                                        <children>
+                                            <Label text="Queued Actions" styleClass="dashboard-panel-title"/>
+                                            <Region HBox.hgrow="ALWAYS"/>
+                                            <Button text="Review Changes" onAction="#handleReviewChanges" styleClass="secondary-button"/>
+                                        </children>
+                                    </HBox>
+                                    <TableView fx:id="tblQueue" prefHeight="310.0" VBox.vgrow="ALWAYS">
                                         <columns>
                                             <TableColumn fx:id="colQueueNo" text="No." prefWidth="55.0"/>
                                             <TableColumn fx:id="colQueueId" text="ID" prefWidth="70.0"/>
                                             <TableColumn fx:id="colQueueEntity" text="Entity" prefWidth="120.0"/>
-                                            <TableColumn fx:id="colQueueOperation" text="Operation" prefWidth="130.0"/>
+                                            <TableColumn fx:id="colQueueOperation" text="Operation" prefWidth="125.0"/>
                                             <TableColumn fx:id="colQueueStatus" text="Status" prefWidth="110.0"/>
-                                            <TableColumn fx:id="colQueueActor" text="Actor" prefWidth="170.0"/>
-                                            <TableColumn fx:id="colQueueCreatedAt" text="Captured At" prefWidth="170.0"/>
-                                            <TableColumn fx:id="colQueueError" text="Message" prefWidth="300.0"/>
+                                            <TableColumn fx:id="colQueueRecord" text="Record Identifier" prefWidth="150.0"/>
+                                            <TableColumn fx:id="colQueueActor" text="User" prefWidth="190.0"/>
+                                            <TableColumn fx:id="colQueueCreatedAt" text="Captured At" prefWidth="160.0"/>
+                                            <TableColumn fx:id="colQueueError" text="Message" prefWidth="330.0"/>
                                         </columns>
                                     </TableView>
                                 </children>
                             </VBox>
-                        </content>
-                    </TitledPane>
 
-                    <TitledPane text="Sync Audit" expanded="true" animated="false" styleClass="section-pane" HBox.hgrow="ALWAYS">
-                        <content>
-                            <VBox spacing="10.0" styleClass="content-card">
-                                <padding><Insets top="16" right="16" bottom="16" left="16"/></padding>
+                            <VBox spacing="10.0" styleClass="sync-table-panel">
+                                <padding>
+                                    <Insets top="12.0" right="12.0" bottom="12.0" left="12.0"/>
+                                </padding>
                                 <children>
-                                    <TableView fx:id="tblAudit" VBox.vgrow="ALWAYS">
+                                    <HBox alignment="CENTER_LEFT" spacing="8.0">
+                                        <children>
+                                            <Label text="Conflicts / Alerts under Queued Actions" styleClass="dashboard-panel-title"/>
+                                            <Region HBox.hgrow="ALWAYS"/>
+                                            <Button text="View Differences" onAction="#handleViewDifferences" styleClass="secondary-button"/>
+                                        </children>
+                                    </HBox>
+                                    <TableView fx:id="tblConflicts" prefHeight="220.0">
                                         <columns>
-                                            <TableColumn fx:id="colAuditNo" text="No." prefWidth="55.0"/>
-                                            <TableColumn fx:id="colAuditId" text="ID" prefWidth="60.0"/>
-                                            <TableColumn fx:id="colAuditQueueId" text="Queue" prefWidth="80.0"/>
-                                            <TableColumn fx:id="colAuditAction" text="Action" prefWidth="150.0"/>
-                                            <TableColumn fx:id="colAuditOutcome" text="Outcome" prefWidth="120.0"/>
-                                            <TableColumn fx:id="colAuditActor" text="Actor" prefWidth="170.0"/>
-                                            <TableColumn fx:id="colAuditCreatedAt" text="At" prefWidth="170.0"/>
+                                            <TableColumn fx:id="colConflictId" text="Queue ID" prefWidth="80.0"/>
+                                            <TableColumn fx:id="colConflictEntity" text="Entity Type" prefWidth="115.0"/>
+                                            <TableColumn fx:id="colConflictRecord" text="Record Identifier" prefWidth="150.0"/>
+                                            <TableColumn fx:id="colConflictLocalAt" text="Local Version Timestamp" prefWidth="165.0"/>
+                                            <TableColumn fx:id="colConflictCentralAt" text="Central Version Timestamp" prefWidth="175.0"/>
+                                            <TableColumn fx:id="colConflictType" text="Conflict Type" prefWidth="170.0"/>
+                                            <TableColumn fx:id="colConflictAction" text="Resolution Action" prefWidth="145.0"/>
+                                        </columns>
+                                    </TableView>
+                                    <FlowPane hgap="8.0" vgap="8.0" styleClass="sync-actions">
+                                        <children>
+                                            <Button text="Keep Local" onAction="#handleKeepLocal" styleClass="secondary-button"/>
+                                            <Button text="Keep Central" onAction="#handleKeepCentral" styleClass="secondary-button"/>
+                                            <Button text="Merge" onAction="#handleMerge" styleClass="secondary-button"/>
+                                        </children>
+                                    </FlowPane>
+                                </children>
+                            </VBox>
+                        </children>
+                    </VBox>
+                </content>
+            </TitledPane>
+
+            <TitledPane fx:id="paneLogsSettings" text="Logs, Settings, and Recovery" expanded="false" collapsible="true" styleClass="section-pane">
+                <content>
+                    <TabPane tabClosingPolicy="UNAVAILABLE" styleClass="sync-tabs" prefHeight="285.0">
+                        <tabs>
+                    <Tab text="Detailed Logs">
+                        <content>
+                            <VBox spacing="8.0" styleClass="sync-table-panel">
+                                <padding>
+                                    <Insets top="12.0" right="12.0" bottom="12.0" left="12.0"/>
+                                </padding>
+                                <children>
+                                    <FlowPane hgap="8.0" vgap="8.0" styleClass="sync-actions">
+                                        <children>
+                                            <Button text="Export CSV" onAction="#handleExportLogsCsv" styleClass="secondary-button"/>
+                                            <Button text="Export PDF" onAction="#handleExportLogsPdf" styleClass="secondary-button"/>
+                                            <Button fx:id="btnClearCompletedLogs" text="Clear Completed Logs" onAction="#handleClearCompletedLogs" styleClass="secondary-button"/>
+                                        </children>
+                                    </FlowPane>
+                                    <TableView fx:id="tblLogs" VBox.vgrow="ALWAYS">
+                                        <columns>
+                                            <TableColumn fx:id="colLogTimestamp" text="Timestamp" prefWidth="165.0"/>
+                                            <TableColumn fx:id="colLogUser" text="User" prefWidth="190.0"/>
+                                            <TableColumn fx:id="colLogMachine" text="Machine Name" prefWidth="150.0"/>
+                                            <TableColumn fx:id="colLogEntity" text="Entity" prefWidth="125.0"/>
+                                            <TableColumn fx:id="colLogOperation" text="Operation" prefWidth="130.0"/>
+                                            <TableColumn fx:id="colLogRecordsCount" text="Records Count" prefWidth="120.0"/>
+                                            <TableColumn fx:id="colLogDuration" text="Duration" prefWidth="110.0"/>
+                                            <TableColumn fx:id="colLogResult" text="Result" prefWidth="120.0"/>
+                                            <TableColumn fx:id="colLogError" text="Error Message" prefWidth="330.0"/>
                                         </columns>
                                     </TableView>
                                 </children>
                             </VBox>
                         </content>
-                    </TitledPane>
+                    </Tab>
+                    <Tab text="Errors">
+                        <content>
+                            <VBox spacing="8.0" styleClass="sync-table-panel">
+                                <padding>
+                                    <Insets top="12.0" right="12.0" bottom="12.0" left="12.0"/>
+                                </padding>
+                                <children>
+                                    <TextArea fx:id="txtErrorDetails" editable="false" wrapText="true" prefRowCount="7"/>
+                                    <FlowPane hgap="8.0" vgap="8.0" styleClass="sync-actions">
+                                        <children>
+                                            <Button text="Copy Error" onAction="#handleCopyError" styleClass="secondary-button"/>
+                                            <Button text="Retry" onAction="#handleRetryRejected" styleClass="secondary-button"/>
+                                            <Button text="Open Details" onAction="#handleOpenDetails" styleClass="secondary-button"/>
+                                        </children>
+                                    </FlowPane>
+                                </children>
+                            </VBox>
+                        </content>
+                    </Tab>
+                    <Tab text="Validation Issues">
+                        <content>
+                            <VBox spacing="8.0" styleClass="sync-table-panel">
+                                <padding>
+                                    <Insets top="12.0" right="12.0" bottom="12.0" left="12.0"/>
+                                </padding>
+                                <children>
+                                    <FlowPane hgap="8.0" vgap="8.0" styleClass="sync-actions">
+                                        <children>
+                                            <Button text="Run Validation" onAction="#handleRunValidation" styleClass="secondary-button"/>
+                                            <Button text="View Issues" onAction="#handleViewIssues" styleClass="secondary-button"/>
+                                            <Button text="Fix Before Sync" onAction="#handleFixBeforeSync" styleClass="secondary-button"/>
+                                            <Button fx:id="btnForceReleaseLock" text="Force Release Lock" onAction="#handleForceReleaseLock" styleClass="secondary-button"/>
+                                        </children>
+                                    </FlowPane>
+                                    <TableView fx:id="tblValidationIssues" VBox.vgrow="ALWAYS">
+                                        <columns>
+                                            <TableColumn fx:id="colIssueSeverity" text="Severity" prefWidth="110.0"/>
+                                            <TableColumn fx:id="colIssueCategory" text="Category" prefWidth="170.0"/>
+                                            <TableColumn fx:id="colIssueEntity" text="Entity" prefWidth="130.0"/>
+                                            <TableColumn fx:id="colIssueRecord" text="Record" prefWidth="150.0"/>
+                                            <TableColumn fx:id="colIssueMessage" text="Message" prefWidth="540.0"/>
+                                        </columns>
+                                    </TableView>
+                                </children>
+                            </VBox>
+                        </content>
+                    </Tab>
+                    <Tab text="Sync Settings">
+                        <content>
+                            <GridPane hgap="18.0" vgap="10.0" styleClass="sync-settings-panel">
+                                <padding>
+                                    <Insets top="14.0" right="14.0" bottom="14.0" left="14.0"/>
+                                </padding>
+                                <children>
+                                    <Label text="API Base URL" styleClass="sync-card-title" GridPane.columnIndex="0" GridPane.rowIndex="0"/>
+                                    <Label fx:id="lblApiBaseUrl" text="-" GridPane.columnIndex="1" GridPane.rowIndex="0"/>
+                                    <Label text="Current Data Mode" styleClass="sync-card-title" GridPane.columnIndex="0" GridPane.rowIndex="1"/>
+                                    <Label fx:id="lblDataMode" text="-" GridPane.columnIndex="1" GridPane.rowIndex="1"/>
+                                    <Label text="Poll Interval" styleClass="sync-card-title" GridPane.columnIndex="0" GridPane.rowIndex="2"/>
+                                    <Label fx:id="lblPollInterval" text="30 seconds" GridPane.columnIndex="1" GridPane.rowIndex="2"/>
+                                    <Label text="Batch Size" styleClass="sync-card-title" GridPane.columnIndex="0" GridPane.rowIndex="3"/>
+                                    <Label fx:id="lblBatchSize" text="All pending records" GridPane.columnIndex="1" GridPane.rowIndex="3"/>
+                                    <Label text="Max Retries" styleClass="sync-card-title" GridPane.columnIndex="0" GridPane.rowIndex="4"/>
+                                    <Label fx:id="lblMaxRetries" text="Manual retry" GridPane.columnIndex="1" GridPane.rowIndex="4"/>
+                                    <Label text="Timeout" styleClass="sync-card-title" GridPane.columnIndex="0" GridPane.rowIndex="5"/>
+                                    <Label fx:id="lblTimeout" text="4 seconds health probe" GridPane.columnIndex="1" GridPane.rowIndex="5"/>
+                                    <Label text="Sync Strategy" styleClass="sync-card-title" GridPane.columnIndex="0" GridPane.rowIndex="6"/>
+                                    <Label fx:id="lblSyncStrategy" text="Desktop -> API -> Central Server" GridPane.columnIndex="1" GridPane.rowIndex="6"/>
+                                    <Label text="Token Status" styleClass="sync-card-title" GridPane.columnIndex="0" GridPane.rowIndex="7"/>
+                                    <Label fx:id="lblTokenStatus" text="-" GridPane.columnIndex="1" GridPane.rowIndex="7"/>
+                                    <Label text="Auto Sync" styleClass="sync-card-title" GridPane.columnIndex="0" GridPane.rowIndex="8"/>
+                                    <Label fx:id="lblAutoSync" text="-" GridPane.columnIndex="1" GridPane.rowIndex="8"/>
+                                    <Label text="Policy Engine" styleClass="sync-card-title" GridPane.columnIndex="0" GridPane.rowIndex="9"/>
+                                    <Label fx:id="lblPolicyEngine" text="Assignments approved, returns verified, users active" GridPane.columnIndex="1" GridPane.rowIndex="9"/>
+                                    <Label text="Dependency Order" styleClass="sync-card-title" GridPane.columnIndex="0" GridPane.rowIndex="10"/>
+                                    <Label text="Users -> Departments -> Equipment -> Assignments -> Distribution -> Returns" GridPane.columnIndex="1" GridPane.rowIndex="10"/>
+                                    <Label text="Idempotency / Locking" styleClass="sync-card-title" GridPane.columnIndex="0" GridPane.rowIndex="11"/>
+                                    <Label fx:id="lblEnterpriseControls" text="Local lock active; API idempotency keys pending backend contract" GridPane.columnIndex="1" GridPane.rowIndex="11"/>
+                                    <Label text="Transport" styleClass="sync-card-title" GridPane.columnIndex="0" GridPane.rowIndex="12"/>
+                                    <Label fx:id="lblTransportStatus" text="-" GridPane.columnIndex="1" GridPane.rowIndex="12"/>
+                                </children>
+                            </GridPane>
+                        </content>
+                    </Tab>
+                    <Tab text="Device / Session">
+                        <content>
+                            <GridPane hgap="18.0" vgap="10.0" styleClass="sync-settings-panel">
+                                <padding>
+                                    <Insets top="14.0" right="14.0" bottom="14.0" left="14.0"/>
+                                </padding>
+                                <children>
+                                    <Label text="Device Name" styleClass="sync-card-title" GridPane.columnIndex="0" GridPane.rowIndex="0"/>
+                                    <Label fx:id="lblDeviceName" text="-" GridPane.columnIndex="1" GridPane.rowIndex="0"/>
+                                    <Label text="Device ID" styleClass="sync-card-title" GridPane.columnIndex="0" GridPane.rowIndex="1"/>
+                                    <Label fx:id="lblDeviceId" text="-" GridPane.columnIndex="1" GridPane.rowIndex="1"/>
+                                    <Label text="Logged-in User" styleClass="sync-card-title" GridPane.columnIndex="0" GridPane.rowIndex="2"/>
+                                    <Label fx:id="lblCurrentUser" text="-" GridPane.columnIndex="1" GridPane.rowIndex="2"/>
+                                    <Label text="Sync Session ID" styleClass="sync-card-title" GridPane.columnIndex="0" GridPane.rowIndex="3"/>
+                                    <Label fx:id="lblSyncSessionId" text="-" GridPane.columnIndex="1" GridPane.rowIndex="3"/>
+                                    <Label text="Last Push Time" styleClass="sync-card-title" GridPane.columnIndex="0" GridPane.rowIndex="4"/>
+                                    <Label fx:id="lblLastPushTime" text="Never" GridPane.columnIndex="1" GridPane.rowIndex="4"/>
+                                    <Label text="Last Pull Time" styleClass="sync-card-title" GridPane.columnIndex="0" GridPane.rowIndex="5"/>
+                                    <Label fx:id="lblLastPullTime" text="Never" GridPane.columnIndex="1" GridPane.rowIndex="5"/>
+                                    <Label text="Last Failed Sync" styleClass="sync-card-title" GridPane.columnIndex="0" GridPane.rowIndex="6"/>
+                                    <Label fx:id="lblLastFailedSync" text="Never" GridPane.columnIndex="1" GridPane.rowIndex="6"/>
+                                    <Label text="Current Sync Owner" styleClass="sync-card-title" GridPane.columnIndex="0" GridPane.rowIndex="7"/>
+                                    <Label fx:id="lblSyncOwner" text="None" GridPane.columnIndex="1" GridPane.rowIndex="7"/>
+                                    <Label text="Offline Queue" styleClass="sync-card-title" GridPane.columnIndex="0" GridPane.rowIndex="8"/>
+                                    <Label fx:id="lblOfflineQueue" text="0 unsynced records" GridPane.columnIndex="1" GridPane.rowIndex="8"/>
+                                    <Label text="Snapshot Comparison" styleClass="sync-card-title" GridPane.columnIndex="0" GridPane.rowIndex="9"/>
+                                    <Label fx:id="lblSnapshotComparison" text="Run pull/dry-run to compare local and central counts" GridPane.columnIndex="1" GridPane.rowIndex="9"/>
+                                    <Label text="DR / Backup Verification" styleClass="sync-card-title" GridPane.columnIndex="0" GridPane.rowIndex="10"/>
+                                    <Label text="Manual server backup verification required before destructive sync" GridPane.columnIndex="1" GridPane.rowIndex="10"/>
+                                </children>
+                            </GridPane>
+                        </content>
+                    </Tab>
+                    <Tab text="Super Admin">
+                        <content>
+                            <VBox spacing="10.0" styleClass="sync-table-panel">
+                                <padding>
+                                    <Insets top="14.0" right="14.0" bottom="14.0" left="14.0"/>
+                                </padding>
+                                <children>
+                                    <Label text="Restricted actions for full sync recovery" styleClass="dashboard-panel-title"/>
+                                    <FlowPane hgap="8.0" vgap="8.0" styleClass="sync-actions">
+                                        <children>
+                                            <Button fx:id="btnForceFullResync" text="Force Full Refresh" onAction="#handleForceFullResync" styleClass="secondary-button"/>
+                                            <Button fx:id="btnClearQueue" text="Clear Queue" onAction="#handleClearQueue" styleClass="secondary-button"/>
+                                            <Button fx:id="btnResetSyncState" text="Reset Sync State" onAction="#handleResetSyncState" styleClass="secondary-button"/>
+                                        </children>
+                                    </FlowPane>
+                                </children>
+                            </VBox>
+                        </content>
+                    </Tab>
+                        </tabs>
+                    </TabPane>
+                </content>
+            </TitledPane>
+
+            <VBox fx:id="pnlInlineConfirm" spacing="8.0" visible="false" managed="false" styleClass="inline-confirm-panel">
+                <children>
+                    <Label fx:id="lblInlineConfirmTitle" text="Confirm Action" styleClass="inline-confirm-title"/>
+                    <Label fx:id="lblInlineConfirmMessage" text="Confirm this action." wrapText="true" styleClass="inline-confirm-message"/>
+                    <FlowPane hgap="8.0" vgap="8.0" styleClass="sync-actions">
+                        <children>
+                            <Button text="Continue" onAction="#handleInlineConfirmContinue" styleClass="action-button"/>
+                            <Button text="Cancel" onAction="#handleInlineConfirmCancel" styleClass="secondary-button"/>
+                        </children>
+                    </FlowPane>
                 </children>
-            </HBox>
+                <padding>
+                    <Insets top="10.0" right="12.0" bottom="12.0" left="12.0"/>
+                </padding>
+            </VBox>
 
             <HBox alignment="CENTER_LEFT" spacing="8.0" styleClass="status-bar">
                 <children>

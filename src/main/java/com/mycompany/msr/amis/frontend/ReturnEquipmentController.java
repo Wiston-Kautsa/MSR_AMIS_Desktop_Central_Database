@@ -95,6 +95,7 @@ public class ReturnEquipmentController implements Initializable {
     @FXML private TableColumn<Return, String> colAsset;
     @FXML private TableColumn<Return, String> colReturnedBy;
     @FXML private TableColumn<Return, String> colPhone;
+    @FXML private TableColumn<Return, String> colNid;
     @FXML private TableColumn<Return, String> colCondition;
     @FXML private TableColumn<Return, String> colDate;
     @FXML private VBox outstandingReasonPane;
@@ -156,6 +157,7 @@ public class ReturnEquipmentController implements Initializable {
             colAsset.setCellValueFactory(new PropertyValueFactory<>("assetCode"));
             colReturnedBy.setCellValueFactory(new PropertyValueFactory<>("returnedBy"));
             colPhone.setCellValueFactory(new PropertyValueFactory<>("phone"));
+            colNid.setCellValueFactory(new PropertyValueFactory<>("nid"));
             colCondition.setCellValueFactory(new PropertyValueFactory<>("condition"));
             colDate.setCellValueFactory(new PropertyValueFactory<>("date"));
             tableReturns.setItems(returnHistoryList);
@@ -500,6 +502,14 @@ public class ReturnEquipmentController implements Initializable {
                 Cell headerCell = headerRow.createCell(i);
                 headerCell.setCellValue(BULK_TEMPLATE_HEADERS[i]);
                 headerCell.setCellStyle(headerStyle);
+            }
+
+            Row sampleRow = sheet.createRow(BULK_DATA_START_ROW_INDEX);
+            for (int i = 0; i < BULK_TEMPLATE_SAMPLE.length; i++) {
+                sampleRow.createCell(i).setCellValue(BULK_TEMPLATE_SAMPLE[i]);
+            }
+
+            for (int i = 0; i < BULK_TEMPLATE_HEADERS.length; i++) {
                 sheet.autoSizeColumn(i);
             }
             sheet.setColumnWidth(4, 12000);

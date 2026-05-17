@@ -54,12 +54,21 @@ public final class Session {
             return false;
         }
 
-        String currentRole = currentUser.getRole();
+        String currentRole = normalizeRole(currentUser.getRole());
         for (String allowedRole : allowedRoles) {
-            if (allowedRole != null && allowedRole.equalsIgnoreCase(currentRole)) {
+            if (normalizeRole(allowedRole).equalsIgnoreCase(currentRole)) {
                 return true;
             }
         }
         return false;
+    }
+
+    private static String normalizeRole(String role) {
+        return role == null
+                ? ""
+                : role.trim()
+                        .replace('-', '_')
+                        .replace(' ', '_')
+                        .toUpperCase();
     }
 }

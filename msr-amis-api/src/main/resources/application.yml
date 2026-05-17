@@ -17,6 +17,10 @@ spring:
   flyway:
     enabled: true
     locations: classpath:db/migration
+    placeholders:
+      primarySuperAdminEmail: ${MSR_AMIS_PRIMARY_SUPER_ADMIN_EMAIL:}
+      setupAdminEmail: ${MSR_AMIS_SETUP_ADMIN_EMAIL:}
+      setupUserEmail: ${MSR_AMIS_SETUP_USER_EMAIL:}
 
 server:
   port: ${MSR_AMIS_API_PORT:8090}

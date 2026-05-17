@@ -1,8 +1,7 @@
 package com.mycompany.msr.amis;
 
-import java.io.File;
-import java.io.FileWriter;
 import java.net.URL;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.ResourceBundle;
 import javafx.collections.FXCollections;
@@ -13,6 +12,7 @@ import javafx.fxml.Initializable;
 import javafx.scene.control.Alert;
 import javafx.scene.control.ComboBox;
 import javafx.scene.control.ContextMenu;
+import javafx.scene.control.DatePicker;
 import javafx.scene.control.MenuItem;
 import javafx.scene.control.TableColumn;
 import javafx.scene.control.TableView;
@@ -24,6 +24,8 @@ public class ReturnReportController implements Initializable {
 
     @FXML private ComboBox<String> cmbPerson;
     @FXML private ComboBox<String> cmbCondition;
+    @FXML private DatePicker dpFrom;
+    @FXML private DatePicker dpTo;
     @FXML private TableView<ReturnRecord> tableReturns;
     @FXML private TableColumn<ReturnRecord, Void> colNo;
     @FXML private TableColumn<ReturnRecord, String> colAssetCode;
@@ -100,6 +102,9 @@ public class ReturnReportController implements Initializable {
             if (!matchesExact(record.getReturnCondition(), condition)) {
                 continue;
             }
+            if (!ReportFilterHelper.matchesDateRange(record.getReturnDate(), dpFrom, dpTo)) {
+                continue;
+            }
             data.add(record);
         }
 
@@ -109,6 +114,8 @@ public class ReturnReportController implements Initializable {
     private void handleRefresh() {
         cmbPerson.setValue(null);
         cmbCondition.setValue(null);
+        dpFrom.setValue(null);
+        dpTo.setValue(null);
         loadData();
         loadPeople();
         showAlert("Refresh", "Return report refreshed successfully.");
@@ -121,55 +128,31 @@ public class ReturnReportController implements Initializable {
             return;
         }
 
-        try {
-            File file = FileLocationHelper.fileInDownloads("return_report.csv");
-            OperationFeedbackHelper.showInfo(
-                    "Export Starting",
-                    "Preparing return report export.\n\nRows to export: " + data.size()
-            );
-
-            try (FileWriter writer = new FileWriter(file)) {
-                writer.append("Asset Code,IMEI/Serial Number,Equipment Name,Category,Source,Responsible Officer,Date Given Out,Reason,Returned By,Phone,NID,Return Condition,Remarks,Date Returned\n");
-
-                for (ReturnRecord record : data) {
-                    writer.append(csvSafe(record.getAssetCode())).append(",")
-                            .append(csvSafe(record.getSerialNumber())).append(",")
-                            .append(csvSafe(record.getEquipmentName())).append(",")
-                            .append(csvSafe(record.getCategory())).append(",")
-                            .append(csvSafe(record.getSource())).append(",")
-                            .append(csvSafe(record.getResponsibleOfficer())).append(",")
-                            .append(csvSafe(record.getDateTaken())).append(",")
-                            .append(csvSafe(record.getAssignmentReason())).append(",")
-                            .append(csvSafe(record.getReturnedBy())).append(",")
-                            .append(csvSafe(record.getPhone())).append(",")
-                            .append(csvSafe(record.getNid())).append(",")
-                            .append(csvSafe(record.getReturnCondition())).append(",")
-                            .append(csvSafe(record.getRemarks())).append(",")
-                            .append(csvSafe(record.getReturnDate())).append("\n");
-                }
-            }
-
-            OperationFeedbackHelper.showInfo(
-                    "Export Complete",
-                    "Return report exported successfully to:\n" + file.getAbsolutePath()
-            );
-        } catch (Exception e) {
-            e.printStackTrace();
-            OperationFeedbackHelper.showError(
-                    "Export Failed",
-                    "Return report export failed:\n" + e.getMessage()
-            );
-        }
+        ReportExportHelper.exportCsv("return_report", "Return Report", new ArrayList<>(data), columns());
     }
 
-    private String csvSafe(String value) {
-        if (value == null) {
-            return "";
-        }
-        if (value.contains(",") || value.contains("\"") || value.contains("\n")) {
-            return "\"" + value.replace("\"", "\"\"") + "\"";
-        }
-        return value;
+    @FXML
+    private void handleExportPdf(ActionEvent event) {
+        ReportExportHelper.exportPdf("return_report", "Return Report", new ArrayList<>(data), columns());
+    }
+
+    private List<ReportExportHelper.Column<ReturnRecord>> columns() {
+        return List.of(
+                new ReportExportHelper.Column<>("Asset Code", ReturnRecord::getAssetCode),
+                new ReportExportHelper.Column<>("IMEI/Serial Number", ReturnRecord::getSerialNumber),
+                new ReportExportHelper.Column<>("Equipment Name", ReturnRecord::getEquipmentName),
+                new ReportExportHelper.Column<>("Category", ReturnRecord::getCategory),
+                new ReportExportHelper.Column<>("Source", ReturnRecord::getSource),
+                new ReportExportHelper.Column<>("Responsible Officer", ReturnRecord::getResponsibleOfficer),
+                new ReportExportHelper.Column<>("Date Given Out", ReturnRecord::getDateTaken),
+                new ReportExportHelper.Column<>("Reason", ReturnRecord::getAssignmentReason),
+                new ReportExportHelper.Column<>("Returned By", ReturnRecord::getReturnedBy),
+                new ReportExportHelper.Column<>("Phone", ReturnRecord::getPhone),
+                new ReportExportHelper.Column<>("NID", ReturnRecord::getNid),
+                new ReportExportHelper.Column<>("Return Condition", ReturnRecord::getReturnCondition),
+                new ReportExportHelper.Column<>("Remarks", ReturnRecord::getRemarks),
+                new ReportExportHelper.Column<>("Date Returned", ReturnRecord::getReturnDate)
+        );
     }
 
     private void setupContextMenu() {

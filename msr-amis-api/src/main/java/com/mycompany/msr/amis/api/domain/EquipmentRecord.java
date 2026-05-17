@@ -38,6 +38,16 @@ public class EquipmentRecord {
 
     private String source;
 
+    @Column(name = "purchase_cost")
+    private String purchaseCost;
+
+    private String location;
+
+    @Column(name = "warranty_expiry")
+    private LocalDate warrantyExpiry;
+
+    private String supplier;
+
     @Column(name = "entry_date", nullable = false)
     private LocalDate entryDate;
 
@@ -116,6 +126,38 @@ public class EquipmentRecord {
 
     public void setSource(String source) {
         this.source = source;
+    }
+
+    public String getPurchaseCost() {
+        return purchaseCost;
+    }
+
+    public void setPurchaseCost(String purchaseCost) {
+        this.purchaseCost = purchaseCost;
+    }
+
+    public String getLocation() {
+        return location;
+    }
+
+    public void setLocation(String location) {
+        this.location = location;
+    }
+
+    public LocalDate getWarrantyExpiry() {
+        return warrantyExpiry;
+    }
+
+    public void setWarrantyExpiry(LocalDate warrantyExpiry) {
+        this.warrantyExpiry = warrantyExpiry;
+    }
+
+    public String getSupplier() {
+        return supplier;
+    }
+
+    public void setSupplier(String supplier) {
+        this.supplier = supplier;
     }
 
     public LocalDate getEntryDate() {

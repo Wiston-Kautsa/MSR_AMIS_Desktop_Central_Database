@@ -9,6 +9,10 @@ public record EquipmentRequest(
         @NotBlank String serialNumber,
         String source,
         String condition,
-        LocalDate entryDate
+        LocalDate entryDate,
+        String purchaseCost,
+        String location,
+        LocalDate warrantyExpiry,
+        String supplier
 ) {
 }

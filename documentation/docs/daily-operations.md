@@ -6,20 +6,32 @@ This guide explains how staff should use MSR-AMIS during normal operation, netwo
 
 ## Normal Daily Use
 
-Recommended desktop mode:
+Safest centralized production mode:
+
+```env
+MSR_AMIS_DATA_MODE=REMOTE_API
+APP_MODE=REMOTE_API
+```
+
+In `REMOTE_API` mode, the desktop must reach the API before users can work. Use this mode when all production work must be written to PostgreSQL immediately.
+
+Offline-capable mode:
 
 ```env
 MSR_AMIS_DATA_MODE=AUTO
 APP_MODE=AUTO
 ```
 
-In `AUTO` mode:
+Use `AUTO` only when the organization allows users to continue during network/API outages and accepts the Sync Center review process.
+
+In centralized operation:
 
 - PostgreSQL is the primary database.
 - The API is the only path to PostgreSQL.
-- SQLite is kept on each desktop as a local mirror.
+- SQLite is kept on each desktop for local storage and can act as a mirror in `AUTO` mode.
 - If the API is reachable, changes are sent to PostgreSQL.
-- If the API is unreachable, changes are saved locally and queued.
+- If the API is unreachable in `AUTO`, changes are saved locally and queued.
+- If the API is unreachable in `REMOTE_API`, users must wait until connectivity is restored.
 
 ## Connection Status
 
@@ -67,15 +79,107 @@ The app is using local SQLite only. This is for development or controlled fallba
 2. If it says `OFFLINE (AUTO)`, continue working only if the work is urgent.
 3. Remember that offline changes are not yet visible to other users.
 4. When the network/API is restored, log in again while online.
-5. Open Sync Center.
+5. Open `Data & Records -> Sync Center`.
 6. Process pending changes.
 7. Confirm the status message says SQLite was refreshed from PostgreSQL.
 
 If the user cannot log in offline, they must wait for the API because their account has not yet been mirrored to SQLite on that computer.
 
+## Administrator Troubleshooting: API Not Reachable
+
+When MIS shows that the API is not reachable, check these items in order.
+
+The same checklist is also available as a standalone reference in [Troubleshooting](troubleshooting.md).
+
+### 1. Confirm the API is running on the server
+
+Run this on the API server:
+
+```powershell
+Invoke-RestMethod http://localhost:8090/actuator/health
+```
+
+Expected:
+
+```json
+{"status":"UP"}
+```
+
+If this fails, the API is not running or did not bind to port `8090`.
+
+### 2. Confirm PostgreSQL is running
+
+The API needs PostgreSQL before it can start correctly. On the server, confirm the PostgreSQL service is running.
+
+```powershell
+Get-Service *postgres*
+```
+
+The service should show `Running`.
+
+### 3. Start the API
+
+From the project root on the server:
+
+```powershell
+.\mvnw.cmd -f msr-amis-api\pom.xml spring-boot:run
+```
+
+If startup is blocked by test compilation during local development, use:
+
+```powershell
+.\mvnw.cmd -f msr-amis-api\pom.xml -Dmaven.test.skip=true spring-boot:run
+```
+
+For production, run the packaged API as a Windows service or scheduled startup task so it starts automatically after server restart.
+
+### 4. Test from a client computer
+
+From a desktop client, test the server address, not `localhost`:
+
+```powershell
+Invoke-RestMethod http://SERVER_IP_OR_NAME:8090/actuator/health
+```
+
+If the server health check works locally but fails from the client, check the network connection, server IP/name, and Windows Firewall.
+
+### 5. Check client `.env`
+
+Client computers must point to the API server:
+
+```env
+MSR_AMIS_DATA_MODE=REMOTE_API
+MSR_AMIS_API_BASE_URL=http://SERVER_IP_OR_NAME:8090
+
+APP_MODE=REMOTE_API
+API_BASE_URL=http://SERVER_IP_OR_NAME:8090
+```
+
+Use `localhost` only when the desktop app and API are running on the same computer. If a normal client uses `localhost`, it will look for an API on that client machine and show API not reachable.
+
+### 6. Check the firewall
+
+Allow inbound access to API port `8090` on the server. If the server can reach `localhost:8090` but clients cannot reach `SERVER_IP_OR_NAME:8090`, firewall or network routing is the likely cause.
+
+### 7. Use Sync Center after recovery
+
+If users worked while `OFFLINE (AUTO)`, they must open:
+
+```text
+Data & Records -> Sync Center
+```
+
+Process pending changes after the API is reachable again.
+
 ## Sync Center
 
 Sync Center is the control point for offline work.
+
+Open it from:
+
+```text
+Data & Records -> Sync Center
+```
 
 Use it when:
 
@@ -89,9 +193,32 @@ Sync behavior:
 - conflicts are rejected
 - API validation or business-rule failures are rejected
 - failures are recorded for review
+- applied queue records are removed from the active queue list after a successful push
 - SQLite is refreshed from PostgreSQL at the end
 
+Current implementation note:
+
+- equipment queue push is implemented for create, update, upsert, delete, and status changes
+- the API returns a result for each pushed equipment queue item
+- the desktop marks each local equipment queue row as applied or failed based on the API result
+- pull currently acknowledges the request and updates sync audit/status; full central snapshot payload is still pending
+- non-equipment generic push handlers are not complete yet, so assignment/distribution/return/user/department offline queue replay still requires the older desktop service path or future backend handlers
+
+Role access:
+
+| Role | Sync Center access |
+| --- | --- |
+| `SUPER_ADMIN` | Full queue, full audit, push all pending records, requeue rejected records |
+| `ADMIN` | Own queue and own audit only, push own pending records |
+| `USER` | Hidden |
+
 Rejected records should not be ignored. An administrator should read the rejection reason and decide whether to recreate the change manually.
+
+Device information:
+
+- open `Sync Center -> Logs, Settings, and Recovery -> Device / Session`
+- review `Device Name`, `Device ID`, `Logged-in User`, and `Sync Session ID`
+- audit log rows also include machine/computer information where available
 
 ## Conflict Rules
 
@@ -119,6 +246,89 @@ wkautsa@nlgfc.gov.mw
 ```
 
 The same exact email cannot belong to multiple users.
+
+## Saved Credentials
+
+The login screen can save credentials only after a successful sign-in and only after the user confirms the prompt.
+
+The login form does not automatically fill the last saved email or password when it opens. If the user starts typing an email that was saved before, matching saved emails appear as choices. The password is filled only after the user selects a saved email from the dropdown.
+
+Rules for users:
+
+- save credentials only on a private, trusted computer
+- do not save credentials on shared machines
+- use `Forget Saved` when a saved login should be removed
+- after changing or resetting a password, sign in again and choose whether to save the new credentials
+
+Current desktop storage encrypts saved login data before placing it in the local Java preferences store for the Windows user. This prevents casual plaintext inspection, but it is not as strong as a real operating-system credential vault.
+
+The most secure production approach is:
+
+- save only the email address in the app
+- store any saved password or long-lived secret in the operating-system credential vault, such as Windows Credential Manager, macOS Keychain, or Linux Secret Service
+- never store database credentials on desktop clients
+- prefer short-lived API tokens over saved passwords where possible
+
+## Departments
+
+Departments are managed from:
+
+```text
+Administration -> Departments
+```
+
+Rules:
+
+- `MSR` is the default department.
+- `MSR` cannot be renamed or deleted.
+- Admin and Super Admin users can create and rename departments.
+- A department that is still used by users or assignments cannot be deleted.
+- Renaming a department updates matching user and assignment records.
+- Offline department changes in `AUTO` mode are queued and processed through Sync Center.
+
+## Cost Entry
+
+Equipment purchase cost and maintenance cost should be recorded in Malawi Kwacha.
+
+Users may type a plain number, such as:
+
+```text
+150000
+```
+
+The desktop formats it as:
+
+```text
+MWK 150,000.00
+```
+
+Bulk equipment import templates also use the same `MWK` format for `purchase_cost`.
+
+## Maintenance Operations
+
+Maintenance is opened from:
+
+```text
+Equipment Inventory -> Maintenance Tracking
+```
+
+Users should record:
+
+- asset code
+- issue
+- action taken
+- person who performed the maintenance
+- maintenance date
+- cost
+- status
+
+If maintenance is not completed, the asset is marked `MAINTENANCE`. If maintenance is completed, the asset is marked `AVAILABLE`.
+
+Maintenance appears in:
+
+- Maintenance Tracking
+- Maintenance Report
+- Asset History for the asset code
 
 ## Right-Click Actions
 
@@ -156,20 +366,28 @@ Expected:
 Each client should use:
 
 ```env
-MSR_AMIS_DATA_MODE=AUTO
+MSR_AMIS_DATA_MODE=REMOTE_API
 MSR_AMIS_API_BASE_URL=http://SERVER_IP_OR_NAME:8090
 
-APP_MODE=AUTO
+APP_MODE=REMOTE_API
 API_BASE_URL=http://SERVER_IP_OR_NAME:8090
 ```
 
-Use `localhost` only if the API runs on that same computer.
+Use `AUTO` only where offline work is approved and Sync Center recovery is part of normal operations. Use `localhost` only if the API runs on that same computer.
 
 ## Backup Responsibility
 
 PostgreSQL is the primary database, so official backups must be taken from PostgreSQL on the server.
 
 SQLite is a local mirror and queue store. It should not be treated as the official backup source unless an administrator is recovering unsynced offline work from a specific client computer.
+
+The desktop `Backup & Restore` screen is intentionally available only when the app is running in `LOCAL_DATABASE` mode. In `AUTO` or `REMOTE_API` centralized operation, users should not use desktop backup as the official system backup.
+
+Example PostgreSQL backup command on the server:
+
+```powershell
+pg_dump -U postgres -d msr_amis -f msr_amis_backup.sql
+```
 
 ## Installer Update
 
@@ -185,5 +403,7 @@ Installers are generated in:
 dist\MSR AMIS-1.0.0.msi
 dist\MSR AMIS-1.0.0.exe
 ```
+
+The current rebuilt installers were generated on May 17, 2026. This build includes the updated bulk enrolment templates, complete table column header display, equipment metadata columns, maintenance tracking/reporting, Asset History with maintenance events, Department Management, role-based Sync Center access, and active queue cleanup after successful push.
 
 Clients must install the updated MSI/EXE before they receive desktop fixes.

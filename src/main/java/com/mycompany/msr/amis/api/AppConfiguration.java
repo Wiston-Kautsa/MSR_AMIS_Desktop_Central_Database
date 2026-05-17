@@ -133,7 +133,17 @@ public final class AppConfiguration {
     }
 
     private static String resolveValue(String propertyKey, String envKey, String aliasKey, Map<String, String> envFileValues) {
-        String value = System.getProperty(propertyKey);
+        String value = envFileValues.get(envKey);
+        if (value != null && !value.isBlank()) {
+            return value.trim();
+        }
+
+        value = envFileValues.get(aliasKey);
+        if (value != null && !value.isBlank()) {
+            return value.trim();
+        }
+
+        value = System.getProperty(propertyKey);
         if (value != null && !value.isBlank()) {
             return value.trim();
         }
@@ -144,16 +154,6 @@ public final class AppConfiguration {
         }
 
         value = System.getenv(aliasKey);
-        if (value != null && !value.isBlank()) {
-            return value.trim();
-        }
-
-        value = envFileValues.get(envKey);
-        if (value != null && !value.isBlank()) {
-            return value.trim();
-        }
-
-        value = envFileValues.get(aliasKey);
         if (value != null && !value.isBlank()) {
             return value.trim();
         }

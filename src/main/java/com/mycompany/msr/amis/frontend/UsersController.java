@@ -584,7 +584,9 @@ public class UsersController implements Initializable {
                 btnCompleteSetup.setDisable(!canFinish);
             }
             if (canFinish) {
-                showStatus("Setup requirements met. Finish setup to disable admin@msr.local and user@msr.local.");
+                showStatus("Setup requirements met. Finish setup to disable "
+                        + AccessControl.DEFAULT_ADMIN_EMAIL + " and "
+                        + AccessControl.DEFAULT_USER_EMAIL + ".");
             } else {
                 String nextRole;
                 if (adminCount < 1) {

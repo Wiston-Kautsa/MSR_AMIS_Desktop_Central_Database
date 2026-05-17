@@ -1,0 +1,4 @@
+ALTER TABLE equipment ADD COLUMN IF NOT EXISTS purchase_cost TEXT;
+ALTER TABLE equipment ADD COLUMN IF NOT EXISTS location TEXT;
+ALTER TABLE equipment ADD COLUMN IF NOT EXISTS warranty_expiry DATE;
+ALTER TABLE equipment ADD COLUMN IF NOT EXISTS supplier TEXT;

@@ -1,9 +1,7 @@
 package com.mycompany.msr.amis;
 
-import java.io.File;
-import java.io.FileWriter;
-import java.io.IOException;
 import java.net.URL;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.ResourceBundle;
 import javafx.collections.FXCollections;
@@ -14,6 +12,7 @@ import javafx.fxml.Initializable;
 import javafx.scene.control.Alert;
 import javafx.scene.control.ComboBox;
 import javafx.scene.control.ContextMenu;
+import javafx.scene.control.DatePicker;
 import javafx.scene.control.MenuItem;
 import javafx.scene.control.TableColumn;
 import javafx.scene.control.TableView;
@@ -26,6 +25,8 @@ public class AssignmentReportController implements Initializable {
     @FXML private ComboBox<String> cmbPerson;
     @FXML private ComboBox<String> cmbEquipmentType;
     @FXML private ComboBox<String> cmbStatus;
+    @FXML private DatePicker dpFrom;
+    @FXML private DatePicker dpTo;
     @FXML private TableView<Assignment> tableAssignments;
     @FXML private TableColumn<Assignment, Void> colNo;
     @FXML private TableColumn<Assignment, String> colPerson;
@@ -94,6 +95,9 @@ public class AssignmentReportController implements Initializable {
             if (!matchesFilter(assignment.getStatus(), status)) {
                 continue;
             }
+            if (!ReportFilterHelper.matchesDateRange(assignment.getDate(), dpFrom, dpTo)) {
+                continue;
+            }
             data.add(assignment);
         }
 
@@ -104,6 +108,8 @@ public class AssignmentReportController implements Initializable {
         cmbPerson.setValue(null);
         cmbEquipmentType.setValue(null);
         cmbStatus.setValue(null);
+        dpFrom.setValue(null);
+        dpTo.setValue(null);
         loadData();
         loadFilters();
         showAlert("Refresh", "Assignment report refreshed successfully.");
@@ -116,46 +122,24 @@ public class AssignmentReportController implements Initializable {
             return;
         }
 
-        File file = FileLocationHelper.fileInDownloads("assignment_report.csv");
-        OperationFeedbackHelper.showInfo(
-                "Export Starting",
-                "Preparing assignment report export.\n\nRows to export: " + data.size()
-        );
-
-        try (FileWriter writer = new FileWriter(file)) {
-            writer.append("Responsible Person,Department,Equipment,Reason,Quantity,Status,Date\n");
-
-            for (Assignment assignment : data) {
-                writer.append(csvSafe(assignment.getPerson())).append(",")
-                        .append(csvSafe(assignment.getDepartment())).append(",")
-                        .append(csvSafe(assignment.getEquipmentType())).append(",")
-                        .append(csvSafe(assignment.getReason())).append(",")
-                        .append(String.valueOf(assignment.getQuantity())).append(",")
-                        .append(csvSafe(assignment.getStatus())).append(",")
-                        .append(csvSafe(assignment.getDate())).append("\n");
-            }
-
-            OperationFeedbackHelper.showInfo(
-                    "Export Complete",
-                    "Assignment report exported successfully to:\n" + file.getAbsolutePath()
-            );
-        } catch (IOException e) {
-            e.printStackTrace();
-            OperationFeedbackHelper.showError(
-                    "Export Failed",
-                    "Assignment report export failed:\n" + e.getMessage()
-            );
-        }
+        ReportExportHelper.exportCsv("assignment_report", "Assignment Report", new ArrayList<>(data), columns());
     }
 
-    private String csvSafe(String value) {
-        if (value == null) {
-            return "";
-        }
-        if (value.contains(",") || value.contains("\"") || value.contains("\n")) {
-            return "\"" + value.replace("\"", "\"\"") + "\"";
-        }
-        return value;
+    @FXML
+    private void handleExportPdf(ActionEvent event) {
+        ReportExportHelper.exportPdf("assignment_report", "Assignment Report", new ArrayList<>(data), columns());
+    }
+
+    private List<ReportExportHelper.Column<Assignment>> columns() {
+        return List.of(
+                new ReportExportHelper.Column<>("Responsible Person", Assignment::getPerson),
+                new ReportExportHelper.Column<>("Department", Assignment::getDepartment),
+                new ReportExportHelper.Column<>("Equipment", Assignment::getEquipmentType),
+                new ReportExportHelper.Column<>("Reason", Assignment::getReason),
+                new ReportExportHelper.Column<>("Quantity", assignment -> Integer.toString(assignment.getQuantity())),
+                new ReportExportHelper.Column<>("Status", Assignment::getStatus),
+                new ReportExportHelper.Column<>("Date", Assignment::getDate)
+        );
     }
 
     private boolean matchesFilter(String value, String filter) {

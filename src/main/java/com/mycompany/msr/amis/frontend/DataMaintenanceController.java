@@ -162,7 +162,12 @@ public class DataMaintenanceController implements Initializable {
         if (exception == null || exception.getMessage() == null || exception.getMessage().isBlank()) {
             return "The data maintenance operation failed.";
         }
-        return exception.getMessage();
+        String message = exception.getMessage();
+        if (message.toLowerCase().contains("connection refused")
+                || message.toLowerCase().contains("getsockopt")) {
+            return "API is not reachable. Start the API server and try again.";
+        }
+        return message;
     }
 
     private void configureConfirmationFields() {

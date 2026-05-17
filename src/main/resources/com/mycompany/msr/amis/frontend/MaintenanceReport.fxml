@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import java.net.URL?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+
+<AnchorPane prefHeight="600.0" prefWidth="980.0"
+            styleClass="content"
+            xmlns="http://javafx.com/javafx/17"
+            xmlns:fx="http://javafx.com/fxml/1"
+            fx:controller="com.mycompany.msr.amis.MaintenanceReportController">
+
+    <stylesheets>
+        <URL value="@theme.css"/>
+    </stylesheets>
+
+    <VBox spacing="15"
+          AnchorPane.topAnchor="10"
+          AnchorPane.bottomAnchor="10"
+          AnchorPane.leftAnchor="10"
+          AnchorPane.rightAnchor="10">
+
+        <Label text="Maintenance Report" styleClass="header-title"/>
+
+        <HBox spacing="10">
+            <ComboBox fx:id="cmbAssetCode" promptText="Asset Code" prefWidth="160"/>
+            <ComboBox fx:id="cmbStatus" promptText="Status" prefWidth="140"/>
+            <DatePicker fx:id="dpFrom" promptText="From" prefWidth="130"/>
+            <DatePicker fx:id="dpTo" promptText="To" prefWidth="130"/>
+            <Button text="Filter" onAction="#handleFilter"/>
+            <Region HBox.hgrow="ALWAYS"/>
+            <Button text="Export" onAction="#handleExport"/>
+            <Button text="PDF" onAction="#handleExportPdf"/>
+        </HBox>
+
+        <TableView fx:id="tableMaintenance" VBox.vgrow="ALWAYS">
+            <columns>
+                <TableColumn fx:id="colNo" text="No." prefWidth="55"/>
+                <TableColumn fx:id="colAssetCode" text="Asset Code" prefWidth="130"/>
+                <TableColumn fx:id="colIssue" text="Issue" prefWidth="190"/>
+                <TableColumn fx:id="colActionTaken" text="Action Taken" prefWidth="190"/>
+                <TableColumn fx:id="colPerformedBy" text="Performed By" prefWidth="140"/>
+                <TableColumn fx:id="colDate" text="Date" prefWidth="120"/>
+                <TableColumn fx:id="colCost" text="Cost" prefWidth="100"/>
+                <TableColumn fx:id="colStatus" text="Status" prefWidth="120"/>
+            </columns>
+        </TableView>
+    </VBox>
+</AnchorPane>

@@ -16,8 +16,7 @@ public final class LocalUserService implements UserService {
 
     @Override
     public List<String> getDepartments() {
-        remoteMirrorCoordinator.synchronizeQuietlyIfOnline();
-        return DatabaseHandler.getDepartments();
+        return ServiceRegistry.getDepartmentService().getDepartments();
     }
 
     @Override

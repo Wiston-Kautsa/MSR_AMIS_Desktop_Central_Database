@@ -102,8 +102,34 @@
                                                           GridPane.columnIndex="1"/>
 
                                                 <Label text="Entry Date" styleClass="input-label" GridPane.rowIndex="2" GridPane.columnIndex="2"/>
-                                                <DatePicker fx:id="dateEntry"
-                                                            GridPane.rowIndex="2"
+                                                 <DatePicker fx:id="dateEntry"
+                                                             GridPane.rowIndex="2"
+                                                             GridPane.columnIndex="3"/>
+
+                                                 <Label text="Purchase Cost" styleClass="input-label" GridPane.rowIndex="3" GridPane.columnIndex="0"/>
+                                                 <TextField fx:id="txtPurchaseCost"
+                                                            promptText="Example: MWK 150,000.00"
+                                                            onAction="#saveEquipment"
+                                                            GridPane.rowIndex="3"
+                                                            GridPane.columnIndex="1"/>
+
+                                                 <Label text="Location" styleClass="input-label" GridPane.rowIndex="3" GridPane.columnIndex="2"/>
+                                                 <TextField fx:id="txtLocation"
+                                                            promptText="Example: Finance Office"
+                                                            onAction="#saveEquipment"
+                                                            GridPane.rowIndex="3"
+                                                            GridPane.columnIndex="3"/>
+
+                                                 <Label text="Warranty Expiry" styleClass="input-label" GridPane.rowIndex="4" GridPane.columnIndex="0"/>
+                                                 <DatePicker fx:id="dateWarrantyExpiry"
+                                                             GridPane.rowIndex="4"
+                                                             GridPane.columnIndex="1"/>
+
+                                                 <Label text="Supplier" styleClass="input-label" GridPane.rowIndex="4" GridPane.columnIndex="2"/>
+                                                 <TextField fx:id="txtSupplier"
+                                                            promptText="Example: ABC Suppliers"
+                                                            onAction="#saveEquipment"
+                                                            GridPane.rowIndex="4"
                                                             GridPane.columnIndex="3"/>
                                             </children>
                                         </GridPane>
@@ -171,9 +197,14 @@
                                                 <TableColumn fx:id="colNo" text="No." prefWidth="55.0"/>
                                                 <TableColumn fx:id="colName" text="Name" prefWidth="170.0"/>
                                                 <TableColumn fx:id="colCategory" text="Category" prefWidth="140.0"/>
-                                                <TableColumn fx:id="colSerial" text="IMEI / Serial Number" prefWidth="220.0"/>
-                                                <TableColumn fx:id="colCondition" text="Condition" prefWidth="140.0"/>
-                                                <TableColumn fx:id="colDate" text="Entry Date" prefWidth="150.0"/>
+                                                 <TableColumn fx:id="colSerial" text="IMEI / Serial Number" prefWidth="220.0"/>
+                                                 <TableColumn fx:id="colCondition" text="Condition" prefWidth="140.0"/>
+                                                 <TableColumn fx:id="colSource" text="Source" prefWidth="150.0"/>
+                                                 <TableColumn fx:id="colPurchaseCost" text="Purchase Cost" prefWidth="150.0"/>
+                                                 <TableColumn fx:id="colLocation" text="Location" prefWidth="150.0"/>
+                                                 <TableColumn fx:id="colWarrantyExpiry" text="Warranty Expiry" prefWidth="160.0"/>
+                                                 <TableColumn fx:id="colSupplier" text="Supplier" prefWidth="150.0"/>
+                                                 <TableColumn fx:id="colDate" text="Entry Date" prefWidth="150.0"/>
                                             </columns>
                                         </TableView>
                                     </children>

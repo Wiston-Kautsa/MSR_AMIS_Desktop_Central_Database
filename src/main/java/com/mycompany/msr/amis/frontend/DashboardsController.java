@@ -2,6 +2,7 @@ package com.mycompany.msr.amis;
 
 import java.io.IOException;
 import java.net.URL;
+import java.util.Set;
 import java.util.ResourceBundle;
 import javafx.animation.KeyFrame;
 import javafx.animation.Timeline;
@@ -26,12 +27,35 @@ import javafx.util.Duration;
 
 public class DashboardsController implements Initializable {
     private static final String FRONTEND_RESOURCE_ROOT = "/com/mycompany/msr/amis/frontend/";
+    private static final Set<String> AUTO_REFRESH_PAGES = Set.of(
+            "EquipmentList.fxml",
+            "AssignmentList.fxml",
+            "ReturnEquipmentList.fxml",
+            "InventoryReport.fxml",
+            "AssignmentReport.fxml",
+            "DistributionReport.fxml",
+            "ReturnReport.fxml",
+            "OutstandingReport.fxml",
+            "MaintenanceReport.fxml",
+            "AssetHistory.fxml",
+            "AuditLogs.fxml",
+            "SyncCenter.fxml",
+            "Departments.fxml",
+            "Users.fxml",
+            "Maintenance.fxml"
+    );
 
     private final DashboardService dashboardService = ServiceRegistry.getDashboardService();
+    private final ReportService reportService = ServiceRegistry.getReportService();
     private final ConnectionStatusService connectionStatusService = new ConnectionStatusService();
     private Node dashboardHome;
     private Timeline connectionStatusTimeline;
+    private Timeline backgroundSyncTimeline;
     private boolean connectionStatusCheckInProgress;
+    private boolean backgroundSyncInProgress;
+    private boolean manualOfflineRequested;
+    private String currentPageFxml;
+    private ConnectionStatusService.ConnectionStatus currentConnectionStatus;
 
     @FXML private StackPane contentArea;
     @FXML private Label lblTotalAssets;
@@ -44,9 +68,11 @@ public class DashboardsController implements Initializable {
     @FXML private Button btnBackupSync;
     @FXML private Button btnAuditLogs;
     @FXML private Button btnUsers;
+    @FXML private Button btnDepartments;
     @FXML private Button btnDataMaintenance;
     @FXML private Button btnSyncCenter;
     @FXML private Button btnLogout;
+    @FXML private Button btnGoOnline;
     @FXML private PieChart assetStatusPieChart;
     @FXML private ProgressBar progressUtilization;
     @FXML private ProgressBar progressAvailability;
@@ -63,6 +89,10 @@ public class DashboardsController implements Initializable {
             btnUsers.setManaged(AccessControl.canManageUsers());
             btnUsers.setVisible(AccessControl.canManageUsers());
         }
+        if (btnDepartments != null) {
+            btnDepartments.setManaged(AccessControl.canManageUsers());
+            btnDepartments.setVisible(AccessControl.canManageUsers());
+        }
         if (btnBackupSync != null) {
             boolean allowed = canAccessBackupSync();
             btnBackupSync.setManaged(allowed);
@@ -78,14 +108,16 @@ public class DashboardsController implements Initializable {
             btnDataMaintenance.setVisible(allowed);
         }
         if (btnSyncCenter != null) {
-            btnSyncCenter.setManaged(true);
-            btnSyncCenter.setVisible(true);
+            boolean allowed = AccessControl.canAccessSyncCenter();
+            btnSyncCenter.setManaged(allowed);
+            btnSyncCenter.setVisible(allowed);
         }
         applyLoggedInUser();
         if (lblTotalAssets != null) {
             refreshDashboard();
         }
         startConnectionStatusMonitor();
+        startBackgroundSync();
     }
 
     private void applyLoggedInUser() {
@@ -112,13 +144,13 @@ public class DashboardsController implements Initializable {
             String path = FRONTEND_RESOURCE_ROOT + fxml;
             URL resource = getClass().getResource(path);
             if (resource == null) {
-                OperationFeedbackHelper.showError("Navigation Error", "The requested page could not be loaded.");
-                return;
+                throw new IllegalStateException("FXML not found: " + path);
             }
 
             FXMLLoader loader = new FXMLLoader(resource);
             Parent root = loader.load();
             contentArea.getChildren().clear();
+            currentPageFxml = fxml;
 
             if (root instanceof Region) {
                 Region region = (Region) root;
@@ -131,9 +163,31 @@ public class DashboardsController implements Initializable {
             e.printStackTrace();
             OperationFeedbackHelper.showError(
                     "Navigation Error",
-                    "The requested page could not be loaded.\n\n" + e.getMessage()
+                    "The requested page could not be loaded.\n\nPage: " + fxml + "\nCause: " + resolveNavigationMessage(e)
             );
         }
+    }
+
+    private String resolveNavigationMessage(Throwable throwable) {
+        Throwable current = throwable;
+        while (current != null && current.getCause() != null) {
+            current = current.getCause();
+        }
+        String message = current == null ? null : current.getMessage();
+        if (message == null || message.isBlank()) {
+            message = throwable == null ? "" : throwable.getMessage();
+        }
+        if (message == null || message.isBlank()) {
+            return "Check that the API is running and the page configuration is valid.";
+        }
+        String lowerMessage = message.toLowerCase();
+        if (lowerMessage.contains("connection refused") || lowerMessage.contains("getsockopt")) {
+            return "API is not reachable. Start the API server and try again.";
+        }
+        if (message.endsWith(".fxml:20")) {
+            return "The page controller could not start. Check that the API is running and try again.";
+        }
+        return message;
     }
 
     @FXML
@@ -142,6 +196,7 @@ public class DashboardsController implements Initializable {
             return;
         }
         contentArea.getChildren().setAll(dashboardHome);
+        currentPageFxml = null;
         if (dashboardHome instanceof Region) {
             Region region = (Region) dashboardHome;
             region.prefWidthProperty().bind(contentArea.widthProperty());
@@ -220,6 +275,21 @@ public class DashboardsController implements Initializable {
             );
         }
 
+        long overdue = 0;
+        try {
+            overdue = reportService.getOutstandingReport().stream()
+                    .filter(distribution -> ReportFilterHelper.isOverdue(distribution.getDate()))
+                    .count();
+        } catch (Exception ignored) {
+            // Dashboard should still render if the detailed report cannot be loaded.
+        }
+        if (overdue > 0) {
+            addAlertItem(
+                    "Overdue returns",
+                    overdue + " outstanding asset(s) have been issued for more than 30 days."
+            );
+        }
+
         if (summary.getReturnedThisMonth() == 0) {
             addAlertItem("Monthly returns", "No returns have been recorded yet this month.");
         }
@@ -261,6 +331,7 @@ public class DashboardsController implements Initializable {
 
     @FXML private void openAddEquipment() { loadPage("AddEquipment.fxml"); }
     @FXML private void openEquipmentList() { loadPage("EquipmentList.fxml"); }
+    @FXML private void openMaintenance() { loadPage("Maintenance.fxml"); }
     @FXML private void openCreateAssignment() { loadPage("CreateAssignment.fxml"); }
     @FXML private void openDistributeEquipment() { loadPage("DistributeEquipment.fxml"); }
     @FXML private void openAssignmentList() { loadPage("AssignmentList.fxml"); }
@@ -269,6 +340,7 @@ public class DashboardsController implements Initializable {
     @FXML private void openAssignmentReport() { loadPage("AssignmentReport.fxml"); }
     @FXML private void openDistributionReport() { loadPage("DistributionReport.fxml"); }
     @FXML private void openAssetHistory() { loadPage("AssetHistory.fxml"); }
+    @FXML private void openMaintenanceReport() { loadPage("MaintenanceReport.fxml"); }
     @FXML private void openReturnEquipmentList() { loadPage("ReturnEquipmentList.fxml"); }
     @FXML private void openReturnReport() { loadPage("ReturnReport.fxml"); }
     @FXML private void openOutstandingReport() { loadPage("OutstandingReport.fxml"); }
@@ -306,6 +378,16 @@ public class DashboardsController implements Initializable {
     }
 
     @FXML
+    private void openDepartments() {
+        try {
+            AccessControl.requireRole(AccessControl.ROLE_SUPER_ADMIN, AccessControl.ROLE_ADMIN);
+            loadPage("Departments.fxml");
+        } catch (SecurityException e) {
+            OperationFeedbackHelper.showError("Access Denied", e.getMessage());
+        }
+    }
+
+    @FXML
     private void openDataMaintenance() {
         try {
             if (!canAccessDataMaintenance()) {
@@ -319,7 +401,82 @@ public class DashboardsController implements Initializable {
 
     @FXML
     private void openSyncCenter() {
-        loadPage("SyncCenter.fxml");
+        try {
+            if (!AccessControl.canAccessSyncCenter()) {
+                throw new SecurityException("Sync Center is available only to Admin and Super Admin.");
+            }
+            loadPage("SyncCenter.fxml");
+        } catch (SecurityException e) {
+            OperationFeedbackHelper.showError("Access Denied", e.getMessage());
+        }
+    }
+
+    @FXML
+    private void handleGoOnline(ActionEvent event) {
+        if (isCurrentStatusOnline() && !manualOfflineRequested) {
+            manualOfflineRequested = true;
+            stopBackgroundSync();
+            applyConnectionStatus(currentConnectionStatus);
+            return;
+        }
+
+        if (btnGoOnline != null) {
+            btnGoOnline.setDisable(true);
+            btnGoOnline.setText("Checking...");
+        }
+
+        Task<GoOnlineResult> task = new Task<>() {
+            @Override
+            protected GoOnlineResult call() {
+                ConnectionStatusService.ConnectionStatus status = connectionStatusService.checkStatus();
+                boolean reachable = status != null
+                        && status.getStyleClass() != null
+                        && status.getStyleClass().contains("connection-status-online");
+                if (!reachable) {
+                    return new GoOnlineResult(status, "Central API is not reachable. Contact IT support to start the API service and confirm PostgreSQL is running. Then click Go Online again.");
+                }
+
+                if (!ServiceRegistry.getRemoteMirrorCoordinator().hasRemoteSession()) {
+                    return new GoOnlineResult(
+                            status,
+                            null
+                    );
+                }
+
+                try {
+                    ServiceRegistry.getSyncCenterService().processPendingQueue();
+                    return new GoOnlineResult(status, null);
+                } catch (Exception exception) {
+                    return new GoOnlineResult(status, null);
+                }
+            }
+        };
+
+        task.setOnSucceeded(done -> {
+            restoreGoOnlineButton();
+            GoOnlineResult result = task.getValue();
+            if (result != null && isStatusOnline(result.status)) {
+                manualOfflineRequested = false;
+                applyConnectionStatus(result.status);
+                startBackgroundSync();
+                refreshVisibleData();
+            } else if (result != null && result.message != null && !result.message.isBlank()) {
+                if (!manualOfflineRequested) {
+                    applyConnectionStatus(result.status);
+                }
+                OperationFeedbackHelper.showError("API Not Reachable", result.message);
+            } else if (result != null && !manualOfflineRequested) {
+                applyConnectionStatus(result.status);
+            }
+        });
+        task.setOnFailed(done -> {
+            restoreGoOnlineButton();
+            refreshConnectionStatus();
+        });
+
+        Thread thread = new Thread(task, "go-online-check");
+        thread.setDaemon(true);
+        thread.start();
     }
 
     @FXML private void openAboutUs() { loadPage("AboutUs.fxml"); }
@@ -361,6 +518,7 @@ public class DashboardsController implements Initializable {
             connectionStatusTimeline.stop();
             connectionStatusTimeline = null;
         }
+        stopBackgroundSync();
     }
 
     private void refreshConnectionStatus() {
@@ -394,22 +552,116 @@ public class DashboardsController implements Initializable {
         thread.start();
     }
 
+    private void startBackgroundSync() {
+        stopBackgroundSync();
+        if (!ServiceRegistry.getConfiguration().isAutomaticMode()) {
+            return;
+        }
+        backgroundSyncTimeline = new Timeline(
+                new KeyFrame(Duration.seconds(30), event -> runBackgroundSync())
+        );
+        backgroundSyncTimeline.setCycleCount(Timeline.INDEFINITE);
+        backgroundSyncTimeline.play();
+    }
+
+    private void stopBackgroundSync() {
+        if (backgroundSyncTimeline != null) {
+            backgroundSyncTimeline.stop();
+            backgroundSyncTimeline = null;
+        }
+    }
+
+    private void runBackgroundSync() {
+        if (manualOfflineRequested
+                || backgroundSyncInProgress
+                || !ServiceRegistry.getRemoteMirrorCoordinator().hasRemoteSession()) {
+            return;
+        }
+
+        backgroundSyncInProgress = true;
+        Task<String> task = new Task<>() {
+            @Override
+            protected String call() throws Exception {
+                return ServiceRegistry.getSyncCenterService().processPendingQueue();
+            }
+        };
+
+        task.setOnSucceeded(event -> {
+            backgroundSyncInProgress = false;
+            refreshVisibleData();
+        });
+        task.setOnFailed(event -> {
+            backgroundSyncInProgress = false;
+            refreshConnectionStatus();
+        });
+
+        Thread thread = new Thread(task, "background-sync");
+        thread.setDaemon(true);
+        thread.start();
+    }
+
+    private void refreshVisibleData() {
+        if (contentArea == null) {
+            return;
+        }
+        if (currentPageFxml == null) {
+            refreshDashboard();
+            return;
+        }
+        if (AUTO_REFRESH_PAGES.contains(currentPageFxml)) {
+            loadPage(currentPageFxml);
+        }
+    }
+
     private void applyConnectionStatus(ConnectionStatusService.ConnectionStatus status) {
         if (status == null) {
             return;
         }
+        currentConnectionStatus = status;
         if (lblConnectionStatus != null) {
-            lblConnectionStatus.setText(status.getLabel());
+            lblConnectionStatus.setText(manualOfflineRequested ? "OFFLINE (MANUAL)" : status.getLabel());
             lblConnectionStatus.getStyleClass().removeAll(
                     "connection-status-online",
                     "connection-status-offline",
                     "connection-status-local"
             );
-            lblConnectionStatus.getStyleClass().add(status.getStyleClass());
+            lblConnectionStatus.getStyleClass().add(manualOfflineRequested
+                    ? "connection-status-offline"
+                    : status.getStyleClass());
         }
         if (lblConnectionDetail != null) {
-            lblConnectionDetail.setText(status.getDetail());
+            lblConnectionDetail.setText(manualOfflineRequested
+                    ? "Automatic Central Server sync is paused. Local changes are queued until you go online again."
+                    : status.getDetail());
         }
+        if (btnGoOnline != null) {
+            boolean offline = status.getStyleClass() != null
+                    && status.getStyleClass().contains("connection-status-offline");
+            boolean online = status.getStyleClass() != null
+                    && status.getStyleClass().contains("connection-status-online");
+            boolean autoMode = ServiceRegistry.getConfiguration().isAutomaticMode();
+            btnGoOnline.setVisible(autoMode || offline);
+            btnGoOnline.setManaged(autoMode || offline);
+            btnGoOnline.setDisable(false);
+            btnGoOnline.setText(online && !manualOfflineRequested ? "Go Offline" : "Go Online");
+        }
+    }
+
+    private void restoreGoOnlineButton() {
+        if (btnGoOnline != null) {
+            btnGoOnline.setDisable(false);
+            btnGoOnline.setText(isCurrentStatusOnline() && !manualOfflineRequested ? "Go Offline" : "Go Online");
+        }
+    }
+
+    private boolean isCurrentStatusOnline() {
+        return isStatusOnline(currentConnectionStatus);
+    }
+
+    private boolean isStatusOnline(ConnectionStatusService.ConnectionStatus status) {
+        return status != null
+                && status.getStyleClass() != null
+                && status.getStyleClass().contains("connection-status-online");
     }
 
     private boolean canAccessBackupSync() {
@@ -419,5 +671,15 @@ public class DashboardsController implements Initializable {
 
     private boolean canAccessDataMaintenance() {
         return Session.hasRole(AccessControl.ROLE_SUPER_ADMIN);
+    }
+
+    private static final class GoOnlineResult {
+        private final ConnectionStatusService.ConnectionStatus status;
+        private final String message;
+
+        private GoOnlineResult(ConnectionStatusService.ConnectionStatus status, String message) {
+            this.status = status;
+            this.message = message;
+        }
     }
 }

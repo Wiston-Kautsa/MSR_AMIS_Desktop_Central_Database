@@ -25,28 +25,31 @@
         <HBox spacing="10">
             <ComboBox fx:id="cmbPerson" promptText="Returned By" prefWidth="180"/>
             <ComboBox fx:id="cmbCondition" promptText="Condition" prefWidth="150"/>
+            <DatePicker fx:id="dpFrom" promptText="From" prefWidth="130"/>
+            <DatePicker fx:id="dpTo" promptText="To" prefWidth="130"/>
             <Button text="Filter" onAction="#handleFilter"/>
             <Region HBox.hgrow="ALWAYS"/>
             <Button text="Export" onAction="#handleExport"/>
+            <Button text="PDF" onAction="#handleExportPdf"/>
         </HBox>
 
         <TableView fx:id="tableReturns" VBox.vgrow="ALWAYS">
             <columns>
                 <TableColumn fx:id="colNo" text="No." prefWidth="55"/>
                 <TableColumn fx:id="colAssetCode" text="Asset Code" prefWidth="110"/>
-                <TableColumn fx:id="colSerialNumber" text="IMEI/Serial" prefWidth="120"/>
+                <TableColumn fx:id="colSerialNumber" text="IMEI/Serial" prefWidth="150"/>
                 <TableColumn fx:id="colEquipmentName" text="Equipment Name" prefWidth="140"/>
                 <TableColumn fx:id="colCategory" text="Category" prefWidth="110"/>
                 <TableColumn fx:id="colSource" text="Source" prefWidth="120"/>
-                <TableColumn fx:id="colResponsibleOfficer" text="Responsible Officer" prefWidth="160"/>
-                <TableColumn fx:id="colDateTaken" text="Date Given Out" prefWidth="120"/>
+                <TableColumn fx:id="colResponsibleOfficer" text="Responsible Officer" prefWidth="190"/>
+                <TableColumn fx:id="colDateTaken" text="Date Given Out" prefWidth="150"/>
                 <TableColumn fx:id="colReason" text="Reason" prefWidth="180"/>
                 <TableColumn fx:id="colReturnedBy" text="Returned By" prefWidth="120"/>
                 <TableColumn fx:id="colPhone" text="Phone" prefWidth="110"/>
                 <TableColumn fx:id="colNID" text="NID" prefWidth="110"/>
-                <TableColumn fx:id="colCondition" text="Return Condition" prefWidth="120"/>
+                <TableColumn fx:id="colCondition" text="Return Condition" prefWidth="160"/>
                 <TableColumn fx:id="colRemarks" text="Remarks" prefWidth="160"/>
-                <TableColumn fx:id="colDate" text="Date Returned" prefWidth="110"/>
+                <TableColumn fx:id="colDate" text="Date Returned" prefWidth="150"/>
             </columns>
         </TableView>
 

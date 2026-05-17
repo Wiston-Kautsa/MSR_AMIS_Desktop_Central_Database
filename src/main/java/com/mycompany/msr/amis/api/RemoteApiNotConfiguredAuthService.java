@@ -31,7 +31,7 @@ public final class RemoteApiNotConfiguredAuthService implements AuthService {
     }
 
     @Override
-    public void resetPasswordWithCode(String identifier, String resetCode, String hashedPassword) {
+    public void resetPasswordWithCode(String identifier, String resetCode, String plainPassword) {
         throw unsupported();
     }
 

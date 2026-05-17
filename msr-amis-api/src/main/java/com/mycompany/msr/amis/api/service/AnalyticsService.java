@@ -59,7 +59,8 @@ public class AnalyticsService {
 
     public List<InventoryReportItemResponse> getInventoryReport() {
         return jdbcTemplate.query(
-                "SELECT id, asset_code, name, category, serial_number, item_condition, source, entry_date, status " +
+                "SELECT id, asset_code, name, category, serial_number, item_condition, source, entry_date, status, " +
+                        "purchase_cost, location, warranty_expiry, supplier " +
                         "FROM equipment ORDER BY entry_date DESC, id DESC",
                 (rs, rowNum) -> new InventoryReportItemResponse(
                         rs.getInt("id"),
@@ -70,7 +71,11 @@ public class AnalyticsService {
                         rs.getString("item_condition"),
                         rs.getString("source"),
                         rs.getDate("entry_date").toLocalDate().toString(),
-                        rs.getString("status")
+                        rs.getString("status"),
+                        EquipmentFacadeService.formatLocalCurrencyValue(rs.getString("purchase_cost")),
+                        rs.getString("location"),
+                        rs.getDate("warranty_expiry") == null ? "" : rs.getDate("warranty_expiry").toLocalDate().toString(),
+                        rs.getString("supplier")
                 )
         );
     }

@@ -26,19 +26,31 @@ import java.util.Set;
 public class AddEquipmentController implements Initializable {
     private static final int BULK_HEADER_ROW_INDEX = 0;
     private static final int BULK_DATA_START_ROW_INDEX = BULK_HEADER_ROW_INDEX + 1;
+    private static final int BULK_PURCHASE_COST_COLUMN_INDEX = 6;
+    private static final int BULK_FORMATTED_DATA_ROWS = 1000;
     private static final String[] BULK_TEMPLATE_HEADERS = {
             "name",
             "category",
             "imei_serial_number",
             "source",
-            "condition"
+            "condition",
+            "entry_date",
+            "purchase_cost",
+            "location",
+            "warranty_expiry",
+            "supplier"
     };
     private static final String[] BULK_TEMPLATE_SAMPLE = {
             "Tablet",
             "Tablet",
             "SN-001",
             "World Bank",
-            "New"
+            "New",
+            LocalDate.now().toString(),
+            "MWK 150,000.00",
+            "Finance Office",
+            "2027-12-31",
+            "ABC Suppliers"
     };
 
     // ================= UI =================
@@ -48,6 +60,10 @@ public class AddEquipmentController implements Initializable {
     @FXML private TextField txtSource;
     @FXML private ComboBox<String> cmbCondition;
     @FXML private DatePicker dateEntry;
+    @FXML private TextField txtPurchaseCost;
+    @FXML private TextField txtLocation;
+    @FXML private DatePicker dateWarrantyExpiry;
+    @FXML private TextField txtSupplier;
 
     @FXML private Label lblSelectedFile;
 
@@ -57,6 +73,11 @@ public class AddEquipmentController implements Initializable {
     @FXML private TableColumn<Equipment, String> colCategory;
     @FXML private TableColumn<Equipment, String> colSerial;
     @FXML private TableColumn<Equipment, String> colCondition;
+    @FXML private TableColumn<Equipment, String> colSource;
+    @FXML private TableColumn<Equipment, String> colPurchaseCost;
+    @FXML private TableColumn<Equipment, String> colLocation;
+    @FXML private TableColumn<Equipment, String> colWarrantyExpiry;
+    @FXML private TableColumn<Equipment, String> colSupplier;
     @FXML private TableColumn<Equipment, String> colDate;
 
     // ================= DATA =================
@@ -70,10 +91,14 @@ public class AddEquipmentController implements Initializable {
 
         setupTable();
 
-        cmbCategory.setEditable(true);
-        cmbCondition.getItems().addAll("New", "Used", "Good", "Fair", "Damaged", "Faulty");
+        cmbCategory.setEditable(false);
+        cmbCondition.setEditable(false);
+        cmbCategory.getItems().addAll("Desktop", "Laptop", "Monitor", "Printer", "Tablet", "Phone", "Network", "Furniture", "Other");
+        cmbCondition.getItems().addAll("New", "Good", "Fair", "Poor", "Damaged", "Faulty");
 
         dateEntry.setValue(LocalDate.now());
+        txtPurchaseCost.setPromptText("Example: MWK 150,000.00");
+        CurrencyFormatHelper.installCurrencyFormatter(txtPurchaseCost);
 
         loadEquipmentFromDatabase();
         loadCategories();
@@ -87,6 +112,12 @@ public class AddEquipmentController implements Initializable {
         colCategory.setCellValueFactory(cell -> cell.getValue().categoryProperty());
         colSerial.setCellValueFactory(cell -> cell.getValue().serialNumberProperty());
         colCondition.setCellValueFactory(cell -> cell.getValue().conditionProperty());
+        colSource.setCellValueFactory(cell -> cell.getValue().sourceProperty());
+        colPurchaseCost.setCellValueFactory(cell -> cell.getValue().purchaseCostProperty());
+        CurrencyFormatHelper.installCurrencyCellFactory(colPurchaseCost);
+        colLocation.setCellValueFactory(cell -> cell.getValue().locationProperty());
+        colWarrantyExpiry.setCellValueFactory(cell -> cell.getValue().warrantyExpiryProperty());
+        colSupplier.setCellValueFactory(cell -> cell.getValue().supplierProperty());
         colDate.setCellValueFactory(cell -> cell.getValue().entryDateProperty());
 
         equipmentTable.setItems(equipmentList);
@@ -99,8 +130,9 @@ public class AddEquipmentController implements Initializable {
     }
 
     private void loadCategories() {
-        cmbCategory.getItems().clear();
-        cmbCategory.getItems().addAll(equipmentService.getEquipmentCategories());
+        LinkedHashSet<String> categories = new LinkedHashSet<>(cmbCategory.getItems());
+        categories.addAll(equipmentService.getEquipmentCategories());
+        cmbCategory.getItems().setAll(categories);
     }
 
     // ================= SAVE =================
@@ -123,7 +155,11 @@ public class AddEquipmentController implements Initializable {
                 txtSerialNumber.getText(),
                 txtSource.getText(),
                 cmbCondition.getValue(),
-                dateEntry.getValue().toString()
+                dateEntry.getValue().toString(),
+                CurrencyFormatHelper.formatLocalCurrency(txtPurchaseCost.getText()),
+                txtLocation.getText(),
+                dateWarrantyExpiry.getValue() == null ? "" : dateWarrantyExpiry.getValue().toString(),
+                txtSupplier.getText()
         );
 
         try {
@@ -145,11 +181,15 @@ public class AddEquipmentController implements Initializable {
         txtName.clear();
         txtSerialNumber.clear();
         txtSource.clear();
+        txtPurchaseCost.clear();
+        txtLocation.clear();
+        txtSupplier.clear();
 
         cmbCategory.getSelectionModel().clearSelection();
         cmbCondition.getSelectionModel().clearSelection();
 
         dateEntry.setValue(LocalDate.now());
+        dateWarrantyExpiry.setValue(null);
     }
 
     // ================= FILE =================
@@ -219,8 +259,31 @@ public class AddEquipmentController implements Initializable {
                 Cell headerCell = headerRow.createCell(i);
                 headerCell.setCellValue(BULK_TEMPLATE_HEADERS[i]);
                 headerCell.setCellStyle(headerStyle);
+            }
+
+            Row sampleRow = sheet.createRow(BULK_DATA_START_ROW_INDEX);
+            CellStyle purchaseCostStyle = wb.createCellStyle();
+            purchaseCostStyle.setDataFormat(wb.createDataFormat().getFormat("\"MWK\" #,##0.00"));
+
+            for (int i = 0; i < BULK_TEMPLATE_SAMPLE.length; i++) {
+                Cell sampleCell = sampleRow.createCell(i);
+                if (i == BULK_PURCHASE_COST_COLUMN_INDEX) {
+                    sampleCell.setCellValue(150000);
+                    sampleCell.setCellStyle(purchaseCostStyle);
+                } else {
+                    sampleCell.setCellValue(BULK_TEMPLATE_SAMPLE[i]);
+                }
+            }
+            sheet.setDefaultColumnStyle(BULK_PURCHASE_COST_COLUMN_INDEX, purchaseCostStyle);
+            for (int rowIndex = BULK_DATA_START_ROW_INDEX + 1; rowIndex <= BULK_FORMATTED_DATA_ROWS; rowIndex++) {
+                Row row = sheet.createRow(rowIndex);
+                row.createCell(BULK_PURCHASE_COST_COLUMN_INDEX).setCellStyle(purchaseCostStyle);
+            }
+
+            for (int i = 0; i < BULK_TEMPLATE_HEADERS.length; i++) {
                 sheet.autoSizeColumn(i);
             }
+            sheet.setColumnWidth(BULK_PURCHASE_COST_COLUMN_INDEX, Math.max(sheet.getColumnWidth(BULK_PURCHASE_COST_COLUMN_INDEX), 16 * 256));
 
             try (FileOutputStream out = new FileOutputStream(targetFile)) {
                 wb.write(out);
@@ -261,10 +324,10 @@ public class AddEquipmentController implements Initializable {
 
             Sheet sheet = wb.getSheetAt(0);
 
-            if (sheet.getRow(BULK_HEADER_ROW_INDEX) == null || sheet.getRow(BULK_HEADER_ROW_INDEX).getLastCellNum() < 5) {
+            if (sheet.getRow(BULK_HEADER_ROW_INDEX) == null || sheet.getRow(BULK_HEADER_ROW_INDEX).getLastCellNum() < BULK_TEMPLATE_HEADERS.length) {
                 OperationFeedbackHelper.showError(
                     "Invalid File",
-                    "The Excel file must contain 5 columns."
+                    "The Excel file must contain these columns: " + String.join(", ", BULK_TEMPLATE_HEADERS)
                 );
                 return;
             }
@@ -285,6 +348,11 @@ public class AddEquipmentController implements Initializable {
                 String serial = getCell(r, 2);
                 String source = getCell(r, 3);
                 String condition = getCell(r, 4);
+                String entryDate = getCell(r, 5);
+                String purchaseCost = getCell(r, 6);
+                String location = getCell(r, 7);
+                String warrantyExpiry = getCell(r, 8);
+                String supplier = getCell(r, 9);
 
                 // skip empty rows
                 if (name.isEmpty() || category.isEmpty() || serial.isEmpty()) continue;
@@ -303,7 +371,11 @@ public class AddEquipmentController implements Initializable {
                         serial,
                         source,
                         condition,
-                        LocalDate.now().toString()
+                        entryDate.isBlank() ? LocalDate.now().toString() : entryDate,
+                        CurrencyFormatHelper.formatLocalCurrency(purchaseCost),
+                        location,
+                        warrantyExpiry,
+                        supplier
                 );
 
                 try {

@@ -4,8 +4,11 @@ import com.mycompany.msr.amis.api.domain.EquipmentRecord;
 import com.mycompany.msr.amis.api.domain.EquipmentStatus;
 import com.mycompany.msr.amis.api.dto.equipment.EquipmentRequest;
 import com.mycompany.msr.amis.api.dto.equipment.EquipmentResponse;
+import com.mycompany.msr.amis.api.dto.sync.EquipmentSyncRequest;
 import com.mycompany.msr.amis.api.exception.ApiException;
 import com.mycompany.msr.amis.api.repository.EquipmentRepository;
+import java.math.BigDecimal;
+import java.text.DecimalFormat;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Locale;
@@ -15,6 +18,9 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class EquipmentFacadeService {
+
+    private static final DecimalFormat MWK_FORMAT = new DecimalFormat("#,##0.00");
+    private static final String CURRENCY_PREFIX = "MWK ";
 
     private final EquipmentRepository equipmentRepository;
     private final ActionAuditService actionAuditService;
@@ -102,6 +108,60 @@ public class EquipmentFacadeService {
         actionAuditService.log(actor, "DELETE_EQUIPMENT", "EQUIPMENT", assetCode, "Equipment deleted. Old: " + oldSnapshot);
     }
 
+    @Transactional
+    public EquipmentResponse syncEquipment(String actor, EquipmentSyncRequest request) {
+        String assetCode = normalizeRequired(request.assetCode(), "Asset code is required.");
+        String serialNumber = normalizeRequired(request.serialNumber(), "Serial number is required.");
+        EquipmentRecord record = equipmentRepository.findByAssetCodeIgnoreCase(assetCode)
+                .orElseGet(EquipmentRecord::new);
+        equipmentRepository.findBySerialNumberIgnoreCase(serialNumber)
+                .filter(existing -> existing.getAssetCode() != null && !existing.getAssetCode().equalsIgnoreCase(assetCode))
+                .ifPresent(existing -> {
+                    throw new ApiException(HttpStatus.CONFLICT, "Serial number already belongs to asset " + existing.getAssetCode() + ".");
+                });
+        record.setAssetCode(assetCode);
+        record.setName(normalizeRequired(request.name(), "Equipment name is required."));
+        record.setCategory(normalizeRequired(request.category(), "Category is required."));
+        record.setSerialNumber(serialNumber);
+        record.setItemCondition(normalizeOptional(request.condition()));
+        record.setSource(normalizeOptional(request.source()));
+        record.setEntryDate(request.entryDate() == null ? LocalDate.now() : request.entryDate());
+        record.setPurchaseCost(formatLocalCurrencyValue(request.purchaseCost()));
+        record.setLocation(normalizeOptional(request.location()));
+        record.setWarrantyExpiry(request.warrantyExpiry());
+        record.setSupplier(normalizeOptional(request.supplier()));
+        if (request.status() != null && !request.status().isBlank()) {
+            record.setStatus(parseStatus(request.status()));
+        } else if (record.getStatus() == null) {
+            record.setStatus(EquipmentStatus.AVAILABLE);
+        }
+        EquipmentRecord saved = equipmentRepository.save(record);
+        actionAuditService.log(
+                actor,
+                "SYNC_EQUIPMENT",
+                "EQUIPMENT",
+                saved.getAssetCode(),
+                "Equipment synced from desktop queue. Serial: " + saved.getSerialNumber()
+        );
+        return toResponse(saved);
+    }
+
+    @Transactional
+    public void syncDeleteEquipment(String actor, String assetCode) {
+        String normalizedAssetCode = normalizeRequired(assetCode, "Asset code is required.");
+        equipmentRepository.findByAssetCodeIgnoreCase(normalizedAssetCode).ifPresent(record -> {
+            String oldSnapshot = equipmentSnapshot(record);
+            equipmentRepository.delete(record);
+            actionAuditService.log(
+                    actor,
+                    "SYNC_DELETE_EQUIPMENT",
+                    "EQUIPMENT",
+                    normalizedAssetCode,
+                    "Equipment deleted from desktop sync queue. Old: " + oldSnapshot
+            );
+        });
+    }
+
     private EquipmentRecord findByAssetCode(String assetCode) {
         return equipmentRepository.findByAssetCodeIgnoreCase(assetCode)
                 .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Equipment not found."));
@@ -114,6 +174,10 @@ public class EquipmentFacadeService {
         record.setSource(normalizeOptional(request.source()));
         record.setItemCondition(normalizeOptional(request.condition()));
         record.setEntryDate(request.entryDate() == null ? LocalDate.now() : request.entryDate());
+        record.setPurchaseCost(formatLocalCurrencyValue(request.purchaseCost()));
+        record.setLocation(normalizeOptional(request.location()));
+        record.setWarrantyExpiry(request.warrantyExpiry());
+        record.setSupplier(normalizeOptional(request.supplier()));
         if (record.getStatus() == null) {
             record.setStatus(EquipmentStatus.AVAILABLE);
         }
@@ -129,7 +193,11 @@ public class EquipmentFacadeService {
                 record.getItemCondition(),
                 record.getSource(),
                 record.getEntryDate(),
-                record.getStatus().name()
+                record.getStatus().name(),
+                formatLocalCurrencyValue(record.getPurchaseCost()),
+                record.getLocation(),
+                record.getWarrantyExpiry(),
+                record.getSupplier()
         );
     }
 
@@ -143,6 +211,10 @@ public class EquipmentFacadeService {
                 ", serial=" + normalizeOptional(record.getSerialNumber()) +
                 ", condition=" + normalizeOptional(record.getItemCondition()) +
                 ", source=" + normalizeOptional(record.getSource()) +
+                ", purchaseCost=" + formatLocalCurrencyValue(record.getPurchaseCost()) +
+                ", location=" + normalizeOptional(record.getLocation()) +
+                ", warrantyExpiry=" + (record.getWarrantyExpiry() == null ? "" : record.getWarrantyExpiry()) +
+                ", supplier=" + normalizeOptional(record.getSupplier()) +
                 ", status=" + (record.getStatus() == null ? "" : record.getStatus().name());
     }
 
@@ -172,6 +244,40 @@ public class EquipmentFacadeService {
 
     private String normalizeOptional(String value) {
         return value == null ? "" : value.trim();
+    }
+
+    static String formatLocalCurrencyValue(String value) {
+        String normalized = normalizeCurrencyNumber(value);
+        if (normalized.isBlank()) {
+            return "";
+        }
+        try {
+            return CURRENCY_PREFIX + MWK_FORMAT.format(new BigDecimal(normalized));
+        } catch (NumberFormatException exception) {
+            return value == null ? "" : value.trim();
+        }
+    }
+
+    private static String normalizeCurrencyNumber(String value) {
+        String cleaned = (value == null ? "" : value.trim())
+                .replace("MWK", "")
+                .replace("mwk", "")
+                .replace("MK", "")
+                .replace("mk", "")
+                .replace(",", "")
+                .replace(" ", "");
+        StringBuilder numeric = new StringBuilder();
+        boolean decimalSeen = false;
+        for (int i = 0; i < cleaned.length(); i++) {
+            char character = cleaned.charAt(i);
+            if (Character.isDigit(character)) {
+                numeric.append(character);
+            } else if (character == '.' && !decimalSeen) {
+                numeric.append(character);
+                decimalSeen = true;
+            }
+        }
+        return numeric.toString();
     }
 
     private EquipmentStatus parseStatus(String rawStatus) {

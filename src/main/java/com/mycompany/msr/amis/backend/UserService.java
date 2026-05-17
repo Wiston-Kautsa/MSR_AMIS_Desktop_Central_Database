@@ -6,6 +6,7 @@ public interface UserService {
 
     List<User> getUsers();
 
+    @Deprecated
     List<String> getDepartments();
 
     void createUser(String name, String password, String role, String department, String email) throws Exception;

@@ -4,7 +4,9 @@ import javafx.application.Application;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
+import javafx.stage.Screen;
 import javafx.stage.Stage;
+import javafx.geometry.Rectangle2D;
 
 import java.io.IOException;
 
@@ -33,6 +35,7 @@ public class App extends Application {
 
         stage.setTitle("MSR AMIS");
         stage.setScene(scene);
+        stage.setResizable(true);
         stage.setWidth(LOGIN_WIDTH);
         stage.setHeight(LOGIN_HEIGHT);
         stage.centerOnScreen();
@@ -52,6 +55,8 @@ public class App extends Application {
     }
 
     static void showLoginPage() throws IOException {
+        primaryStage.setFullScreen(false);
+        primaryStage.setMaximized(false);
         scene.setRoot(loadFXML("Login"));
         primaryStage.setWidth(LOGIN_WIDTH);
         primaryStage.setHeight(LOGIN_HEIGHT);
@@ -60,12 +65,23 @@ public class App extends Application {
 
     static void showDashboardPage() throws IOException {
         scene.setRoot(loadFXML("Dashboards"));
-        primaryStage.setWidth(DASHBOARD_WIDTH);
-        primaryStage.setHeight(DASHBOARD_HEIGHT);
-        primaryStage.centerOnScreen();
+        openDashboardFullScreen();
+    }
+
+    private static void openDashboardFullScreen() {
+        Rectangle2D bounds = Screen.getPrimary().getVisualBounds();
+        primaryStage.setFullScreen(false);
+        primaryStage.setMaximized(false);
+        primaryStage.setX(bounds.getMinX());
+        primaryStage.setY(bounds.getMinY());
+        primaryStage.setWidth(bounds.getWidth());
+        primaryStage.setHeight(bounds.getHeight());
+        primaryStage.setMaximized(true);
     }
 
     static void showSetupUsersPage() throws IOException {
+        primaryStage.setFullScreen(false);
+        primaryStage.setMaximized(false);
         scene.setRoot(loadFXML("Users"));
         primaryStage.setWidth(SETUP_WIDTH);
         primaryStage.setHeight(SETUP_HEIGHT);

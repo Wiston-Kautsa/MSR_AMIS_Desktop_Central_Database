@@ -29,10 +29,14 @@ public class OperationsService {
 
     private final JdbcTemplate jdbcTemplate;
     private final ActionAuditService actionAuditService;
+    private final OperationalNotificationEmailService operationalNotificationEmailService;
 
-    public OperationsService(JdbcTemplate jdbcTemplate, ActionAuditService actionAuditService) {
+    public OperationsService(JdbcTemplate jdbcTemplate,
+                             ActionAuditService actionAuditService,
+                             OperationalNotificationEmailService operationalNotificationEmailService) {
         this.jdbcTemplate = jdbcTemplate;
         this.actionAuditService = actionAuditService;
+        this.operationalNotificationEmailService = operationalNotificationEmailService;
     }
 
     public List<AssignmentResponse> getAssignments() {
@@ -273,6 +277,7 @@ public class OperationsService {
                 "Distributed " + distributedAssetCodes.size() + " equipment item(s) under assignment " +
                         request.assignmentId() + ": " + String.join(", ", distributedAssetCodes)
         );
+        operationalNotificationEmailService.notifyDistribution(actor, request.assignmentId(), distributedAssetCodes);
     }
 
     public List<String> getOutstandingAssetCodes(int assignmentId) {
@@ -301,6 +306,7 @@ public class OperationsService {
     public ReturnBatchResponse completeReturns(String actor, ReturnBatchRequest request) {
         List<String> outstandingAssets = new ArrayList<>(getOutstandingAssetCodes(request.assignmentId()));
         List<String> replacementAssetCodes = new ArrayList<>();
+        List<String> returnedAssetCodes = new ArrayList<>();
 
         for (ReturnItemRequest item : request.items()) {
             if (!removeOutstandingAsset(outstandingAssets, item.originalAssetCode())) {
@@ -330,6 +336,7 @@ public class OperationsService {
             );
             jdbcTemplate.update("UPDATE equipment SET status = 'AVAILABLE', item_condition = ? WHERE asset_code = ?",
                     item.condition().trim(), item.originalAssetCode());
+            returnedAssetCodes.add(item.originalAssetCode());
             actionAuditService.log(
                     actor,
                     "RETURN_EQUIPMENT",
@@ -347,6 +354,7 @@ public class OperationsService {
             }
         }
 
+        operationalNotificationEmailService.notifyReturns(actor, request.assignmentId(), returnedAssetCodes);
         return new ReturnBatchResponse(true, "Equipment returns saved successfully.", replacementAssetCodes);
     }
 

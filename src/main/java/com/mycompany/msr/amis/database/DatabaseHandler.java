@@ -49,6 +49,10 @@ public class DatabaseHandler {
                             "serial_number TEXT UNIQUE NOT NULL, " +
                             "condition TEXT, " +
                             "source TEXT, " +
+                            "purchase_cost TEXT, " +
+                            "location TEXT, " +
+                            "warranty_expiry TEXT, " +
+                            "supplier TEXT, " +
                             "entry_date TEXT DEFAULT (DATE('now')), " +
                             "status TEXT DEFAULT 'AVAILABLE' " +
                             "CHECK(status IN ('AVAILABLE','ASSIGNED','MAINTENANCE','RETIRED'))" +
@@ -150,6 +154,19 @@ public class DatabaseHandler {
             );
 
             stmt.execute(
+                    "CREATE TABLE IF NOT EXISTS maintenance_log (" +
+                            "id INTEGER PRIMARY KEY AUTOINCREMENT, " +
+                            "asset_code TEXT NOT NULL, " +
+                            "issue TEXT NOT NULL, " +
+                            "action_taken TEXT, " +
+                            "performed_by TEXT, " +
+                            "maintenance_date TEXT DEFAULT (DATE('now')), " +
+                            "cost TEXT, " +
+                            "status TEXT DEFAULT 'OPEN' CHECK(status IN ('OPEN','COMPLETED'))" +
+                    ")"
+            );
+
+            stmt.execute(
                     "CREATE TABLE IF NOT EXISTS password_reset_audit (" +
                             "id INTEGER PRIMARY KEY AUTOINCREMENT, " +
                             "user_id INTEGER, " +
@@ -172,8 +189,6 @@ public class DatabaseHandler {
                             "action_time TEXT DEFAULT CURRENT_TIMESTAMP" +
                     ")"
             );
-
-            SYNC_STORAGE_REPOSITORY.ensureSchema(conn);
 
             migrateDatabase(conn);
             insertDepartmentIfMissing(conn, DEFAULT_DEPARTMENT);
@@ -205,6 +220,10 @@ public class DatabaseHandler {
         ensureColumn(conn, "distribution", "date", "TEXT DEFAULT (DATE('now'))");
         ensureColumn(conn, "distribution", "outstanding_remarks", "TEXT");
         ensureColumn(conn, "returns", "remarks", "TEXT");
+        ensureColumn(conn, "equipment", "purchase_cost", "TEXT");
+        ensureColumn(conn, "equipment", "location", "TEXT");
+        ensureColumn(conn, "equipment", "warranty_expiry", "TEXT");
+        ensureColumn(conn, "equipment", "supplier", "TEXT");
         ensureColumn(conn, "audit_log", "username", "TEXT");
         ensureColumn(conn, "audit_log", "module_name", "TEXT");
 
@@ -422,6 +441,9 @@ public class DatabaseHandler {
     }
 
     private static void ensurePrimarySuperAdmin(Connection conn) throws SQLException {
+        if (AccessControl.PRIMARY_SUPER_ADMIN_EMAIL.isBlank()) {
+            return;
+        }
         String lookupSql = "SELECT id FROM users WHERE LOWER(email) = LOWER(?)";
         String insertSql =
                 "INSERT INTO users (full_name, username, password, role, status, temporary, department, phone, email) " +
@@ -466,6 +488,9 @@ public class DatabaseHandler {
     }
 
     private static void ensureDefaultAdmin(Connection conn) throws SQLException {
+        if (AccessControl.DEFAULT_ADMIN_EMAIL.isBlank()) {
+            return;
+        }
         String lookupSql = "SELECT COUNT(*) FROM users WHERE LOWER(email) = LOWER(?)";
         String insertSql =
                 "INSERT INTO users (full_name, username, password, role, status, temporary, department, phone, email) " +
@@ -514,6 +539,9 @@ public class DatabaseHandler {
     }
 
     private static void ensureDefaultUser(Connection conn) throws SQLException {
+        if (AccessControl.DEFAULT_USER_EMAIL.isBlank()) {
+            return;
+        }
         String lookupSql = "SELECT COUNT(*) FROM users WHERE LOWER(email) = LOWER(?)";
         String insertSql =
                 "INSERT INTO users (full_name, username, password, role, status, temporary, department, phone, email) " +
@@ -561,15 +589,16 @@ public class DatabaseHandler {
     }
 
     private static void demoteOtherSuperAdmins(Connection conn) throws SQLException {
+        if (AccessControl.PRIMARY_SUPER_ADMIN_EMAIL.isBlank()) {
+            return;
+        }
         try (PreparedStatement ps = conn.prepareStatement(
                 "UPDATE users SET role = ? " +
                 "WHERE UPPER(role) = 'SUPER_ADMIN' " +
-                "AND LOWER(email) <> LOWER(?) " +
                 "AND LOWER(email) <> LOWER(?)"
         )) {
             ps.setString(1, AccessControl.ROLE_ADMIN);
             ps.setString(2, AccessControl.PRIMARY_SUPER_ADMIN_EMAIL);
-            ps.setString(3, AccessControl.DEFAULT_ADMIN_EMAIL);
             ps.executeUpdate();
         }
     }
@@ -619,18 +648,19 @@ public class DatabaseHandler {
         String condition = normalizedOptional(eq.getCondition());
         String source = normalizedOptional(eq.getSource());
         String entryDate = normalizedOptional(eq.getEntryDate());
-
-        try (Connection conn = getConnection()) {
-            ensureEquipmentIdentifierAvailable(conn, serialNumber, null);
-        }
+        String purchaseCost = normalizedOptional(eq.getPurchaseCost());
+        String location = normalizedOptional(eq.getLocation());
+        String warrantyExpiry = normalizedOptional(eq.getWarrantyExpiry());
+        String supplier = normalizedOptional(eq.getSupplier());
 
         String sql = "INSERT INTO equipment " +
-                "(name, category, serial_number, condition, source, entry_date) " +
-                "VALUES (?, ?, ?, ?, ?, ?)";
+                "(name, category, serial_number, condition, source, entry_date, purchase_cost, location, warranty_expiry, supplier) " +
+                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
 
         String savedAssetCode;
         try (Connection conn = getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
+            ensureEquipmentIdentifierAvailable(conn, serialNumber, null);
 
             ps.setString(1, name);
             ps.setString(2, category);
@@ -638,6 +668,10 @@ public class DatabaseHandler {
             ps.setString(4, condition);
             ps.setString(5, source);
             ps.setString(6, entryDate.isBlank() ? Equipment.today() : entryDate);
+            ps.setString(7, purchaseCost);
+            ps.setString(8, location);
+            ps.setString(9, warrantyExpiry);
+            ps.setString(10, supplier);
 
             ps.executeUpdate();
             savedAssetCode = findAssetCodeBySerial(conn, serialNumber);
@@ -830,10 +864,82 @@ public class DatabaseHandler {
                         rs.getString("condition"),
                         rs.getString("source"),
                         rs.getString("entry_date"),
-                        rs.getString("status")
+                        rs.getString("status"),
+                        rs.getString("purchase_cost"),
+                        rs.getString("location"),
+                        rs.getString("warranty_expiry"),
+                        rs.getString("supplier")
                 ));
             }
 
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+        return list;
+    }
+
+    public static void insertMaintenanceRecord(String assetCode, String issue, String actionTaken,
+                                               String performedBy, String maintenanceDate,
+                                               String cost, boolean completed) throws Exception {
+        String normalizedAssetCode = normalizedRequired(assetCode, "Asset code is required.");
+        String normalizedIssue = normalizedRequired(issue, "Maintenance issue is required.");
+        String normalizedAction = normalizedOptional(actionTaken);
+        String normalizedPerformedBy = normalizedOptional(performedBy);
+        String normalizedDate = normalizedOptional(maintenanceDate);
+        String normalizedCost = normalizedOptional(cost);
+        String status = completed ? "COMPLETED" : "OPEN";
+
+        try (Connection conn = getConnection()) {
+            conn.setAutoCommit(false);
+            try (PreparedStatement insert = conn.prepareStatement(
+                    "INSERT INTO maintenance_log (asset_code, issue, action_taken, performed_by, maintenance_date, cost, status) " +
+                            "VALUES (?, ?, ?, ?, ?, ?, ?)");
+                 PreparedStatement update = conn.prepareStatement("UPDATE equipment SET status=? WHERE asset_code=?")) {
+                insert.setString(1, normalizedAssetCode);
+                insert.setString(2, normalizedIssue);
+                insert.setString(3, normalizedAction);
+                insert.setString(4, normalizedPerformedBy);
+                insert.setString(5, normalizedDate.isBlank() ? Equipment.today() : normalizedDate);
+                insert.setString(6, normalizedCost);
+                insert.setString(7, status);
+                insert.executeUpdate();
+
+                update.setString(1, completed ? "AVAILABLE" : "MAINTENANCE");
+                update.setString(2, normalizedAssetCode);
+                if (update.executeUpdate() == 0) {
+                    throw new Exception("Equipment record was not found.");
+                }
+                conn.commit();
+            } catch (Exception exception) {
+                conn.rollback();
+                throw exception;
+            }
+        }
+
+        logAudit("LOG_MAINTENANCE", "MAINTENANCE", normalizedAssetCode,
+                "Maintenance logged for " + normalizedAssetCode + ". Status: " + status + ". Issue: " + normalizedIssue);
+    }
+
+    public static ObservableList<MaintenanceRecord> getMaintenanceRecords() {
+        ObservableList<MaintenanceRecord> list = FXCollections.observableArrayList();
+        String sql = "SELECT * FROM maintenance_log ORDER BY maintenance_date DESC, id DESC";
+
+        try (Connection conn = getConnection();
+             Statement st = conn.createStatement();
+             ResultSet rs = st.executeQuery(sql)) {
+            while (rs.next()) {
+                list.add(new MaintenanceRecord(
+                        rs.getInt("id"),
+                        rs.getString("asset_code"),
+                        rs.getString("issue"),
+                        rs.getString("action_taken"),
+                        rs.getString("performed_by"),
+                        rs.getString("maintenance_date"),
+                        rs.getString("cost"),
+                        rs.getString("status")
+                ));
+            }
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -947,7 +1053,7 @@ public class DatabaseHandler {
 
         try (Connection conn = getConnection();
              Statement st = conn.createStatement();
-             ResultSet rs = st.executeQuery("SELECT * FROM assignments")) {
+             ResultSet rs = st.executeQuery("SELECT * FROM assignments ORDER BY date DESC, id DESC")) {
 
             while (rs.next()) {
                 list.add(new Assignment(
@@ -1133,11 +1239,6 @@ public class DatabaseHandler {
             try {
                 UserResetTarget target = findResetTarget(conn, normalizedIdentifier);
                 LocalDateTime now = LocalDateTime.now();
-                if (target.resetRequestedAt != null && target.resetRequestedAt.plusMinutes(1).isAfter(now)) {
-                    logPasswordResetEvent(conn, target.id, normalizedIdentifier, "REQUEST_PASSWORD_RESET", "FAILED",
-                            "Reset requested too frequently.");
-                    throw new Exception("A reset code was already requested recently. Wait one minute and try again.");
-                }
 
                 try (PreparedStatement ps = conn.prepareStatement(
                         "UPDATE users SET reset_code=?, reset_expiry=?, reset_requested_at=? WHERE id=?"
@@ -1240,7 +1341,11 @@ public class DatabaseHandler {
 
             ps.setString(1, hashedPassword);
             ps.setString(2, email);
-            return ps.executeUpdate() > 0;
+            boolean updated = ps.executeUpdate() > 0;
+            if (updated) {
+                logAudit("USER_PASSWORD_RESET", "USER", email, "User password was reset by email.");
+            }
+            return updated;
 
         } catch (Exception e) {
             e.printStackTrace();
@@ -1304,8 +1409,9 @@ public class DatabaseHandler {
 
             ps.setString(1, email);
             ps.setInt(2, userId);
-            ResultSet rs = ps.executeQuery();
-            return rs.next() && rs.getInt(1) > 0;
+            try (ResultSet rs = ps.executeQuery()) {
+                return rs.next() && rs.getInt(1) > 0;
+            }
 
         } catch (Exception e) {
             e.printStackTrace();
@@ -1322,8 +1428,9 @@ public class DatabaseHandler {
              PreparedStatement ps = conn.prepareStatement(
                      "SELECT COUNT(*) FROM users WHERE UPPER(role) = 'ADMIN' AND UPPER(COALESCE(status, 'ACTIVE')) = 'ACTIVE'"
              )) {
-            ResultSet rs = ps.executeQuery();
-            return rs.next() ? rs.getInt(1) : 0;
+            try (ResultSet rs = ps.executeQuery()) {
+                return rs.next() ? rs.getInt(1) : 0;
+            }
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -1349,8 +1456,9 @@ public class DatabaseHandler {
              PreparedStatement ps = conn.prepareStatement(sql)) {
 
             ps.setString(1, value);
-            ResultSet rs = ps.executeQuery();
-            return rs.next() && rs.getInt(1) > 0;
+            try (ResultSet rs = ps.executeQuery()) {
+                return rs.next() && rs.getInt(1) > 0;
+            }
 
         } catch (Exception e) {
             e.printStackTrace();
@@ -1626,8 +1734,9 @@ public class DatabaseHandler {
                      "SELECT COUNT(*) FROM users WHERE UPPER(role) = UPPER(?)"
              )) {
             ps.setString(1, role);
-            ResultSet rs = ps.executeQuery();
-            return rs.next() ? rs.getInt(1) : 0;
+            try (ResultSet rs = ps.executeQuery()) {
+                return rs.next() ? rs.getInt(1) : 0;
+            }
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -1692,6 +1801,15 @@ public class DatabaseHandler {
         return departments;
     }
 
+    public static void insertDepartment(String department) throws Exception {
+        AccessControl.requireRole(AccessControl.ROLE_SUPER_ADMIN, AccessControl.ROLE_ADMIN);
+        String normalizedDepartment = normalizedRequired(department, "Department name is required.");
+        try (Connection conn = getConnection()) {
+            insertDepartmentIfMissing(conn, normalizedDepartment);
+        }
+        logAudit("CREATE_DEPARTMENT", "DEPARTMENTS", normalizedDepartment, "Department created: " + normalizedDepartment);
+    }
+
     public static List<String> getEquipmentCategories() {
         List<String> categories = new ArrayList<>();
 
@@ -1721,6 +1839,10 @@ public class DatabaseHandler {
     }
 
     public static void updateDepartment(String oldName, String newName) throws Exception {
+        AccessControl.requireRole(AccessControl.ROLE_SUPER_ADMIN, AccessControl.ROLE_ADMIN);
+        if (DEFAULT_DEPARTMENT.equalsIgnoreCase(normalizedOptional(oldName))) {
+            throw new Exception("The default MSR department cannot be renamed.");
+        }
         try (Connection conn = getConnection()) {
             conn.setAutoCommit(false);
             try {
@@ -1758,6 +1880,10 @@ public class DatabaseHandler {
     }
 
     public static void deleteDepartment(String department) throws Exception {
+        AccessControl.requireRole(AccessControl.ROLE_SUPER_ADMIN, AccessControl.ROLE_ADMIN);
+        if (DEFAULT_DEPARTMENT.equalsIgnoreCase(normalizedOptional(department))) {
+            throw new Exception("The default MSR department cannot be deleted.");
+        }
         try (Connection conn = getConnection()) {
             if (isDepartmentInUse(conn, department)) {
                 throw new Exception("Department is still in use by users or assignments.");
@@ -1780,8 +1906,9 @@ public class DatabaseHandler {
         )) {
             ps.setString(1, department);
             ps.setString(2, department);
-            ResultSet rs = ps.executeQuery();
-            return rs.next() && rs.getInt(1) > 0;
+            try (ResultSet rs = ps.executeQuery()) {
+                return rs.next() && rs.getInt(1) > 0;
+            }
         }
     }
 
@@ -1855,9 +1982,10 @@ public class DatabaseHandler {
             try {
                 try (PreparedStatement check = conn.prepareStatement(checkSql)) {
                     check.setString(1, assetCode);
-                    ResultSet rs = check.executeQuery();
-                    if (rs.next() && rs.getInt(1) > 0) {
-                        throw new Exception("Equipment already assigned");
+                    try (ResultSet rs = check.executeQuery()) {
+                        if (rs.next() && rs.getInt(1) > 0) {
+                            throw new Exception("Equipment already assigned");
+                        }
                     }
                 }
 
@@ -1883,7 +2011,7 @@ public class DatabaseHandler {
     public static void distributeEquipmentBatch(int assignmentId, List<Distribution> distributions) throws Exception {
         String checkSql = "SELECT COUNT(*) FROM distribution WHERE asset_code = ? AND returned = 0";
         String insertSql = "INSERT INTO distribution (asset_code, assignment_id, assigned_to, phone, nid, date, returned) " +
-                "VALUES (?, ?, ?, ?, ?, DATE('now'), 0)";
+                "VALUES (?, ?, ?, ?, ?, ?, 0)";
 
         try (Connection conn = getConnection()) {
             conn.setAutoCommit(false);
@@ -1913,6 +2041,7 @@ public class DatabaseHandler {
                     insert.setString(3, distribution.getAssignedTo());
                     insert.setString(4, distribution.getPhone());
                     insert.setString(5, distribution.getNid());
+                    insert.setString(6, distribution.getDate());
                     insert.executeUpdate();
                     distributedAssetCodes.add(distribution.getAssetCode());
                 }
@@ -2169,10 +2298,11 @@ public class DatabaseHandler {
     public static boolean isAssetCurrentlyDistributed(String assetCode) {
         String sql = "SELECT COUNT(*) FROM distribution WHERE asset_code = ? AND returned = 0";
         try (Connection conn = getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql)) {
+            PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setString(1, assetCode);
-            ResultSet rs = ps.executeQuery();
-            return rs.next() && rs.getInt(1) > 0;
+            try (ResultSet rs = ps.executeQuery()) {
+                return rs.next() && rs.getInt(1) > 0;
+            }
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -2192,8 +2322,9 @@ public class DatabaseHandler {
         String sql = "SELECT COUNT(*) FROM distribution WHERE assignment_id = ? AND returned = 0";
         try (PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setInt(1, assignmentId);
-            ResultSet rs = ps.executeQuery();
-            if (rs.next()) return rs.getInt(1);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) return rs.getInt(1);
+            }
         }
         return 0;
     }
@@ -2209,8 +2340,9 @@ public class DatabaseHandler {
 
         try (PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setString(1, normalizedOptional(type));
-            ResultSet rs = ps.executeQuery();
-            return rs.next() ? rs.getInt(1) : 0;
+            try (ResultSet rs = ps.executeQuery()) {
+                return rs.next() ? rs.getInt(1) : 0;
+            }
         }
     }
 
@@ -2263,38 +2395,40 @@ public class DatabaseHandler {
         String assignmentType;
         try (PreparedStatement ps = conn.prepareStatement(assignmentSql)) {
             ps.setInt(1, assignmentId);
-            ResultSet rs = ps.executeQuery();
-            if (!rs.next()) {
-                throw new Exception("Assignment record was not found.");
-            }
-            assignmentType = normalizeEquipmentCategory(rs.getString("equipment_type"));
-            String assignmentStatus = normalizedOptional(rs.getString("assignment_status"));
-            if (AccessControl.STATUS_FROZEN.equalsIgnoreCase(assignmentStatus)) {
-                throw new Exception("Frozen assignments cannot be changed.");
-            }
-            if (AccessControl.STATUS_RETIRED.equalsIgnoreCase(assignmentStatus)) {
-                throw new Exception("Retired assignments are closed.");
+            try (ResultSet rs = ps.executeQuery()) {
+                if (!rs.next()) {
+                    throw new Exception("Assignment record was not found.");
+                }
+                assignmentType = normalizeEquipmentCategory(rs.getString("equipment_type"));
+                String assignmentStatus = normalizedOptional(rs.getString("assignment_status"));
+                if (AccessControl.STATUS_FROZEN.equalsIgnoreCase(assignmentStatus)) {
+                    throw new Exception("Frozen assignments cannot be changed.");
+                }
+                if (AccessControl.STATUS_RETIRED.equalsIgnoreCase(assignmentStatus)) {
+                    throw new Exception("Retired assignments are closed.");
+                }
             }
         }
 
         try (PreparedStatement ps = conn.prepareStatement(equipmentSql)) {
             ps.setString(1, normalizedAssetCode);
-            ResultSet rs = ps.executeQuery();
-            if (!rs.next()) {
-                throw new Exception("Selected equipment does not exist: " + normalizedAssetCode);
-            }
-
-            String equipmentCategory = normalizeEquipmentCategory(rs.getString("category"));
-            String equipmentStatus = normalizedOptional(rs.getString("status"));
-            if (!assignmentType.equalsIgnoreCase(equipmentCategory)) {
-                throw new Exception("Equipment " + normalizedAssetCode + " is " + equipmentCategory +
-                        " but the assignment requires " + assignmentType + ".");
-            }
-            if (!"AVAILABLE".equalsIgnoreCase(equipmentStatus)) {
-                if (AccessControl.STATUS_RETIRED.equalsIgnoreCase(equipmentStatus)) {
-                    throw new Exception("Retired equipment cannot be assigned: " + normalizedAssetCode);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (!rs.next()) {
+                    throw new Exception("Selected equipment does not exist: " + normalizedAssetCode);
                 }
-                throw new Exception("Equipment is already assigned: " + normalizedAssetCode);
+
+                String equipmentCategory = normalizeEquipmentCategory(rs.getString("category"));
+                String equipmentStatus = normalizedOptional(rs.getString("status"));
+                if (!assignmentType.equalsIgnoreCase(equipmentCategory)) {
+                    throw new Exception("Equipment " + normalizedAssetCode + " is " + equipmentCategory +
+                            " but the assignment requires " + assignmentType + ".");
+                }
+                if (!"AVAILABLE".equalsIgnoreCase(equipmentStatus)) {
+                    if (AccessControl.STATUS_RETIRED.equalsIgnoreCase(equipmentStatus)) {
+                        throw new Exception("Retired equipment cannot be assigned: " + normalizedAssetCode);
+                    }
+                    throw new Exception("Equipment is already assigned: " + normalizedAssetCode);
+                }
             }
         }
 
@@ -2311,8 +2445,9 @@ public class DatabaseHandler {
                 "SELECT COUNT(*) FROM distribution WHERE asset_code = ?"
         )) {
             ps.setString(1, assetCode);
-            ResultSet rs = ps.executeQuery();
-            return rs.next() && rs.getInt(1) > 0;
+            try (ResultSet rs = ps.executeQuery()) {
+                return rs.next() && rs.getInt(1) > 0;
+            }
         }
     }
 
@@ -2382,8 +2517,9 @@ public class DatabaseHandler {
                 "SELECT COUNT(*) FROM distribution WHERE assignment_id = ?"
         )) {
             ps.setInt(1, assignmentId);
-            ResultSet rs = ps.executeQuery();
-            return rs.next() && rs.getInt(1) > 0;
+            try (ResultSet rs = ps.executeQuery()) {
+                return rs.next() && rs.getInt(1) > 0;
+            }
         }
     }
 

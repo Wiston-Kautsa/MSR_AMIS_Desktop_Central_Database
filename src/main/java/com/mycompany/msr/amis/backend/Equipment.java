@@ -25,6 +25,10 @@ public class Equipment {
     private final StringProperty source;
     private final StringProperty entryDate;
     private final StringProperty status;
+    private final StringProperty purchaseCost;
+    private final StringProperty location;
+    private final StringProperty warrantyExpiry;
+    private final StringProperty supplier;
 
     // ================= DATE FORMAT =================
     private static final DateTimeFormatter FORMATTER =
@@ -32,7 +36,7 @@ public class Equipment {
 
     // ================= DEFAULT =================
     public Equipment() {
-        this(0, "", "", "", "", "", "", today(), "AVAILABLE");
+        this(0, "", "", "", "", "", "", today(), "AVAILABLE", "", "", "", "");
     }
 
     // ================= FULL CONSTRUCTOR (DB USE) =================
@@ -40,6 +44,15 @@ public class Equipment {
                      String name, String category,
                      String condition, String source,
                      String entryDate, String status) {
+        this(id, assetCode, serialNumber, name, category, condition, source, entryDate, status, "", "", "", "");
+    }
+
+    public Equipment(int id, String assetCode, String serialNumber,
+                     String name, String category,
+                     String condition, String source,
+                     String entryDate, String status,
+                     String purchaseCost, String location,
+                     String warrantyExpiry, String supplier) {
 
         this.id = new SimpleIntegerProperty(id);
         this.assetCode = new SimpleStringProperty(safe(assetCode));
@@ -50,12 +63,24 @@ public class Equipment {
         this.source = new SimpleStringProperty(safe(source));
         this.entryDate = new SimpleStringProperty(safe(entryDate));
         this.status = new SimpleStringProperty(safe(status));
+        this.purchaseCost = new SimpleStringProperty(currencySafe(purchaseCost));
+        this.location = new SimpleStringProperty(safe(location));
+        this.warrantyExpiry = new SimpleStringProperty(safe(warrantyExpiry));
+        this.supplier = new SimpleStringProperty(safe(supplier));
     }
 
     // ================= SIMPLIFIED CONSTRUCTOR (UI USE) =================
     public Equipment(String name, String category,
                      String serialNumber, String source,
                      String condition, String entryDate) {
+        this(name, category, serialNumber, source, condition, entryDate, "", "", "", "");
+    }
+
+    public Equipment(String name, String category,
+                     String serialNumber, String source,
+                     String condition, String entryDate,
+                     String purchaseCost, String location,
+                     String warrantyExpiry, String supplier) {
 
         this(0,
              generateAssetCode(),
@@ -65,7 +90,11 @@ public class Equipment {
              condition,
              source,
              entryDate,
-             "AVAILABLE");
+             "AVAILABLE",
+             purchaseCost,
+             location,
+             warrantyExpiry,
+             supplier);
     }
 
     // ================= NULL SAFETY =================
@@ -97,6 +126,14 @@ public class Equipment {
 
     public String getStatus() { return status.get(); }
 
+    public String getPurchaseCost() { return purchaseCost.get(); }
+
+    public String getLocation() { return location.get(); }
+
+    public String getWarrantyExpiry() { return warrantyExpiry.get(); }
+
+    public String getSupplier() { return supplier.get(); }
+
     // ================= SETTERS =================
     public void setId(int value) { id.set(value); }
 
@@ -115,6 +152,14 @@ public class Equipment {
     public void setEntryDate(String value) { entryDate.set(safe(value)); }
 
     public void setStatus(String value) { status.set(safe(value)); }
+
+    public void setPurchaseCost(String value) { purchaseCost.set(currencySafe(value)); }
+
+    public void setLocation(String value) { location.set(safe(value)); }
+
+    public void setWarrantyExpiry(String value) { warrantyExpiry.set(safe(value)); }
+
+    public void setSupplier(String value) { supplier.set(safe(value)); }
 
     // ================= PROPERTIES =================
     public IntegerProperty idProperty() { return id; }
@@ -135,6 +180,18 @@ public class Equipment {
 
     public StringProperty statusProperty() { return status; }
 
+    public StringProperty purchaseCostProperty() { return purchaseCost; }
+
+    public StringProperty locationProperty() { return location; }
+
+    public StringProperty warrantyExpiryProperty() { return warrantyExpiry; }
+
+    public StringProperty supplierProperty() { return supplier; }
+
+    private String currencySafe(String value) {
+        return CurrencyFormatHelper.formatLocalCurrency(safe(value));
+    }
+
     // ================= DATE HELPER =================
     public static String today() {
         return LocalDate.now().format(FORMATTER);
@@ -153,6 +210,10 @@ public class Equipment {
                 ", source='" + getSource() + '\'' +
                 ", entryDate='" + getEntryDate() + '\'' +
                 ", status='" + getStatus() + '\'' +
+                ", purchaseCost='" + getPurchaseCost() + '\'' +
+                ", location='" + getLocation() + '\'' +
+                ", warrantyExpiry='" + getWarrantyExpiry() + '\'' +
+                ", supplier='" + getSupplier() + '\'' +
                 '}';
     }
 }

@@ -7,6 +7,12 @@ import jakarta.mail.PasswordAuthentication;
 import jakarta.mail.Transport;
 import jakarta.mail.internet.InternetAddress;
 import jakarta.mail.internet.MimeMessage;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.Properties;
 
 public final class EmailService {
@@ -19,19 +25,21 @@ public final class EmailService {
     private static final String ENV_SMTP_SSL = "MSR_AMIS_SMTP_SSL";
     private static final String ENV_SMTP_STARTTLS = "MSR_AMIS_SMTP_STARTTLS";
     private static final String ENV_SMTP_TIMEOUT_MS = "MSR_AMIS_SMTP_TIMEOUT_MS";
+    private static final Path ENV_FILE = Path.of(".env");
     private static final int DEFAULT_TIMEOUT_MS = 10000;
 
     private EmailService() {
     }
 
     public static void sendPasswordResetCode(String recipientEmail, String resetCode) throws Exception {
-        String smtpHost = requiredEnv(ENV_SMTP_HOST);
-        int smtpPort = requiredIntEnv(ENV_SMTP_PORT);
-        String smtpUser = requiredEnv(ENV_SMTP_USER);
-        String smtpPassword = requiredEnv(ENV_SMTP_PASSWORD);
-        String smtpFrom = requiredEnv(ENV_SMTP_FROM);
-        Boolean configuredSsl = optionalBooleanEnv(ENV_SMTP_SSL);
-        Boolean configuredStartTls = optionalBooleanEnv(ENV_SMTP_STARTTLS);
+        Map<String, String> envFileValues = loadEnvFile();
+        String smtpHost = requiredConfig(ENV_SMTP_HOST, envFileValues);
+        int smtpPort = requiredIntConfig(ENV_SMTP_PORT, envFileValues);
+        String smtpUser = requiredConfig(ENV_SMTP_USER, envFileValues);
+        String smtpPassword = requiredConfig(ENV_SMTP_PASSWORD, envFileValues);
+        String smtpFrom = requiredConfig(ENV_SMTP_FROM, envFileValues);
+        Boolean configuredSsl = optionalBooleanConfig(ENV_SMTP_SSL, envFileValues);
+        Boolean configuredStartTls = optionalBooleanConfig(ENV_SMTP_STARTTLS, envFileValues);
         boolean useSsl = configuredSsl != null ? configuredSsl : smtpPort == 465;
         boolean useStartTls = configuredStartTls != null ? configuredStartTls : smtpPort == 587;
 
@@ -42,7 +50,7 @@ public final class EmailService {
         if (useSsl && useStartTls) {
             throw new Exception("Email reset is not configured correctly. Enable either SSL or STARTTLS, not both.");
         }
-        int timeoutMs = optionalIntEnv(ENV_SMTP_TIMEOUT_MS, DEFAULT_TIMEOUT_MS);
+        int timeoutMs = optionalIntConfig(ENV_SMTP_TIMEOUT_MS, DEFAULT_TIMEOUT_MS, envFileValues);
 
         String subject = "MSR AMIS password reset code";
         String body = "Your MSR AMIS password reset code is " + resetCode + ".\r\n\r\n"
@@ -78,21 +86,25 @@ public final class EmailService {
         }
     }
 
-    private static String requiredEnv(String name) throws Exception {
-        String value = System.getenv(name);
+    private static String requiredConfig(String name, Map<String, String> envFileValues) throws Exception {
+        String value = resolveConfig(name, envFileValues);
         if (value == null || value.isBlank()) {
-            throw new Exception("Email reset is not configured. Missing environment variable: " + name);
+            throw new Exception("Email reset is not configured. Missing configuration value: " + name);
         }
         return value.trim();
     }
 
-    private static String optionalEnv(String name, String defaultValue) {
-        String value = System.getenv(name);
-        return value == null || value.isBlank() ? defaultValue : value.trim();
+    private static String resolveConfig(String name, Map<String, String> envFileValues) {
+        String value = envFileValues.get(name);
+        if (value != null && !value.isBlank()) {
+            return value.trim();
+        }
+        value = System.getenv(name);
+        return value == null || value.isBlank() ? null : value.trim();
     }
 
-    private static int requiredIntEnv(String name) throws Exception {
-        String value = requiredEnv(name);
+    private static int requiredIntConfig(String name, Map<String, String> envFileValues) throws Exception {
+        String value = requiredConfig(name, envFileValues);
         try {
             return Integer.parseInt(value);
         } catch (NumberFormatException e) {
@@ -100,8 +112,8 @@ public final class EmailService {
         }
     }
 
-    private static int optionalIntEnv(String name, int defaultValue) throws Exception {
-        String value = System.getenv(name);
+    private static int optionalIntConfig(String name, int defaultValue, Map<String, String> envFileValues) throws Exception {
+        String value = resolveConfig(name, envFileValues);
         if (value == null || value.isBlank()) {
             return defaultValue;
         }
@@ -112,8 +124,8 @@ public final class EmailService {
         }
     }
 
-    private static Boolean optionalBooleanEnv(String name) throws Exception {
-        String value = System.getenv(name);
+    private static Boolean optionalBooleanConfig(String name, Map<String, String> envFileValues) throws Exception {
+        String value = resolveConfig(name, envFileValues);
         if (value == null || value.isBlank()) {
             return null;
         }
@@ -123,6 +135,39 @@ public final class EmailService {
             return Boolean.parseBoolean(normalized);
         }
         throw new Exception("Email reset is not configured correctly. " + name + " must be true or false.");
+    }
+
+    private static Map<String, String> loadEnvFile() {
+        Map<String, String> values = new HashMap<>();
+        if (!Files.exists(ENV_FILE)) {
+            return values;
+        }
+
+        try {
+            List<String> lines = Files.readAllLines(ENV_FILE);
+            for (String rawLine : lines) {
+                String line = rawLine == null ? "" : rawLine.trim();
+                if (line.isEmpty() || line.startsWith("#")) {
+                    continue;
+                }
+
+                int separator = line.indexOf('=');
+                if (separator <= 0) {
+                    continue;
+                }
+
+                String key = line.substring(0, separator).trim();
+                String value = line.substring(separator + 1).trim();
+                if ((value.startsWith("\"") && value.endsWith("\""))
+                        || (value.startsWith("'") && value.endsWith("'"))) {
+                    value = value.substring(1, value.length() - 1);
+                }
+                values.put(key, value);
+            }
+        } catch (IOException ignored) {
+            // OS environment variables can still provide SMTP settings.
+        }
+        return values;
     }
 
     private static String safeMessage(Exception e) {

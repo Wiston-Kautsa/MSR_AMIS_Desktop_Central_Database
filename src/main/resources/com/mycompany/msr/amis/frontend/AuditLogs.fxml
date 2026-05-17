@@ -4,6 +4,7 @@
 <?import javafx.geometry.Insets?>
 <?import javafx.scene.control.Button?>
 <?import javafx.scene.control.ComboBox?>
+<?import javafx.scene.control.DatePicker?>
 <?import javafx.scene.control.Label?>
 <?import javafx.scene.control.TableColumn?>
 <?import javafx.scene.control.TableView?>
@@ -80,18 +81,44 @@
                                             </children>
                                         </VBox>
 
-                                        <Region HBox.hgrow="ALWAYS"/>
-
-                                        <HBox alignment="BOTTOM_RIGHT" spacing="12.0" styleClass="toolbar-row">
+                                        <VBox spacing="6.0">
                                             <children>
-                                                <Button text="Refresh"
-                                                        onAction="#handleRefresh"
-                                                        styleClass="secondary-button"/>
-                                                <Button text="Export Logs"
-                                                        onAction="#handleExport"
-                                                        styleClass="action-button"/>
+                                                <Label text="From" styleClass="input-label"/>
+                                                <DatePicker fx:id="dpFrom"
+                                                            prefWidth="150.0"
+                                                            onAction="#handleFilter"/>
                                             </children>
-                                        </HBox>
+                                        </VBox>
+
+                                        <VBox spacing="6.0">
+                                            <children>
+                                                <Label text="To" styleClass="input-label"/>
+                                                <DatePicker fx:id="dpTo"
+                                                            prefWidth="150.0"
+                                                            onAction="#handleFilter"/>
+                                            </children>
+                                        </VBox>
+                                    </children>
+                                </HBox>
+
+                                <HBox alignment="CENTER_RIGHT" spacing="12.0" styleClass="toolbar-row">
+                                    <children>
+                                        <Region HBox.hgrow="ALWAYS"/>
+                                        <Button text="Reset Filters"
+                                                minWidth="150.0"
+                                                prefWidth="150.0"
+                                                onAction="#handleRefresh"
+                                                styleClass="secondary-button"/>
+                                        <Button text="Export CSV"
+                                                minWidth="150.0"
+                                                prefWidth="150.0"
+                                                onAction="#handleExport"
+                                                styleClass="action-button"/>
+                                        <Button text="Export PDF"
+                                                minWidth="150.0"
+                                                prefWidth="150.0"
+                                                onAction="#handleExportPdf"
+                                                styleClass="secondary-button"/>
                                     </children>
                                 </HBox>
                             </children>

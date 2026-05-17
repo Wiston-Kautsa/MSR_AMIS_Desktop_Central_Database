@@ -81,6 +81,19 @@ public final class LocalAssetHistoryService implements AssetHistoryService {
                 "    LEFT JOIN assignments a ON a.id = d.assignment_id " +
                 "    WHERE LOWER(TRIM(d.asset_code)) = LOWER(TRIM(?)) " +
                 "    UNION ALL " +
+                "    SELECT m.maintenance_date AS activity_date, " +
+                "           CASE WHEN UPPER(COALESCE(m.status, '')) = 'COMPLETED' THEN 'MAINTENANCE COMPLETED' ELSE 'MAINTENANCE' END AS event_type, " +
+                "           COALESCE(m.performed_by, '') AS actor, " +
+                "           '' AS affected_person, " +
+                "           'Issue: ' || COALESCE(m.issue, '') || " +
+                "           CASE WHEN COALESCE(TRIM(m.action_taken), '') = '' THEN '' ELSE ' | Action taken: ' || TRIM(m.action_taken) END || " +
+                "           CASE WHEN COALESCE(TRIM(m.cost), '') = '' THEN '' ELSE ' | Cost: ' || TRIM(m.cost) END AS details, " +
+                "           COALESCE(m.status, '') AS status, " +
+                "           3 AS event_order, " +
+                "           m.id AS record_id " +
+                "    FROM maintenance_log m " +
+                "    WHERE LOWER(TRIM(m.asset_code)) = LOWER(TRIM(?)) " +
+                "    UNION ALL " +
                 "    SELECT r.return_date AS activity_date, " +
                 "           'RETURNED' AS event_type, " +
                 "           COALESCE(r.returned_by, '') AS actor, " +
@@ -102,6 +115,7 @@ public final class LocalAssetHistoryService implements AssetHistoryService {
             ps.setString(1, assetCode);
             ps.setString(2, assetCode);
             ps.setString(3, assetCode);
+            ps.setString(4, assetCode);
             try (ResultSet rs = ps.executeQuery()) {
                 while (rs.next()) {
                     records.add(new AssetHistoryRecord(

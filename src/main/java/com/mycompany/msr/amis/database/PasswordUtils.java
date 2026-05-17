@@ -4,55 +4,58 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
 import java.util.Base64;
+import org.mindrot.jbcrypt.BCrypt;
 
 /**
- * Utility for password hashing using SHA-256 with a random salt.
- *
- * Stored format: BASE64(salt) + ":" + BASE64(SHA-256(salt + password))
- * This avoids storing plain-text passwords in the database.
- *
- * NOTE: For production use, prefer BCrypt or Argon2. This implementation
- * is a significant improvement over plain text and requires no extra
- * dependencies beyond the standard Java library.
+ * Utility for BCrypt password hashing.
+ * Legacy salted SHA-256 hashes are still accepted during verification so
+ * existing local users can sign in until their password is changed.
  */
 public final class PasswordUtils {
 
     private static final int SALT_BYTES = 16;
+    private static final int BCRYPT_WORK_FACTOR = 12;
     private static final SecureRandom RANDOM = new SecureRandom();
 
     private PasswordUtils() {}
 
     /**
-     * Hash a plain-text password into a storable salted hash string.
+     * Hash a plain-text password into a storable BCrypt hash string.
      */
     public static String hash(String plainPassword) {
-        byte[] salt = new byte[SALT_BYTES];
-        new SecureRandom().nextBytes(salt);
-        byte[] hash = sha256(salt, plainPassword);
-        return Base64.getEncoder().encodeToString(salt)
-                + ":"
-                + Base64.getEncoder().encodeToString(hash);
+        if (plainPassword == null) {
+            throw new IllegalArgumentException("Password cannot be null.");
+        }
+        return BCrypt.hashpw(plainPassword, BCrypt.gensalt(BCRYPT_WORK_FACTOR));
     }
 
     /**
      * Verify a plain-text password against a stored hash string.
      */
     public static boolean verify(String plainPassword, String storedHash) {
-        if (storedHash == null || !storedHash.contains(":")) {
-            // Legacy plain-text fallback (for existing accounts before hashing was added)
-            return plainPassword != null && plainPassword.equals(storedHash);
+        if (plainPassword == null || storedHash == null || storedHash.isBlank()) {
+            return false;
         }
-        String[] parts = storedHash.split(":", 2);
-        byte[] salt = Base64.getDecoder().decode(parts[0]);
-        byte[] expectedHash = Base64.getDecoder().decode(parts[1]);
-        byte[] actualHash = sha256(salt, plainPassword);
-        // Constant-time comparison to prevent timing attacks
-        if (expectedHash.length != actualHash.length) return false;
-        int diff = 0;
-        for (int i = 0; i < expectedHash.length; i++) {
-            diff |= (expectedHash[i] ^ actualHash[i]);
+        if (storedHash.startsWith("$2a$") || storedHash.startsWith("$2b$") || storedHash.startsWith("$2y$")) {
+            return BCrypt.checkpw(plainPassword, storedHash);
         }
-        return diff == 0;
+        if (!storedHash.contains(":")) {
+            return false;
+        }
+        try {
+            String[] parts = storedHash.split(":", 2);
+            byte[] salt = Base64.getDecoder().decode(parts[0]);
+            byte[] expectedHash = Base64.getDecoder().decode(parts[1]);
+            byte[] actualHash = sha256(salt, plainPassword);
+            if (expectedHash.length != actualHash.length) return false;
+            int diff = 0;
+            for (int i = 0; i < expectedHash.length; i++) {
+                diff |= (expectedHash[i] ^ actualHash[i]);
+            }
+            return diff == 0;
+        } catch (IllegalArgumentException exception) {
+            return false;
+        }
     }
 
     private static byte[] sha256(byte[] salt, String password) {
@@ -73,6 +76,18 @@ public final class PasswordUtils {
         StringBuilder builder = new StringBuilder(length);
         for (int i = 0; i < length; i++) {
             builder.append(RANDOM.nextInt(10));
+        }
+        return builder.toString();
+    }
+
+    public static String generateSecureToken(int length) {
+        if (length <= 0) {
+            throw new IllegalArgumentException("Token length must be greater than zero.");
+        }
+        String alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789";
+        StringBuilder builder = new StringBuilder(length);
+        for (int i = 0; i < length; i++) {
+            builder.append(alphabet.charAt(RANDOM.nextInt(alphabet.length())));
         }
         return builder.toString();
     }

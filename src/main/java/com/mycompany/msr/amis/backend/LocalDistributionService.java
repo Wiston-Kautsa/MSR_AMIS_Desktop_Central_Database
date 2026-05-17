@@ -88,6 +88,7 @@ public final class LocalDistributionService implements DistributionService {
             payload.put("assignedTo", distribution.getAssignedTo());
             payload.put("phone", distribution.getPhone());
             payload.put("nid", distribution.getNid());
+            payload.put("date", distribution.getDate());
             payloads.add(payload);
         }
         return payloads;

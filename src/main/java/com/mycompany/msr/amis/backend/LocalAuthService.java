@@ -47,13 +47,13 @@ public final class LocalAuthService implements AuthService {
     }
 
     @Override
-    public void resetPasswordWithCode(String identifier, String resetCode, String hashedPassword) throws Exception {
+    public void resetPasswordWithCode(String identifier, String resetCode, String plainPassword) throws Exception {
         if (remoteMirrorCoordinator.canAttemptRemoteAuthentication()) {
-            remoteMirrorCoordinator.getRemoteAuthService().resetPasswordWithCode(identifier, resetCode, hashedPassword);
-            remoteMirrorCoordinator.updateMirroredPassword(identifier, hashedPassword);
+            remoteMirrorCoordinator.getRemoteAuthService().resetPasswordWithCode(identifier, resetCode, plainPassword);
+            remoteMirrorCoordinator.updateMirroredPassword(identifier, plainPassword);
             return;
         }
-        DatabaseHandler.resetPasswordWithCode(identifier, resetCode, PasswordUtils.hash(hashedPassword));
+        DatabaseHandler.resetPasswordWithCode(identifier, resetCode, PasswordUtils.hash(plainPassword));
     }
 
     @Override

@@ -26,7 +26,7 @@ public final class ConnectionStatusService {
             }
             return new ConnectionStatus(
                     "OFFLINE (AUTO)",
-                    "Central API is unreachable. Working against SQLite and queuing changes for PostgreSQL sync.",
+                    "Central API is unreachable. Working against SQLite and queuing changes for Central Server sync.",
                     "connection-status-offline"
             );
         }

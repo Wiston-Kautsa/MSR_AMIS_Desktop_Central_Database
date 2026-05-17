@@ -32,7 +32,7 @@ import javafx.beans.binding.Bindings;
 
 public class EquipmentListController implements Initializable {
 
-    private final EquipmentService equipmentService = ServiceRegistry.getEquipmentService();
+    private EquipmentService equipmentService;
 
     @FXML
     private TableView<Equipment> equipmentTable;
@@ -59,6 +59,18 @@ public class EquipmentListController implements Initializable {
     private TableColumn<Equipment, String> colSource;
 
     @FXML
+    private TableColumn<Equipment, String> colPurchaseCost;
+
+    @FXML
+    private TableColumn<Equipment, String> colLocation;
+
+    @FXML
+    private TableColumn<Equipment, String> colWarrantyExpiry;
+
+    @FXML
+    private TableColumn<Equipment, String> colSupplier;
+
+    @FXML
     private TableColumn<Equipment, String> colStatus;
 
     @FXML
@@ -81,9 +93,15 @@ public class EquipmentListController implements Initializable {
         colCategory.setCellValueFactory(new PropertyValueFactory<>("category"));
         colCondition.setCellValueFactory(new PropertyValueFactory<>("condition"));
         colSource.setCellValueFactory(new PropertyValueFactory<>("source"));
+        colPurchaseCost.setCellValueFactory(new PropertyValueFactory<>("purchaseCost"));
+        CurrencyFormatHelper.installCurrencyCellFactory(colPurchaseCost);
+        colLocation.setCellValueFactory(new PropertyValueFactory<>("location"));
+        colWarrantyExpiry.setCellValueFactory(new PropertyValueFactory<>("warrantyExpiry"));
+        colSupplier.setCellValueFactory(new PropertyValueFactory<>("supplier"));
         colStatus.setCellValueFactory(new PropertyValueFactory<>("status"));
         colDate.setCellValueFactory(new PropertyValueFactory<>("entryDate"));
 
+        equipmentService = ServiceRegistry.getEquipmentService();
         loadEquipment();
         enableRowMenu();
     }
@@ -98,8 +116,22 @@ public class EquipmentListController implements Initializable {
             equipmentTable.setItems(equipmentList);
         } catch (Exception e) {
             e.printStackTrace();
-            showMessage("Error", "Failed to load equipment: " + e.getMessage());
+            equipmentList.clear();
+            equipmentTable.setItems(equipmentList);
+            showMessage("Load Failed", "Failed to load equipment.\n\n" + resolveMessage(e));
         }
+    }
+
+    private String resolveMessage(Exception exception) {
+        String message = exception.getMessage();
+        if (message == null || message.isBlank()) {
+            return "The equipment list could not be loaded.";
+        }
+        if (message.toLowerCase().contains("connection refused")
+                || message.toLowerCase().contains("getsockopt")) {
+            return "API is not reachable. Start the API server and try again.";
+        }
+        return message;
     }
 
     /* =============================
@@ -163,7 +195,10 @@ public class EquipmentListController implements Initializable {
             if (eq.getName().toLowerCase().contains(keyword)
                     || eq.getSerialNumber().toLowerCase().contains(keyword)
                     || eq.getAssetCode().toLowerCase().contains(keyword)
-                    || eq.getCategory().toLowerCase().contains(keyword)) {
+                    || eq.getCategory().toLowerCase().contains(keyword)
+                    || eq.getSource().toLowerCase().contains(keyword)
+                    || eq.getLocation().toLowerCase().contains(keyword)
+                    || eq.getSupplier().toLowerCase().contains(keyword)) {
 
                 filtered.add(eq);
             }
@@ -189,7 +224,7 @@ public class EquipmentListController implements Initializable {
         );
 
         try (FileWriter writer = new FileWriter(file)) {
-            writer.append("System Serial No.,IMEI/Serial Number,Equipment Name,Category,Condition,Source,Status,Entry Date\n");
+            writer.append("System Serial No.,IMEI/Serial Number,Equipment Name,Category,Condition,Source,Purchase Cost,Location,Warranty Expiry,Supplier,Status,Entry Date\n");
 
             for (Equipment equipment : itemsToExport) {
                 writer.append(csvSafe(equipment.getAssetCode())).append(",")
@@ -198,6 +233,10 @@ public class EquipmentListController implements Initializable {
                         .append(csvSafe(equipment.getCategory())).append(",")
                         .append(csvSafe(equipment.getCondition())).append(",")
                         .append(csvSafe(equipment.getSource())).append(",")
+                        .append(csvSafe(CurrencyFormatHelper.formatLocalCurrency(equipment.getPurchaseCost()))).append(",")
+                        .append(csvSafe(equipment.getLocation())).append(",")
+                        .append(csvSafe(equipment.getWarrantyExpiry())).append(",")
+                        .append(csvSafe(equipment.getSupplier())).append(",")
                         .append(csvSafe(equipment.getStatus())).append(",")
                         .append(csvSafe(equipment.getEntryDate())).append("\n");
             }

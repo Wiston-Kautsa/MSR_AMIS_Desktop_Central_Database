@@ -16,7 +16,7 @@ set "INSTALLER_MSI=%DIST_DIR%\%INSTALLER_BASENAME%.msi"
 set "JAVAFX_VERSION=17.0.8"
 set "M2_REPO=%USERPROFILE%\.m2\repository"
 set "JAVAFX_MODULE_PATH=%M2_REPO%\org\openjfx\javafx-base\%JAVAFX_VERSION%\javafx-base-%JAVAFX_VERSION%-win.jar;%M2_REPO%\org\openjfx\javafx-graphics\%JAVAFX_VERSION%\javafx-graphics-%JAVAFX_VERSION%-win.jar;%M2_REPO%\org\openjfx\javafx-controls\%JAVAFX_VERSION%\javafx-controls-%JAVAFX_VERSION%-win.jar;%M2_REPO%\org\openjfx\javafx-fxml\%JAVAFX_VERSION%\javafx-fxml-%JAVAFX_VERSION%-win.jar"
-set "RUNTIME_MODULES=java.sql,java.net.http,javafx.controls,javafx.fxml"
+set "RUNTIME_MODULES=java.sql,java.net.http,java.prefs,javafx.controls,javafx.fxml"
 set "UPGRADE_UUID=7a94ac66-f88f-4a0d-86b5-34c407af6f22"
 set "WIX_HOME=%ProgramFiles%\WiX Toolset v7.0\bin"
 

@@ -87,9 +87,27 @@ public final class ApiReportService implements ReportService {
         public String source;
         public String entryDate;
         public String status;
+        public String purchaseCost;
+        public String location;
+        public String warrantyExpiry;
+        public String supplier;
 
         private Equipment toEquipment() {
-            return new Equipment(id, assetCode, serialNumber, name, category, condition, source, entryDate, status);
+            return new Equipment(
+                    id,
+                    assetCode,
+                    serialNumber,
+                    name,
+                    category,
+                    condition,
+                    source,
+                    entryDate,
+                    status,
+                    purchaseCost,
+                    location,
+                    warrantyExpiry,
+                    supplier
+            );
         }
     }
 

@@ -12,7 +12,7 @@ public interface AuthService {
 
     void clearPasswordResetCode(String identifier);
 
-    void resetPasswordWithCode(String identifier, String resetCode, String hashedPassword) throws Exception;
+    void resetPasswordWithCode(String identifier, String resetCode, String plainPassword) throws Exception;
 
     void completeInitialPasswordChange(String newPassword) throws Exception;
 }

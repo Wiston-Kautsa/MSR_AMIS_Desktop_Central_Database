@@ -50,6 +50,10 @@ public final class ApiEquipmentService implements EquipmentService {
         request.source = existing == null ? "" : existing.source;
         request.condition = condition;
         request.entryDate = existing == null ? null : existing.entryDate;
+        request.purchaseCost = existing == null ? "" : existing.purchaseCost;
+        request.location = existing == null ? "" : existing.location;
+        request.warrantyExpiry = existing == null ? "" : existing.warrantyExpiry;
+        request.supplier = existing == null ? "" : existing.supplier;
         apiClient.put("/api/equipment/" + assetCode, request, EquipmentPayload.class);
         refreshLocalMirror();
     }
@@ -83,6 +87,10 @@ public final class ApiEquipmentService implements EquipmentService {
         public String source;
         public String condition;
         public String entryDate;
+        public String purchaseCost;
+        public String location;
+        public String warrantyExpiry;
+        public String supplier;
 
         static EquipmentRequest from(Equipment equipment) {
             EquipmentRequest request = new EquipmentRequest();
@@ -92,6 +100,10 @@ public final class ApiEquipmentService implements EquipmentService {
             request.source = equipment.getSource();
             request.condition = equipment.getCondition();
             request.entryDate = equipment.getEntryDate();
+            request.purchaseCost = equipment.getPurchaseCost();
+            request.location = equipment.getLocation();
+            request.warrantyExpiry = equipment.getWarrantyExpiry();
+            request.supplier = equipment.getSupplier();
             return request;
         }
     }
@@ -106,6 +118,10 @@ public final class ApiEquipmentService implements EquipmentService {
         public String source;
         public String entryDate;
         public String status;
+        public String purchaseCost;
+        public String location;
+        public String warrantyExpiry;
+        public String supplier;
 
         private Equipment toEquipment() {
             return new Equipment(
@@ -117,7 +133,11 @@ public final class ApiEquipmentService implements EquipmentService {
                     condition,
                     source,
                     entryDate,
-                    status
+                    status,
+                    purchaseCost,
+                    location,
+                    warrantyExpiry,
+                    supplier
             );
         }
     }

@@ -1,5 +1,6 @@
 package com.mycompany.msr.amis.api.service;
 
+import com.mycompany.msr.amis.api.config.ReservedEmailConfig;
 import com.mycompany.msr.amis.api.domain.UserAccount;
 import com.mycompany.msr.amis.api.domain.UserRole;
 import com.mycompany.msr.amis.api.domain.UserStatus;
@@ -10,7 +11,6 @@ import com.mycompany.msr.amis.api.exception.ApiException;
 import com.mycompany.msr.amis.api.repository.UserRepository;
 import java.util.List;
 import java.util.Locale;
-import java.util.Set;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -19,19 +19,19 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class UserManagementService {
 
-    private static final String PRIMARY_SUPER_ADMIN_EMAIL = "wkautsa@gmail.com";
-    private static final Set<String> BOOTSTRAP_EMAILS = Set.of("admin@msr.local", "user@msr.local");
-
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final ActionAuditService actionAuditService;
+    private final ReservedEmailConfig reservedEmailConfig;
 
     public UserManagementService(UserRepository userRepository,
                                  PasswordEncoder passwordEncoder,
-                                 ActionAuditService actionAuditService) {
+                                 ActionAuditService actionAuditService,
+                                 ReservedEmailConfig reservedEmailConfig) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
         this.actionAuditService = actionAuditService;
+        this.reservedEmailConfig = reservedEmailConfig;
     }
 
     public List<UserResponse> listVisibleUsers(String requesterIdentifier) {
@@ -307,20 +307,20 @@ public class UserManagementService {
     }
 
     private void assertReservedEmail(String email) {
-        if (BOOTSTRAP_EMAILS.contains(email) || PRIMARY_SUPER_ADMIN_EMAIL.equals(email)) {
+        if (reservedEmailConfig.isReservedEmail(email)) {
             throw new ApiException(HttpStatus.BAD_REQUEST, "This email is reserved for a temporary system account.");
         }
     }
 
     private boolean isPrimarySuperAdmin(UserAccount user) {
-        return user != null && normalizeEmail(user.getEmail()).equals(PRIMARY_SUPER_ADMIN_EMAIL);
+        return user != null && reservedEmailConfig.isPrimarySuperAdminEmail(user.getEmail());
     }
 
     private boolean isBootstrapTemporaryAccount(UserAccount user) {
         if (user == null || !user.isTemporary() || user.getEmail() == null) {
             return false;
         }
-        return BOOTSTRAP_EMAILS.contains(normalizeEmail(user.getEmail()));
+        return reservedEmailConfig.isBootstrapEmail(user.getEmail());
     }
 
     private UserResponse toResponse(UserAccount user) {

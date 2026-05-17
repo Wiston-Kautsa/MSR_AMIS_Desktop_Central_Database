@@ -3,12 +3,18 @@ package com.mycompany.msr.amis;
 import java.io.IOException;
 import java.net.URL;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.ResourceBundle;
+import java.util.stream.Collectors;
+import javafx.application.Platform;
 import javafx.concurrent.Task;
 import javafx.fxml.FXML;
 import javafx.fxml.Initializable;
 import javafx.scene.control.Button;
+import javafx.scene.control.ButtonType;
 import javafx.scene.control.CheckBox;
+import javafx.scene.control.ComboBox;
 import javafx.scene.control.Label;
 import javafx.scene.control.PasswordField;
 import javafx.scene.control.TextField;
@@ -18,11 +24,16 @@ import javafx.scene.layout.VBox;
 public class LoginController implements Initializable {
 
     private final AuthService authService = ServiceRegistry.getAuthService();
+    private final RememberedLoginStore rememberedLoginStore = new RememberedLoginStore();
+    private List<String> rememberedEmails = new ArrayList<>();
+    private boolean applyingRememberedSelection;
+    private boolean loginInProgress;
 
-    @FXML private TextField txtEmail;
+    @FXML private ComboBox<String> cmbEmail;
     @FXML private PasswordField txtPassword;
     @FXML private TextField txtPasswordVisible;
     @FXML private CheckBox chkShowPassword;
+    @FXML private CheckBox chkRememberLogin;
     @FXML private Label lblLoginStatus;
     @FXML private Label lblDefaultAdmin;
 
@@ -52,11 +63,13 @@ public class LoginController implements Initializable {
             });
         }
 
+        setupRememberedLogins();
+
         if (lblDefaultAdmin != null) {
             if (ServiceRegistry.getConfiguration().usesLocalDatabase()) {
                 if (ServiceRegistry.getConfiguration().isUsingLocalFallback()) {
                     lblDefaultAdmin.setText(
-                            "Automatic mode: central API is offline, so this session is using the local SQLite database. Offline changes are not pushed back to PostgreSQL automatically."
+                            "Automatic mode: central API is offline, so this session is using the local SQLite database. Offline changes are not pushed back to the Central Server automatically."
                     );
                 } else {
                     lblDefaultAdmin.setText(
@@ -79,7 +92,7 @@ public class LoginController implements Initializable {
 
     @FXML
     private void handleLogin() {
-        String email = txtEmail.getText() == null ? "" : txtEmail.getText().trim().toLowerCase();
+        String email = getEmailInput();
         String password = txtPassword.getText() == null ? "" : txtPassword.getText();
 
         if (email.isEmpty() || password.isEmpty()) {
@@ -88,22 +101,27 @@ public class LoginController implements Initializable {
         }
 
         User user;
+        loginInProgress = true;
         try {
             user = authService.authenticate(email, password);
         } catch (SecurityException e) {
+            loginInProgress = false;
             showStatus(e.getMessage());
             return;
         } catch (RuntimeException e) {
+            loginInProgress = false;
             showStatus(e.getMessage());
             return;
         }
         if (user == null) {
+            loginInProgress = false;
             showStatus("Invalid email or password.");
             return;
         }
 
         try {
             Session.setCurrentUser(user);
+            rememberSuccessfulLogin(email, password);
             mirrorCentralDataAfterLogin(user, password);
             if (authService.isTemporarySetupAccount(user)) {
                 Session.setSetupMode(true);
@@ -113,8 +131,10 @@ public class LoginController implements Initializable {
             Session.setSetupMode(false);
             App.showDashboardPage();
         } catch (SecurityException e) {
+            loginInProgress = false;
             showStatus(e.getMessage());
         } catch (IOException e) {
+            loginInProgress = false;
             e.printStackTrace();
             showStatus("Login succeeded, but the dashboard could not be opened.");
         }
@@ -131,7 +151,7 @@ public class LoginController implements Initializable {
     @FXML
     private void showResetPanel() {
         if (txtResetIdentifier != null && (txtResetIdentifier.getText() == null || txtResetIdentifier.getText().isBlank())) {
-            txtResetIdentifier.setText(txtEmail.getText() == null ? "" : txtEmail.getText().trim().toLowerCase());
+            txtResetIdentifier.setText(getEmailInput());
         }
         switchPanel("reset");
         clearResetInputFields(false);
@@ -163,7 +183,7 @@ public class LoginController implements Initializable {
             @Override
             protected String call() throws Exception {
                 if (ServiceRegistry.getConfiguration().usesLocalDatabase()) {
-                    String resetCode = PasswordUtils.generateNumericCode(6);
+                    String resetCode = PasswordUtils.generateSecureToken(32);
                     String recipientEmail = authService.issuePasswordResetCode(
                             identifier,
                             resetCode,
@@ -225,8 +245,10 @@ public class LoginController implements Initializable {
         try {
             authService.resetPasswordWithCode(identifier, resetCode, newPassword);
             ServiceRegistry.getRemoteMirrorCoordinator().updateMirroredPassword(identifier, newPassword);
+            rememberedLoginStore.remove(identifier);
+            refreshRememberedEmailChoices();
             Session.clear();
-            txtEmail.setText(identifier);
+            setEmailInput(identifier);
             txtPassword.clear();
             clearResetInputFields(true);
             setResetStatus("Password updated successfully. Sign in with the new password.", "success");
@@ -246,7 +268,7 @@ public class LoginController implements Initializable {
 
     @FXML
     private void handleClear() {
-        txtEmail.clear();
+        setEmailInput("");
         txtPassword.clear();
         if (chkShowPassword != null) {
             chkShowPassword.setSelected(false);
@@ -254,9 +276,173 @@ public class LoginController implements Initializable {
         showStatus("");
     }
 
+    @FXML
+    private void handleForgetSavedLogin() {
+        String email = getEmailInput();
+        rememberedLoginStore.remove(email);
+        refreshRememberedEmailChoices();
+        txtPassword.clear();
+        showStatus(email.isBlank() ? "Saved login list refreshed." : "Forgot saved login for " + email + ".");
+    }
+
     private void showStatus(String message) {
         if (lblLoginStatus != null) {
             lblLoginStatus.setText(message);
+        }
+    }
+
+    private void setupRememberedLogins() {
+        if (cmbEmail == null) {
+            return;
+        }
+        cmbEmail.setEditable(true);
+        refreshRememberedEmailChoices();
+
+        cmbEmail.getSelectionModel().selectedItemProperty().addListener(
+                (obs, oldValue, newValue) -> fillRememberedPasswordFromSelection(newValue)
+        );
+        cmbEmail.setOnAction(event -> applyRememberedEmailSelection(currentEmailEditorText()));
+        cmbEmail.setOnHidden(event -> applyRememberedEmailSelection(currentEmailEditorText()));
+        cmbEmail.getEditor().textProperty().addListener((obs, oldValue, newValue) -> {
+            if (loginInProgress) {
+                return;
+            }
+            if (newValue != null && !newValue.equals(oldValue)) {
+                filterRememberedEmailChoices(newValue);
+                String normalizedValue = normalized(newValue).toLowerCase();
+                if (rememberedEmails.contains(normalizedValue)) {
+                    applyRememberedEmailSelection(normalizedValue);
+                    return;
+                }
+                if (!applyingRememberedSelection && !newValue.equals(cmbEmail.getSelectionModel().getSelectedItem())) {
+                    txtPassword.clear();
+                    if (chkRememberLogin != null) {
+                        chkRememberLogin.setSelected(false);
+                    }
+                }
+            }
+        });
+
+        if (chkRememberLogin != null) {
+            chkRememberLogin.setSelected(false);
+        }
+    }
+
+    private void refreshRememberedEmailChoices() {
+        if (cmbEmail == null) {
+            return;
+        }
+        String current = getEmailInput();
+        rememberedEmails = rememberedLoginStore.getEmails();
+        cmbEmail.getItems().setAll(rememberedEmails);
+        setEmailInput(current);
+    }
+
+    private void filterRememberedEmailChoices(String typedEmail) {
+        if (cmbEmail == null) {
+            return;
+        }
+        String query = normalized(typedEmail).toLowerCase();
+        if (query.isBlank()) {
+            cmbEmail.getItems().setAll(rememberedEmails);
+            cmbEmail.hide();
+            return;
+        }
+
+        List<String> matches = rememberedEmails.stream()
+                .filter(email -> email.contains(query))
+                .collect(Collectors.toList());
+        cmbEmail.getItems().setAll(matches);
+        if (!matches.isEmpty() && cmbEmail.isFocused()) {
+            cmbEmail.show();
+        } else {
+            cmbEmail.hide();
+        }
+    }
+
+    private void fillRememberedPasswordFromSelection(String email) {
+        String password = rememberedLoginStore.getPassword(email);
+        if (!password.isBlank() && txtPassword != null) {
+            txtPassword.setText(password);
+            if (chkRememberLogin != null) {
+                chkRememberLogin.setSelected(true);
+            }
+        }
+    }
+
+    private void applyRememberedEmailSelection(String email) {
+        String normalizedEmail = normalized(email).toLowerCase();
+        if (normalizedEmail.isBlank() || !rememberedEmails.contains(normalizedEmail)) {
+            return;
+        }
+
+        applyingRememberedSelection = true;
+        try {
+            if (cmbEmail.getEditor() != null) {
+                cmbEmail.getEditor().setText(normalizedEmail);
+            }
+            fillRememberedPasswordFromSelection(normalizedEmail);
+            cmbEmail.hide();
+        } finally {
+            Platform.runLater(() -> applyingRememberedSelection = false);
+        }
+    }
+
+    private void rememberSuccessfulLogin(String email, String password) {
+        if (chkRememberLogin != null && !chkRememberLogin.isSelected()) {
+            return;
+        }
+        if (!rememberedLoginStore.hasSavedPassword(email, password) && !confirmSaveCredentials(email)) {
+            if (chkRememberLogin != null) {
+                chkRememberLogin.setSelected(false);
+            }
+            return;
+        }
+        rememberedLoginStore.save(email, password);
+        rememberedEmails = rememberedLoginStore.getEmails();
+    }
+
+    private boolean confirmSaveCredentials(String email) {
+        javafx.scene.control.Alert alert = new javafx.scene.control.Alert(
+                javafx.scene.control.Alert.AlertType.CONFIRMATION,
+                "Save sign-in credentials for " + email + " on this Windows user account?",
+                ButtonType.YES,
+                ButtonType.NO
+        );
+        alert.setTitle("Save Credentials");
+        alert.setHeaderText("Remember this login?");
+        alert.setContentText(
+                "Only choose Yes on a private, trusted computer. Saved credentials allow this app to fill the password for this Windows user."
+        );
+        return alert.showAndWait()
+                .filter(buttonType -> buttonType == ButtonType.YES)
+                .isPresent();
+    }
+
+    private String getEmailInput() {
+        if (cmbEmail == null) {
+            return "";
+        }
+        return normalized(currentEmailEditorText()).toLowerCase();
+    }
+
+    private String currentEmailEditorText() {
+        if (cmbEmail == null) {
+            return "";
+        }
+        return cmbEmail.isEditable() && cmbEmail.getEditor() != null
+                ? cmbEmail.getEditor().getText()
+                : cmbEmail.getValue();
+    }
+
+    private void setEmailInput(String email) {
+        if (cmbEmail == null) {
+            return;
+        }
+        String normalizedEmail = normalized(email).toLowerCase();
+        cmbEmail.setValue(normalizedEmail);
+        if (cmbEmail.getEditor() != null) {
+            cmbEmail.getEditor().setText(normalizedEmail);
         }
     }
 

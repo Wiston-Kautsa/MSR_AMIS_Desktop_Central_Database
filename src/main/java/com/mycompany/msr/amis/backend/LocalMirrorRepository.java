@@ -76,7 +76,7 @@ public final class LocalMirrorRepository {
                         ps.setString(5, normalizeStatus(user.getStatus()));
                         ps.setInt(6, AccessControl.isTemporarySetupAccountEmail(user.getEmail()) ? 1 : 0);
                         ps.setString(7, normalize(user.getDepartment()));
-                        ps.setString(8, normalize(user.getPhone()));
+                        ps.setString(8, normalizeNullable(user.getPhone()));
                         ps.setString(9, normalize(user.getEmail()));
                         ps.executeUpdate();
                     }
@@ -91,7 +91,7 @@ public final class LocalMirrorRepository {
                         ps.setString(5, normalizeStatus(user.getStatus()));
                         ps.setInt(6, AccessControl.isTemporarySetupAccountEmail(user.getEmail()) ? 1 : 0);
                         ps.setString(7, normalize(user.getDepartment()));
-                        ps.setString(8, normalize(user.getPhone()));
+                        ps.setString(8, normalizeNullable(user.getPhone()));
                         ps.setString(9, normalize(user.getEmail()));
                         ps.setInt(10, existingId);
                         ps.executeUpdate();
@@ -197,7 +197,7 @@ public final class LocalMirrorRepository {
                 ps.setString(6, normalizeStatus(user.getStatus()));
                 ps.setInt(7, AccessControl.isTemporarySetupAccountEmail(email) ? 1 : 0);
                 ps.setString(8, normalize(user.getDepartment()));
-                ps.setString(9, normalize(user.getPhone()));
+                ps.setString(9, normalizeNullable(user.getPhone()));
                 ps.setString(10, email);
                 ps.addBatch();
             }
@@ -385,6 +385,11 @@ public final class LocalMirrorRepository {
 
     private String normalize(String value) {
         return value == null ? "" : value.trim();
+    }
+
+    private String normalizeNullable(String value) {
+        String normalized = normalize(value);
+        return normalized.isBlank() ? null : normalized;
     }
 
     private static final class CredentialSnapshot {

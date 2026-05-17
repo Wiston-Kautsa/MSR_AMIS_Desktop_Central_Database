@@ -26,12 +26,7 @@ public final class ApiUserService implements UserService {
 
     @Override
     public List<String> getDepartments() {
-        try {
-            String[] departments = apiClient.get("/api/departments", String[].class);
-            return Arrays.asList(departments == null ? new String[0] : departments);
-        } catch (Exception exception) {
-            return List.of("MSR");
-        }
+        return ServiceRegistry.getDepartmentService().getDepartments();
     }
 
     @Override

@@ -6,16 +6,17 @@ import javafx.fxml.FXML;
 import javafx.fxml.Initializable;
 import javafx.scene.control.ComboBox;
 import javafx.scene.control.ContextMenu;
+import javafx.scene.control.DatePicker;
 import javafx.scene.control.Label;
 import javafx.scene.control.MenuItem;
 import javafx.scene.control.TableColumn;
 import javafx.scene.control.TableView;
 import javafx.scene.control.cell.PropertyValueFactory;
 
-import java.io.File;
-import java.io.FileWriter;
 import java.net.URL;
+import java.util.ArrayList;
 import java.util.LinkedHashSet;
+import java.util.List;
 import java.util.ResourceBundle;
 import java.util.Set;
 
@@ -23,6 +24,8 @@ public class AuditLogsController implements Initializable {
 
     @FXML private ComboBox<String> cmbAction;
     @FXML private ComboBox<String> cmbUsername;
+    @FXML private DatePicker dpFrom;
+    @FXML private DatePicker dpTo;
     @FXML private Label lblAuditScope;
     @FXML private Label lblAuditStatus;
     @FXML private TableView<AuditLog> tableAuditLogs;
@@ -57,9 +60,15 @@ public class AuditLogsController implements Initializable {
         if (Session.hasRole(AccessControl.ROLE_SUPER_ADMIN) && cmbUsername != null) {
             cmbUsername.setValue(null);
         }
+        if (dpFrom != null) {
+            dpFrom.setValue(null);
+        }
+        if (dpTo != null) {
+            dpTo.setValue(null);
+        }
         loadFilters();
         loadLogs();
-        updateStatus("Audit logs refreshed.");
+        updateStatus("Audit filters reset and logs refreshed.");
     }
 
     @FXML
@@ -74,32 +83,13 @@ public class AuditLogsController implements Initializable {
             return;
         }
 
-        try {
-            File file = FileLocationHelper.fileInDownloads("audit_logs.csv");
-            try (FileWriter writer = new FileWriter(file)) {
-                writer.append("ID,Username,Action,Module,Details,Action Time\n");
-                for (AuditLog log : rows) {
-                    writer.append(String.valueOf(log.getId())).append(",")
-                            .append(csvSafe(log.getUsername())).append(",")
-                            .append(csvSafe(log.getAction())).append(",")
-                            .append(csvSafe(log.getModuleName())).append(",")
-                            .append(csvSafe(log.getDetails())).append(",")
-                            .append(csvSafe(log.getActionTime())).append("\n");
-                }
-            }
-            updateStatus("Audit logs exported to " + file.getAbsolutePath());
-            OperationFeedbackHelper.showInfo(
-                    "Export Complete",
-                    "Audit logs exported successfully to:\n" + file.getAbsolutePath()
-            );
-        } catch (Exception e) {
-            e.printStackTrace();
-            updateStatus("Audit log export failed: " + safeMessage(e));
-            OperationFeedbackHelper.showError(
-                    "Export Failed",
-                    "Audit logs could not be exported.\n\n" + safeMessage(e)
-            );
-        }
+        ReportExportHelper.exportCsv("audit_logs", "Audit Logs", new ArrayList<>(rows), columns());
+    }
+
+    @FXML
+    private void handleExportPdf(ActionEvent event) {
+        ObservableList<AuditLog> rows = tableAuditLogs.getItems();
+        ReportExportHelper.exportPdf("audit_logs", "Audit Logs", new ArrayList<>(rows), columns());
     }
 
     private void configureTable() {
@@ -159,7 +149,8 @@ public class AuditLogsController implements Initializable {
 
         ObservableList<AuditLog> filtered = logs.filtered(log ->
                 matches(log.getAction(), selectedAction) &&
-                        matches(log.getUsername(), selectedUsername)
+                        matches(log.getUsername(), selectedUsername) &&
+                        ReportFilterHelper.matchesDateRange(normalizeAuditDate(log.getActionTime()), dpFrom, dpTo)
         );
 
         tableAuditLogs.setItems(filtered);
@@ -169,13 +160,16 @@ public class AuditLogsController implements Initializable {
     private void setupContextMenu() {
         ContextMenu menu = new ContextMenu();
 
-        MenuItem refresh = new MenuItem("Refresh Audit Logs");
+        MenuItem refresh = new MenuItem("Reset Filters and Refresh");
         refresh.setOnAction(event -> handleRefresh(null));
 
-        MenuItem export = new MenuItem("Export Audit Logs");
+        MenuItem export = new MenuItem("Export Audit Logs as CSV");
         export.setOnAction(event -> handleExport(null));
 
-        menu.getItems().addAll(refresh, export);
+        MenuItem exportPdf = new MenuItem("Export Audit Logs as PDF");
+        exportPdf.setOnAction(event -> handleExportPdf(null));
+
+        menu.getItems().addAll(refresh, export, exportPdf);
         tableAuditLogs.setContextMenu(menu);
     }
 
@@ -202,19 +196,27 @@ public class AuditLogsController implements Initializable {
                 : user.getUsername().trim();
     }
 
-    private String csvSafe(String value) {
-        if (value == null) {
-            return "";
-        }
-        if (value.contains(",") || value.contains("\"") || value.contains("\n")) {
-            return "\"" + value.replace("\"", "\"\"") + "\"";
-        }
-        return value;
-    }
-
     private String safeMessage(Exception e) {
         return e.getMessage() == null || e.getMessage().isBlank()
                 ? "Unexpected error."
                 : e.getMessage();
+    }
+
+    private List<ReportExportHelper.Column<AuditLog>> columns() {
+        return List.of(
+                new ReportExportHelper.Column<>("ID", log -> Integer.toString(log.getId())),
+                new ReportExportHelper.Column<>("Username", AuditLog::getUsername),
+                new ReportExportHelper.Column<>("Action", AuditLog::getAction),
+                new ReportExportHelper.Column<>("Module", AuditLog::getModuleName),
+                new ReportExportHelper.Column<>("Details", AuditLog::getDetails),
+                new ReportExportHelper.Column<>("Action Time", AuditLog::getActionTime)
+        );
+    }
+
+    private String normalizeAuditDate(String value) {
+        if (value == null || value.length() < 10) {
+            return "";
+        }
+        return value.substring(0, 10);
     }
 }

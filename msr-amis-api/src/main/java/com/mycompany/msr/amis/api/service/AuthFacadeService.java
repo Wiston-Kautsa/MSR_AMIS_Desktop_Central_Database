@@ -1,9 +1,11 @@
 package com.mycompany.msr.amis.api.service;
 
+import com.mycompany.msr.amis.api.config.ReservedEmailConfig;
 import com.mycompany.msr.amis.api.domain.UserAccount;
 import com.mycompany.msr.amis.api.domain.UserRole;
 import com.mycompany.msr.amis.api.domain.UserStatus;
 import com.mycompany.msr.amis.api.dto.CommonMessageResponse;
+import com.mycompany.msr.amis.api.dto.auth.InitialAdminSetupRequest;
 import com.mycompany.msr.amis.api.dto.auth.InitialPasswordChangeRequest;
 import com.mycompany.msr.amis.api.dto.auth.LoginRequest;
 import com.mycompany.msr.amis.api.dto.auth.LoginResponse;
@@ -13,10 +15,9 @@ import com.mycompany.msr.amis.api.dto.auth.UserProfileResponse;
 import com.mycompany.msr.amis.api.exception.ApiException;
 import com.mycompany.msr.amis.api.repository.UserRepository;
 import com.mycompany.msr.amis.api.security.JwtService;
+import java.security.SecureRandom;
 import java.time.OffsetDateTime;
 import java.util.Map;
-import java.util.Set;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -26,10 +27,8 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class AuthFacadeService {
 
-    private static final String PRIMARY_SUPER_ADMIN_EMAIL = "wkautsa@gmail.com";
-    private static final String DEFAULT_ADMIN_EMAIL = "admin@msr.local";
-    private static final String DEFAULT_USER_EMAIL = "user@msr.local";
-    private static final Set<String> BOOTSTRAP_EMAILS = Set.of(DEFAULT_ADMIN_EMAIL, DEFAULT_USER_EMAIL);
+    private static final SecureRandom RESET_RANDOM = new SecureRandom();
+    private static final String RESET_TOKEN_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789";
 
     private final UserRepository userRepository;
     private final JwtService jwtService;
@@ -37,6 +36,7 @@ public class AuthFacadeService {
     private final PasswordResetEmailService passwordResetEmailService;
     private final JdbcTemplate jdbcTemplate;
     private final ActionAuditService actionAuditService;
+    private final ReservedEmailConfig reservedEmailConfig;
     private final boolean exposeResetCodeOnEmailFailure;
 
     public AuthFacadeService(UserRepository userRepository,
@@ -45,7 +45,8 @@ public class AuthFacadeService {
                              PasswordResetEmailService passwordResetEmailService,
                              JdbcTemplate jdbcTemplate,
                              ActionAuditService actionAuditService,
-                             @Value("${app.security.password-reset.expose-code-when-email-disabled:true}")
+                             ReservedEmailConfig reservedEmailConfig,
+                             @org.springframework.beans.factory.annotation.Value("${app.security.password-reset.expose-code-when-email-disabled:true}")
                              boolean exposeResetCodeOnEmailFailure) {
         this.userRepository = userRepository;
         this.jwtService = jwtService;
@@ -53,6 +54,7 @@ public class AuthFacadeService {
         this.passwordResetEmailService = passwordResetEmailService;
         this.jdbcTemplate = jdbcTemplate;
         this.actionAuditService = actionAuditService;
+        this.reservedEmailConfig = reservedEmailConfig;
         this.exposeResetCodeOnEmailFailure = exposeResetCodeOnEmailFailure;
     }
 
@@ -102,6 +104,43 @@ public class AuthFacadeService {
         return new LoginResponse(token, toProfile(account));
     }
 
+    @Transactional
+    public CommonMessageResponse setupInitialAdmin(InitialAdminSetupRequest request) {
+        long permanentAdmins = userRepository.countByRoleAndTemporaryFalseAndStatus(UserRole.SUPER_ADMIN, UserStatus.ACTIVE)
+                + userRepository.countByRoleAndTemporaryFalseAndStatus(UserRole.ADMIN, UserStatus.ACTIVE);
+        if (permanentAdmins > 0) {
+            throw new ApiException(HttpStatus.CONFLICT, "Initial setup is already complete.");
+        }
+
+        String email = normalize(request.email()).toLowerCase();
+        String username = normalize(request.username());
+        if (reservedEmailConfig.isReservedEmail(email)) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "Use an organisation email that is not a reserved setup account.");
+        }
+        if (userRepository.existsByEmailIgnoreCase(email)) {
+            throw new ApiException(HttpStatus.CONFLICT, "Email already exists.");
+        }
+        if (userRepository.existsByUsernameIgnoreCase(username)) {
+            throw new ApiException(HttpStatus.CONFLICT, "Username already exists.");
+        }
+
+        UserAccount account = new UserAccount();
+        account.setFullName(normalize(request.fullName()));
+        account.setUsername(username);
+        account.setEmail(email);
+        account.setDepartment(normalize(request.department()).isBlank() ? "MSR" : normalize(request.department()));
+        account.setPasswordHash(passwordEncoder.encode(request.password()));
+        account.setRole(UserRole.SUPER_ADMIN);
+        account.setStatus(UserStatus.ACTIVE);
+        account.setTemporary(false);
+        account.setMustChangePassword(false);
+        userRepository.save(account);
+
+        freezeBootstrapAccounts();
+        actionAuditService.log(email, "INITIAL_ADMIN_CREATED", "AUTH", email, "First production super admin created.");
+        return new CommonMessageResponse(true, "Initial super admin created. Sign in with the new account.");
+    }
+
     public UserProfileResponse currentUser(String identifier) {
         UserAccount account = userRepository.findByEmailIgnoreCaseOrUsernameIgnoreCase(identifier, identifier)
                 .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "User not found."));
@@ -117,11 +156,6 @@ public class AuthFacadeService {
                     return new ApiException(HttpStatus.NOT_FOUND, "User not found.");
                 });
         OffsetDateTime now = OffsetDateTime.now();
-        if (account.getResetRequestedAt() != null && account.getResetRequestedAt().plusMinutes(1).isAfter(now)) {
-            logPasswordResetEvent(account.getId(), request.identifier(), "REQUEST_PASSWORD_RESET", "FAILED", "Reset requested too frequently.");
-            actionAuditService.log(account.getEmail(), "PASSWORD_RESET_REQUEST_FAILED", "AUTH", account.getEmail(), "Password reset requested too frequently.");
-            throw new ApiException(HttpStatus.BAD_REQUEST, "A reset code was already requested recently. Wait one minute and try again.");
-        }
         String generatedCode = generateResetCode();
         account.setResetCode(generatedCode);
         account.setResetExpiry(now.plusMinutes(10));
@@ -146,7 +180,7 @@ public class AuthFacadeService {
         }
         logPasswordResetEvent(account.getId(), request.identifier(), "REQUEST_PASSWORD_RESET", "SUCCESS", "Reset code issued to registered email.");
         actionAuditService.log(account.getEmail(), "PASSWORD_RESET_REQUESTED", "AUTH", account.getEmail(), "Password reset requested.");
-        return new CommonMessageResponse(true, "Password reset code sent to the registered email address.");
+        return new CommonMessageResponse(true, "Password reset code sent to " + account.getEmail() + ".");
     }
 
     @Transactional
@@ -214,16 +248,20 @@ public class AuthFacadeService {
             throw new ApiException(HttpStatus.BAD_REQUEST, "Create at least one permanent USER account before finishing setup.");
         }
 
+        freezeBootstrapAccounts();
+        return new CommonMessageResponse(true, "Temporary bootstrap accounts disabled. Sign in with a permanent account.");
+    }
+
+    private void freezeBootstrapAccounts() {
         userRepository.findAll().stream()
                 .filter(this::isBootstrapTemporaryAccount)
                 .forEach(user -> {
-            user.setStatus(UserStatus.FROZEN);
-            user.setMustChangePassword(false);
-            user.setResetCode(null);
-            user.setResetExpiry(null);
-            user.setResetRequestedAt(null);
-        });
-        return new CommonMessageResponse(true, "Temporary bootstrap accounts disabled. Sign in with a permanent account.");
+                    user.setStatus(UserStatus.FROZEN);
+                    user.setMustChangePassword(false);
+                    user.setResetCode(null);
+                    user.setResetExpiry(null);
+                    user.setResetRequestedAt(null);
+                });
     }
 
     private UserProfileResponse toProfile(UserAccount account) {
@@ -240,21 +278,24 @@ public class AuthFacadeService {
     }
 
     private String generateResetCode() {
-        int code = (int) (Math.random() * 900000) + 100000;
-        return Integer.toString(code);
+        StringBuilder token = new StringBuilder(32);
+        for (int i = 0; i < 32; i++) {
+            token.append(RESET_TOKEN_ALPHABET.charAt(RESET_RANDOM.nextInt(RESET_TOKEN_ALPHABET.length())));
+        }
+        return token.toString();
     }
 
     private boolean isPrimarySuperAdmin(UserAccount account) {
         return account != null
                 && account.getEmail() != null
-                && PRIMARY_SUPER_ADMIN_EMAIL.equalsIgnoreCase(account.getEmail().trim());
+                && reservedEmailConfig.isPrimarySuperAdminEmail(account.getEmail());
     }
 
     private boolean isBootstrapTemporaryAccount(UserAccount account) {
         return account != null
                 && account.isTemporary()
                 && account.getEmail() != null
-                && BOOTSTRAP_EMAILS.contains(account.getEmail().trim().toLowerCase());
+                && reservedEmailConfig.isBootstrapEmail(account.getEmail());
     }
 
     private void logPasswordResetEvent(Long userId, String identifier, String eventType, String status, String details) {

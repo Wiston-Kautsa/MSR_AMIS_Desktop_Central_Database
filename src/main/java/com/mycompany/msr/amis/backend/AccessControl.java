@@ -1,10 +1,27 @@
 package com.mycompany.msr.amis;
 
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.Arrays;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Locale;
+import java.util.Set;
+
 public final class AccessControl {
 
-    public static final String PRIMARY_SUPER_ADMIN_EMAIL = "wkautsa@gmail.com";
-    public static final String DEFAULT_ADMIN_EMAIL = "admin@msr.local";
-    public static final String DEFAULT_USER_EMAIL = "user@msr.local";
+    private static final String PRIMARY_SUPER_ADMIN_ENV = "MSR_AMIS_PRIMARY_SUPER_ADMIN_EMAIL";
+    private static final String SETUP_ADMIN_ENV = "MSR_AMIS_SETUP_ADMIN_EMAIL";
+    private static final String SETUP_USER_ENV = "MSR_AMIS_SETUP_USER_EMAIL";
+    private static final String RESERVED_SUPER_ADMIN_ENV = "MSR_AMIS_RESERVED_SUPER_ADMIN_EMAILS";
+    private static final String RESERVED_ADMIN_ENV = "MSR_AMIS_RESERVED_ADMIN_EMAILS";
+    private static final String RESERVED_USER_ENV = "MSR_AMIS_RESERVED_USER_EMAILS";
+    public static final String PRIMARY_SUPER_ADMIN_EMAIL = resolveConfig(PRIMARY_SUPER_ADMIN_ENV, "");
+    public static final String DEFAULT_ADMIN_EMAIL = resolveConfig(SETUP_ADMIN_ENV, "");
+    public static final String DEFAULT_USER_EMAIL = resolveConfig(SETUP_USER_ENV, "");
+    private static final Set<String> RESERVED_EMAILS = resolveReservedEmails();
+    private static final Set<String> TEMPORARY_SETUP_EMAILS = resolveTemporarySetupEmails();
     public static final String ROLE_SUPER_ADMIN = "SUPER_ADMIN";
     public static final String ROLE_ADMIN = "ADMIN";
     public static final String ROLE_USER = "USER";
@@ -35,6 +52,14 @@ public final class AccessControl {
     }
 
     public static boolean canViewAuditLogs() {
+        return Session.hasRole(ROLE_SUPER_ADMIN, ROLE_ADMIN);
+    }
+
+    public static boolean canAccessSyncCenter() {
+        return Session.hasRole(ROLE_SUPER_ADMIN, ROLE_ADMIN);
+    }
+
+    public static boolean canRetryRejectedSyncItems() {
         return Session.hasRole(ROLE_SUPER_ADMIN, ROLE_ADMIN);
     }
 
@@ -83,16 +108,91 @@ public final class AccessControl {
         if (email == null) {
             return false;
         }
-        String normalizedEmail = email.trim();
-        return DEFAULT_ADMIN_EMAIL.equalsIgnoreCase(normalizedEmail)
-                || DEFAULT_USER_EMAIL.equalsIgnoreCase(normalizedEmail);
+        return TEMPORARY_SETUP_EMAILS.contains(normalizeEmail(email));
     }
 
     public static boolean isKnownTemporaryAccountEmail(String email) {
-        return isTemporarySetupAccountEmail(email) || isPrimarySuperAdminEmail(email);
+        return RESERVED_EMAILS.contains(normalizeEmail(email));
     }
 
     public static boolean isPrimarySuperAdmin(User user) {
         return user != null && isPrimarySuperAdminEmail(user.getEmail());
+    }
+
+    private static String resolveConfig(String key, String fallback) {
+        String configured = System.getenv(key);
+        if (configured == null || configured.isBlank()) {
+            configured = readEnvFileValue(key);
+        }
+        return configured == null || configured.isBlank()
+                ? normalizeEmail(fallback)
+                : normalizeEmail(configured);
+    }
+
+    private static Set<String> resolveReservedEmails() {
+        Set<String> emails = new LinkedHashSet<>();
+        addReserved(emails, PRIMARY_SUPER_ADMIN_EMAIL);
+        addReserved(emails, resolveListConfig(RESERVED_SUPER_ADMIN_ENV, PRIMARY_SUPER_ADMIN_EMAIL));
+        addReserved(emails, resolveListConfig(RESERVED_ADMIN_ENV, DEFAULT_ADMIN_EMAIL));
+        addReserved(emails, resolveListConfig(RESERVED_USER_ENV, DEFAULT_USER_EMAIL));
+        return Set.copyOf(emails);
+    }
+
+    private static Set<String> resolveTemporarySetupEmails() {
+        Set<String> emails = new LinkedHashSet<>();
+        addReserved(emails, DEFAULT_ADMIN_EMAIL);
+        addReserved(emails, DEFAULT_USER_EMAIL);
+        return Set.copyOf(emails);
+    }
+
+    private static String resolveListConfig(String key, String fallback) {
+        String configured = System.getenv(key);
+        if (configured == null) {
+            configured = readEnvFileValue(key);
+        }
+        return configured == null ? fallback : configured;
+    }
+
+    private static void addReserved(Set<String> target, String rawEmails) {
+        if (rawEmails == null || rawEmails.isBlank()) {
+            return;
+        }
+        Arrays.stream(rawEmails.split(","))
+                .map(AccessControl::normalizeEmail)
+                .filter(value -> !value.isBlank())
+                .forEach(target::add);
+    }
+
+    private static String normalizeEmail(String email) {
+        return email == null ? "" : email.trim().toLowerCase(Locale.ROOT);
+    }
+
+    private static String readEnvFileValue(String key) {
+        Path envFile = Path.of(".env");
+        if (!Files.exists(envFile)) {
+            return null;
+        }
+        try {
+            List<String> lines = Files.readAllLines(envFile);
+            for (String rawLine : lines) {
+                String line = rawLine == null ? "" : rawLine.trim();
+                if (line.isEmpty() || line.startsWith("#")) {
+                    continue;
+                }
+                int separator = line.indexOf('=');
+                if (separator <= 0 || !key.equals(line.substring(0, separator).trim())) {
+                    continue;
+                }
+                String value = line.substring(separator + 1).trim();
+                if ((value.startsWith("\"") && value.endsWith("\""))
+                        || (value.startsWith("'") && value.endsWith("'"))) {
+                    value = value.substring(1, value.length() - 1);
+                }
+                return value;
+            }
+        } catch (IOException ignored) {
+            // Fall back to process environment or the built-in development account.
+        }
+        return null;
     }
 }

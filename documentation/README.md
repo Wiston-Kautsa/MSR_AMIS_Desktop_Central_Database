@@ -4,14 +4,25 @@ This folder contains the project documentation set for MSR-AMIS.
 
 Main documents:
 
-- [Architecture](</D:/School/JAVA/MSR-AMIS_destop_application/documentation/docs/architecture.md>)
-- [Configuration](</D:/School/JAVA/MSR-AMIS_destop_application/documentation/docs/configuration.md>)
-- [Deployment](</D:/School/JAVA/MSR-AMIS_destop_application/documentation/docs/deployment.md>)
-- [Daily Operations](</D:/School/JAVA/MSR-AMIS_destop_application/documentation/docs/daily-operations.md>)
-- [Current System Alignment](</D:/School/JAVA/MSR-AMIS_destop_application/documentation/docs/current-system-alignment.md>)
-- [Final Corrected Design](</D:/School/JAVA/MSR-AMIS_destop_application/documentation/docs/final-corrected-design.md>)
-- [API Migration Plan](</D:/School/JAVA/MSR-AMIS_destop_application/documentation/docs/api-migration-plan.md>)
+- [System Overview](docs/system-overview.md)
+- [Sync Backend Contract](docs/sync-backend-contract.md)
+- [Sync Implementation Blueprint](docs/sync-implementation-blueprint.md)
+- [Architecture](docs/architecture.md)
+- [Configuration](docs/configuration.md)
+- [Deployment](docs/deployment.md)
+- [Daily Operations](docs/daily-operations.md)
+- [Troubleshooting](docs/troubleshooting.md)
+- [Current System Alignment](docs/current-system-alignment.md)
+- [Final Corrected Design](docs/final-corrected-design.md)
+- [API Migration Plan](docs/api-migration-plan.md)
 
 API module notes remain in:
 
-- [API README](</D:/School/JAVA/MSR-AMIS_destop_application/msr-amis-api/README.md>)
+- [API README](../msr-amis-api/README.md)
+
+For server setup, see the PostgreSQL hosting and backup sections in the deployment guide. For `API not reachable`, use the troubleshooting checklist.
+
+Server backup scripts:
+
+- [PostgreSQL backup](../scripts/postgres-backup.ps1)
+- [Register scheduled PostgreSQL backup](../scripts/register-postgres-backup-task.ps1)

@@ -9,6 +9,10 @@ public record InventoryReportItemResponse(
         String condition,
         String source,
         String entryDate,
-        String status
+        String status,
+        String purchaseCost,
+        String location,
+        String warrantyExpiry,
+        String supplier
 ) {
 }

@@ -11,6 +11,10 @@ public record EquipmentResponse(
         String condition,
         String source,
         LocalDate entryDate,
-        String status
+        String status,
+        String purchaseCost,
+        String location,
+        LocalDate warrantyExpiry,
+        String supplier
 ) {
 }

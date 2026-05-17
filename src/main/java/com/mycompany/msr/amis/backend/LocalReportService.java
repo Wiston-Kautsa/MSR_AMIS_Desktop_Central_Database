@@ -29,7 +29,11 @@ public final class LocalReportService implements ReportService {
                         rs.getString("condition"),
                         rs.getString("source"),
                         rs.getString("entry_date"),
-                        rs.getString("status")
+                        rs.getString("status"),
+                        rs.getString("purchase_cost"),
+                        rs.getString("location"),
+                        rs.getString("warranty_expiry"),
+                        rs.getString("supplier")
                 ));
             }
         } catch (Exception e) {

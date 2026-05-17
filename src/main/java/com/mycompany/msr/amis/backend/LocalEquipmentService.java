@@ -134,6 +134,10 @@ public final class LocalEquipmentService implements EquipmentService {
         payload.put("source", equipment.getSource());
         payload.put("entryDate", equipment.getEntryDate());
         payload.put("status", equipment.getStatus());
+        payload.put("purchaseCost", equipment.getPurchaseCost());
+        payload.put("location", equipment.getLocation());
+        payload.put("warrantyExpiry", equipment.getWarrantyExpiry());
+        payload.put("supplier", equipment.getSupplier());
         return payload;
     }
 }

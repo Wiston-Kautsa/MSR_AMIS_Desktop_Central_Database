@@ -16,6 +16,7 @@ public final class ServiceRegistry {
     private static final AssetHistoryService ASSET_HISTORY_SERVICE = createAssetHistoryService();
     private static final DataMaintenanceService DATA_MAINTENANCE_SERVICE = createDataMaintenanceService();
     private static final SyncCenterService SYNC_CENTER_SERVICE = createSyncCenterService();
+    private static final DepartmentService DEPARTMENT_SERVICE = createDepartmentService();
 
     private ServiceRegistry() {
     }
@@ -82,6 +83,10 @@ public final class ServiceRegistry {
 
     public static SyncCenterService getSyncCenterService() {
         return SYNC_CENTER_SERVICE;
+    }
+
+    public static DepartmentService getDepartmentService() {
+        return DEPARTMENT_SERVICE;
     }
 
     private static AuthService createAuthService() {
@@ -155,6 +160,16 @@ public final class ServiceRegistry {
     }
 
     private static SyncCenterService createSyncCenterService() {
+        if (CONFIGURATION.usesRemoteApi() && !CONFIGURATION.isAutomaticMode()) {
+            return new ApiSyncCenterService(API_CLIENT);
+        }
         return new LocalSyncCenterService();
+    }
+
+    private static DepartmentService createDepartmentService() {
+        if (CONFIGURATION.usesLocalDatabase()) {
+            return new LocalDepartmentService();
+        }
+        return new ApiDepartmentService(API_CLIENT);
     }
 }

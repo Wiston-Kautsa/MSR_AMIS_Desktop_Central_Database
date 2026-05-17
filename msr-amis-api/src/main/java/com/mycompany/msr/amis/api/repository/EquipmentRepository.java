@@ -18,6 +18,8 @@ public interface EquipmentRepository extends JpaRepository<EquipmentRecord, Long
 
     boolean existsBySerialNumberIgnoreCaseAndAssetCodeNotIgnoreCase(String serialNumber, String assetCode);
 
+    Optional<EquipmentRecord> findBySerialNumberIgnoreCase(String serialNumber);
+
     @Query("select count(e) > 0 from EquipmentRecord e " +
             "where lower(e.assetCode) = lower(:identifier) and lower(e.assetCode) <> lower(:assetCode)")
     boolean existsByAssetCodeIgnoreCaseAndAssetCodeNotIgnoreCase(

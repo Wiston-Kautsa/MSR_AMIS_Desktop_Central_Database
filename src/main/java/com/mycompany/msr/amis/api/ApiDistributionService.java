@@ -86,6 +86,7 @@ public final class ApiDistributionService implements DistributionService {
         public String assignedTo;
         public String phone;
         public String nid;
+        public String date;
 
         static DistributionRequest from(Distribution distribution) {
             DistributionRequest request = new DistributionRequest();
@@ -93,6 +94,7 @@ public final class ApiDistributionService implements DistributionService {
             request.assignedTo = distribution.getAssignedTo();
             request.phone = distribution.getPhone();
             request.nid = distribution.getNid();
+            request.date = distribution.getDate();
             return request;
         }
     }

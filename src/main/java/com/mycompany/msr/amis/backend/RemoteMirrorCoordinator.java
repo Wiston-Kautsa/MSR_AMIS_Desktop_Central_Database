@@ -13,12 +13,14 @@ import java.util.stream.Collectors;
 public final class RemoteMirrorCoordinator {
 
     private static final Duration PROBE_TIMEOUT = Duration.ofSeconds(4);
+    private static final long PROBE_CACHE_TTL_MS = 30_000L;
     private static final ThreadLocal<Boolean> AUTO_MIRROR_SUPPRESSED = ThreadLocal.withInitial(() -> false);
 
     private final AppConfiguration configuration;
     private final ApiClient apiClient;
     private final ApiAuthService remoteAuthService;
     private final ApiUserService remoteUserService;
+    private final ApiDepartmentService remoteDepartmentService;
     private final ApiEquipmentService remoteEquipmentService;
     private final ApiAssignmentService remoteAssignmentService;
     private final ApiDistributionService remoteDistributionService;
@@ -28,12 +30,15 @@ public final class RemoteMirrorCoordinator {
     private final ApiDataMaintenanceService remoteDataMaintenanceService;
     private final LocalMirrorRepository localMirrorRepository = new LocalMirrorRepository();
     private final HttpClient probeClient = HttpClient.newBuilder().connectTimeout(PROBE_TIMEOUT).build();
+    private volatile long lastProbeAt;
+    private volatile boolean lastProbeResult;
 
     public RemoteMirrorCoordinator(AppConfiguration configuration, ApiClient apiClient) {
         this.configuration = configuration;
         this.apiClient = apiClient;
         this.remoteAuthService = apiClient == null ? null : new ApiAuthService(apiClient);
         this.remoteUserService = apiClient == null ? null : new ApiUserService(apiClient);
+        this.remoteDepartmentService = apiClient == null ? null : new ApiDepartmentService(apiClient);
         this.remoteEquipmentService = apiClient == null ? null : new ApiEquipmentService(apiClient);
         this.remoteAssignmentService = apiClient == null ? null : new ApiAssignmentService(apiClient);
         this.remoteDistributionService = apiClient == null ? null : new ApiDistributionService(apiClient);
@@ -64,8 +69,16 @@ public final class RemoteMirrorCoordinator {
         return remoteAuthService;
     }
 
+    public ApiClient getApiClient() {
+        return apiClient;
+    }
+
     public ApiUserService getRemoteUserService() {
         return remoteUserService;
+    }
+
+    public ApiDepartmentService getRemoteDepartmentService() {
+        return remoteDepartmentService;
     }
 
     public ApiEquipmentService getRemoteEquipmentService() {
@@ -148,7 +161,7 @@ public final class RemoteMirrorCoordinator {
             return;
         }
 
-        List<String> departments = remoteUserService.getDepartments();
+        List<String> departments = remoteDepartmentService.getDepartments();
         List<User> users = remoteUserService.getUsers();
         List<Equipment> equipment = remoteReportService.getInventoryReport();
         List<Assignment> assignments = remoteReportService.getAssignmentReport();
@@ -200,7 +213,14 @@ public final class RemoteMirrorCoordinator {
     }
 
     private boolean isApiReachable() {
-        return isReachable("/actuator/health") || isReachable("/");
+        long now = System.currentTimeMillis();
+        if (now - lastProbeAt < PROBE_CACHE_TTL_MS) {
+            return lastProbeResult;
+        }
+        boolean reachable = isReachable("/actuator/health") || isReachable("/");
+        lastProbeResult = reachable;
+        lastProbeAt = now;
+        return reachable;
     }
 
     private boolean isReachable(String path) {

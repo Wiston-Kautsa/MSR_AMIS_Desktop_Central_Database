@@ -8,6 +8,9 @@ public final class SyncQueueRecord {
     private final String entityKey;
     private final String actor;
     private final String status;
+    private final int retryCount;
+    private final String machineId;
+    private final String idempotencyKey;
     private final String description;
     private final String errorMessage;
     private final String createdAt;
@@ -19,6 +22,9 @@ public final class SyncQueueRecord {
                            String entityKey,
                            String actor,
                            String status,
+                           int retryCount,
+                           String machineId,
+                           String idempotencyKey,
                            String description,
                            String errorMessage,
                            String createdAt,
@@ -29,6 +35,9 @@ public final class SyncQueueRecord {
         this.entityKey = safe(entityKey);
         this.actor = safe(actor);
         this.status = safe(status);
+        this.retryCount = retryCount;
+        this.machineId = safe(machineId);
+        this.idempotencyKey = safe(idempotencyKey);
         this.description = safe(description);
         this.errorMessage = safe(errorMessage);
         this.createdAt = safe(createdAt);
@@ -59,6 +68,18 @@ public final class SyncQueueRecord {
         return status;
     }
 
+    public int getRetryCount() {
+        return retryCount;
+    }
+
+    public String getMachineId() {
+        return machineId;
+    }
+
+    public String getIdempotencyKey() {
+        return idempotencyKey;
+    }
+
     public String getDescription() {
         return description;
     }
@@ -73,6 +94,44 @@ public final class SyncQueueRecord {
 
     public String getProcessedAt() {
         return processedAt;
+    }
+
+    public String getLocalVersionTimestamp() {
+        return createdAt;
+    }
+
+    public String getCentralVersionTimestamp() {
+        return processedAt;
+    }
+
+    public String getConflictType() {
+        String message = (errorMessage == null ? "" : errorMessage).toLowerCase();
+        if (message.contains("changed in the central database")) {
+            return "CENTRAL_RECORD_CHANGED";
+        }
+        if (message.contains("no longer exists")) {
+            return "CENTRAL_RECORD_MISSING";
+        }
+        if (message.contains("already exists")) {
+            return "DUPLICATE_CENTRAL_RECORD";
+        }
+        if ("REJECTED".equalsIgnoreCase(status)) {
+            return "BUSINESS_RULE_REJECTION";
+        }
+        if ("FAILED".equalsIgnoreCase(status)) {
+            return "SYNC_FAILURE";
+        }
+        return "";
+    }
+
+    public String getResolutionAction() {
+        if ("REJECTED".equalsIgnoreCase(status)) {
+            return "Review required";
+        }
+        if ("FAILED".equalsIgnoreCase(status)) {
+            return "Retry available";
+        }
+        return "";
     }
 
     private String safe(String value) {

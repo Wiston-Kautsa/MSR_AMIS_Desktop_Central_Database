@@ -184,6 +184,7 @@
                     <TableColumn fx:id="colAsset" text="Asset Code"/>
                     <TableColumn fx:id="colReturnedBy" text="Returned By"/>
                     <TableColumn fx:id="colPhone" text="Phone"/>
+                    <TableColumn fx:id="colNid" text="NID"/>
                     <TableColumn fx:id="colCondition" text="Condition"/>
                     <TableColumn fx:id="colDate" text="Date"/>
 

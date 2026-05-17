@@ -4,9 +4,9 @@
 <?import javafx.geometry.Insets?>
 <?import javafx.scene.control.Button?>
 <?import javafx.scene.control.CheckBox?>
+<?import javafx.scene.control.ComboBox?>
 <?import javafx.scene.control.Label?>
 <?import javafx.scene.control.PasswordField?>
-<?import javafx.scene.control.Separator?>
 <?import javafx.scene.control.TextField?>
 <?import javafx.scene.control.TitledPane?>
 <?import javafx.scene.layout.AnchorPane?>
@@ -81,12 +81,12 @@
                                                 <VBox spacing="8.0">
                                                     <children>
                                                         <Label text="Email" styleClass="login-input-label"/>
-                                                        <TextField fx:id="txtEmail"
-                                                                   promptText="Enter your email"
-                                                                   onAction="#handleLogin"
-                                                                   prefHeight="44.0"
-                                                                   maxWidth="1.7976931348623157E308"
-                                                                   styleClass="login-input"/>
+                                                        <ComboBox fx:id="cmbEmail"
+                                                                  editable="true"
+                                                                  promptText="Enter or select your email"
+                                                                  prefHeight="44.0"
+                                                                  maxWidth="1.7976931348623157E308"
+                                                                  styleClass="login-input"/>
                                                     </children>
                                                 </VBox>
 
@@ -114,9 +114,16 @@
                                                     </children>
                                                 </VBox>
 
-                                                <CheckBox fx:id="chkShowPassword"
-                                                          text="Show password"
-                                                          styleClass="login-checkbox"/>
+                                                <HBox spacing="14.0" alignment="CENTER_LEFT">
+                                                    <children>
+                                                        <CheckBox fx:id="chkShowPassword"
+                                                                  text="Show password"
+                                                                  styleClass="login-checkbox"/>
+                                                        <CheckBox fx:id="chkRememberLogin"
+                                                                  text="Save credentials"
+                                                                  styleClass="login-checkbox"/>
+                                                    </children>
+                                                </HBox>
 
                                                 <Button text="LOGIN"
                                                         prefHeight="46.0"
@@ -136,9 +143,9 @@
                                                         <Button text="Reset Password"
                                                                 prefHeight="40.0"
                                                                 maxWidth="1.7976931348623157E308"
-                                                                HBox.hgrow="ALWAYS"
-                                                                onAction="#showResetPanel"
-                                                                styleClass="login-secondary-button"/>
+                                                        HBox.hgrow="ALWAYS"
+                                                        onAction="#showResetPanel"
+                                                        styleClass="login-secondary-button"/>
                                                     </children>
                                                 </HBox>
 
@@ -152,8 +159,9 @@
                                         </VBox>
 
                                         <VBox fx:id="resetPanel"
-                                              spacing="16.0"
+                                              spacing="12.0"
                                               alignment="CENTER_LEFT"
+                                              maxWidth="1.7976931348623157E308"
                                               managed="false"
                                               visible="false"
                                               styleClass="embedded-reset-panel">
@@ -172,42 +180,23 @@
                                                     </children>
                                                 </HBox>
 
-                                                <HBox spacing="12.0" styleClass="reset-overview-strip">
-                                                    <children>
-                                                        <VBox spacing="4.0" HBox.hgrow="ALWAYS">
-                                                            <children>
-                                                                <Label text="1" styleClass="reset-step-number"/>
-                                                                <Label text="Verify account" styleClass="reset-step-title"/>
-                                                                <Label text="Use your registered email or username." wrapText="true" styleClass="reset-step-text"/>
-                                                            </children>
-                                                        </VBox>
-                                                        <VBox spacing="4.0" HBox.hgrow="ALWAYS">
-                                                            <children>
-                                                                <Label text="2" styleClass="reset-step-number"/>
-                                                                <Label text="Receive code" styleClass="reset-step-title"/>
-                                                                <Label text="A secure 6-digit code will be delivered to your inbox." wrapText="true" styleClass="reset-step-text"/>
-                                                            </children>
-                                                        </VBox>
-                                                        <VBox spacing="4.0" HBox.hgrow="ALWAYS">
-                                                            <children>
-                                                                <Label text="3" styleClass="reset-step-number"/>
-                                                                <Label text="Create password" styleClass="reset-step-title"/>
-                                                                <Label text="Confirm the new password and return to sign in." wrapText="true" styleClass="reset-step-text"/>
-                                                            </children>
-                                                        </VBox>
-                                                    </children>
-                                                </HBox>
-
                                                 <TitledPane text="Account Recovery"
                                                             expanded="true"
                                                             animated="false"
                                                             collapsible="true"
+                                                            maxWidth="1.7976931348623157E308"
                                                             styleClass="section-pane reset-titled-pane">
                                                     <content>
-                                                        <VBox spacing="14.0" styleClass="reset-card">
+                                                        <VBox spacing="10.0"
+                                                              fillWidth="true"
+                                                              maxWidth="1.7976931348623157E308"
+                                                              styleClass="reset-card">
                                                             <children>
-                                                                <Label text="Verify the account before a reset code can be issued." styleClass="reset-step-text"/>
-                                                                <VBox spacing="8.0">
+                                                                <Label text="Verify the account before a reset code can be issued."
+                                                                       wrapText="true"
+                                                                       maxWidth="1.7976931348623157E308"
+                                                                       styleClass="reset-step-text"/>
+                                                                <VBox spacing="8.0" maxWidth="1.7976931348623157E308">
                                                                     <children>
                                                                         <Label text="Email or Username" styleClass="login-input-label"/>
                                                                         <TextField fx:id="txtResetIdentifier"
@@ -221,12 +210,15 @@
                                                                 <HBox fx:id="resetStatusBanner"
                                                                       spacing="10.0"
                                                                       alignment="CENTER_LEFT"
+                                                                      maxWidth="1.7976931348623157E308"
                                                                       styleClass="reset-status-banner">
                                                                     <children>
                                                                         <Label text="SYSTEM" styleClass="reset-status-chip"/>
                                                                         <Label fx:id="lblResetStatus"
                                                                                text="Ready to send a reset code."
                                                                                wrapText="true"
+                                                                               maxWidth="1.7976931348623157E308"
+                                                                               HBox.hgrow="ALWAYS"
                                                                                styleClass="reset-status-text"/>
                                                                     </children>
                                                                 </HBox>
@@ -242,18 +234,23 @@
                                                     </content>
                                                 </TitledPane>
 
-                                                <Separator/>
-
                                                 <TitledPane text="Create New Password"
                                                             expanded="true"
                                                             animated="false"
                                                             collapsible="true"
+                                                            maxWidth="1.7976931348623157E308"
                                                             styleClass="section-pane reset-titled-pane">
                                                     <content>
-                                                        <VBox spacing="14.0" styleClass="reset-card">
+                                                        <VBox spacing="10.0"
+                                                              fillWidth="true"
+                                                              maxWidth="1.7976931348623157E308"
+                                                              styleClass="reset-card">
                                                             <children>
-                                                                <Label text="Enter the code from your inbox, then set and confirm the new password." styleClass="reset-step-text"/>
-                                                                <VBox spacing="8.0">
+                                                                <Label text="Enter the code from your inbox, then set and confirm the new password."
+                                                                       wrapText="true"
+                                                                       maxWidth="1.7976931348623157E308"
+                                                                       styleClass="reset-step-text"/>
+                                                                <VBox spacing="8.0" maxWidth="1.7976931348623157E308">
                                                                     <children>
                                                                         <Label text="Reset Code" styleClass="login-input-label"/>
                                                                         <TextField fx:id="txtResetCode"
@@ -265,7 +262,7 @@
                                                                                    styleClass="login-input"/>
                                                                     </children>
                                                                 </VBox>
-                                                                <VBox spacing="8.0">
+                                                                <VBox spacing="8.0" maxWidth="1.7976931348623157E308">
                                                                     <children>
                                                                         <Label text="New Password" styleClass="login-input-label"/>
                                                                         <PasswordField fx:id="txtResetNewPassword"
@@ -277,7 +274,7 @@
                                                                                        styleClass="login-input"/>
                                                                     </children>
                                                                 </VBox>
-                                                                <VBox spacing="8.0">
+                                                                <VBox spacing="8.0" maxWidth="1.7976931348623157E308">
                                                                     <children>
                                                                         <Label text="Confirm Password" styleClass="login-input-label"/>
                                                                         <PasswordField fx:id="txtResetConfirmPassword"
@@ -289,7 +286,7 @@
                                                                                        styleClass="login-input"/>
                                                                     </children>
                                                                 </VBox>
-                                                                <HBox spacing="10.0">
+                                                                <HBox spacing="10.0" maxWidth="1.7976931348623157E308">
                                                                     <children>
                                                                         <Button fx:id="btnResetPassword"
                                                                                 text="Reset Password"

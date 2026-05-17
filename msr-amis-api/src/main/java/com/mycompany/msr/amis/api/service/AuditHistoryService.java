@@ -76,6 +76,17 @@ public class AuditHistoryService {
                         "    FROM distribution d LEFT JOIN assignments a ON a.id = d.assignment_id " +
                         "    WHERE LOWER(TRIM(d.asset_code)) = LOWER(TRIM(?)) " +
                         "    UNION ALL " +
+                        "    SELECT m.maintenance_date AS activity_date, " +
+                        "           CASE WHEN UPPER(COALESCE(m.status, '')) = 'COMPLETED' THEN 'MAINTENANCE COMPLETED' ELSE 'MAINTENANCE' END AS event_type, " +
+                        "           COALESCE(m.performed_by, '') AS actor, " +
+                        "           '' AS affected_person, " +
+                        "           'Issue: ' || COALESCE(m.issue, '') || " +
+                        "           CASE WHEN COALESCE(TRIM(m.action_taken), '') = '' THEN '' ELSE ' | Action taken: ' || TRIM(m.action_taken) END || " +
+                        "           CASE WHEN COALESCE(TRIM(m.cost), '') = '' THEN '' ELSE ' | Cost: ' || TRIM(m.cost) END AS details, " +
+                        "           COALESCE(m.status, '') AS status, " +
+                        "           3 AS event_order, m.id AS record_id " +
+                        "    FROM maintenance_log m WHERE LOWER(TRIM(m.asset_code)) = LOWER(TRIM(?)) " +
+                        "    UNION ALL " +
                         "    SELECT r.return_date AS activity_date, " +
                         "           'RETURNED' AS event_type, " +
                         "           COALESCE(r.returned_by, '') AS actor, " +
@@ -96,7 +107,7 @@ public class AuditHistoryService {
                         rs.getString("details"),
                         rs.getString("status")
                 ),
-                assetCode, assetCode, assetCode
+                assetCode, assetCode, assetCode, assetCode
         );
 
         return new AssetHistoryResponse(summaries.get(0), records);

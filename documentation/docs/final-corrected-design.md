@@ -13,8 +13,9 @@ Final architecture:
 - Desktop handles UI only
 - Backend handles security, business logic, and persistence
 - PostgreSQL is the single source of truth
-- SQLite is an offline mirror and queue store
-- Production desktops should normally use `AUTO` mode
+- SQLite is an offline mirror and queue store when `AUTO` mode is enabled
+- Production desktops should normally use `REMOTE_API` unless offline work is an explicit operational requirement
+- Desktop Backup & Restore is local-mode only; PostgreSQL server backup is the production backup path
 
 ## 3. Roles
 
@@ -23,22 +24,30 @@ Final architecture:
 - full system authority
 - can manage `SUPER_ADMIN`, `ADMIN`, and `USER`
 - can view all users
+- can use full Sync Center, including all queue records and rejected-item retry
+- can access Data Maintenance
 
 ### `ADMIN`
 
 - can manage `ADMIN` and `USER`
 - cannot create or manage `SUPER_ADMIN`
+- can use Sync Center only for their own queue and audit records
+- cannot retry rejected sync records
 
 ### `USER`
 
 - no user-management authority
 - operational access only according to module permissions
+- no Sync Center access
+- no Data Maintenance access
 
 ## 4. Protected Accounts
 
+Protected and setup account emails are configurable. In production they should be set as server environment variables. In development they may be set in the root `.env` file.
+
 ### Primary super admin
 
-- `wkautsa@gmail.com`
+- configured by `MSR_AMIS_PRIMARY_SUPER_ADMIN_EMAIL`
 - role: `SUPER_ADMIN`
 - intended first use: password reset
 
@@ -46,7 +55,7 @@ This account is intentionally protected by backend rules.
 
 ### Default admin
 
-- `admin@msr.local`
+- configured by `MSR_AMIS_SETUP_ADMIN_EMAIL`
 - username: `admin`
 - role: `ADMIN`
 
@@ -54,11 +63,19 @@ This account is not the super admin.
 
 ### Default user
 
-- `user@msr.local`
+- configured by `MSR_AMIS_SETUP_USER_EMAIL`
 - username: `user`
 - role: `USER`
 
 The seeded admin and user accounts both use `admin123` until deliberately changed.
+
+Reserved account emails are configured separately with comma-separated lists:
+
+- `MSR_AMIS_RESERVED_SUPER_ADMIN_EMAILS`
+- `MSR_AMIS_RESERVED_ADMIN_EMAILS`
+- `MSR_AMIS_RESERVED_USER_EMAILS`
+
+Adding or removing an email from those lists changes whether the system treats that address as reserved after the API is restarted.
 
 ## 5. Authentication
 
@@ -89,6 +106,7 @@ The backend is responsible for:
 - reports
 - asset history
 - audit logs
+- department management
 
 ## 7. Desktop Responsibilities
 
@@ -99,6 +117,8 @@ The desktop is responsible for:
 - navigation
 - displaying feedback
 - calling service abstractions
+- Sync Center interaction after offline work
+- department management from the Administration section
 
 Controllers should not directly implement core backend rules.
 
@@ -112,7 +132,10 @@ The centralized backend provides:
 - distribution report
 - return report
 - outstanding report
+- maintenance report
 - asset history per asset code
+
+Asset history includes registration, issue/distribution, maintenance, maintenance-completed, and return events.
 
 ## 9. Audit and Backup
 
@@ -125,22 +148,27 @@ The centralized backend provides:
 - in centralized mode, backup must be treated as a server responsibility
 - PostgreSQL backups are the official system backup
 - SQLite can contain unsynced offline work from one desktop, but it is not the official database
+- desktop Backup & Restore is available only in `LOCAL_DATABASE` mode
 
 ## 10. Mode Policy
 
 ### `AUTO`
 
-- recommended day-to-day mode
+- offline-capable mode
 - uses SQLite as the local mirror
 - uses the backend API and PostgreSQL when reachable
 - queues offline work when unreachable
-- refreshes SQLite from PostgreSQL after sync
+- refreshes SQLite from PostgreSQL after sync through `Data & Records -> Sync Center`
+- Sync Center is role-based: Super Admin has full access, Admin has own-record access, User has no access
+- applied queue records are removed from the active queue list after successful push
+- API reachability problems are handled with the operational checklist in [Troubleshooting](troubleshooting.md)
 
 ### `REMOTE_API`
 
 - strict online mode
 - uses the backend API as the authority
 - cannot continue if the API is unreachable
+- safest default for centralized production
 
 ### `LOCAL_DATABASE`
 
@@ -153,7 +181,8 @@ The correct production state is:
 - one backend deployment
 - one PostgreSQL database
 - many desktop clients
-- desktop clients configured in `AUTO` mode for offline continuity
+- desktop clients configured in `REMOTE_API` for strict centralized operation
+- `AUTO` enabled only where offline continuity is required and Sync Center review is operationally owned
 - PostgreSQL wins when local offline changes conflict with central changes
 
 ## 12. Current Project Stage
@@ -166,3 +195,6 @@ The main remaining work is:
 - centralized environment setup
 - end-to-end operational validation
 - operational validation of Sync Center workflows
+- operational validation of Asset History including maintenance events
+- operational validation of department management in online and offline `AUTO` mode
+- operational validation of the API-not-reachable recovery checklist

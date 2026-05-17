@@ -1,8 +1,7 @@
 package com.mycompany.msr.amis;
 
-import java.io.File;
-import java.io.FileWriter;
 import java.net.URL;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.ResourceBundle;
 import javafx.collections.FXCollections;
@@ -13,6 +12,7 @@ import javafx.fxml.Initializable;
 import javafx.scene.control.Alert;
 import javafx.scene.control.ComboBox;
 import javafx.scene.control.ContextMenu;
+import javafx.scene.control.DatePicker;
 import javafx.scene.control.MenuItem;
 import javafx.scene.control.TableColumn;
 import javafx.scene.control.TableView;
@@ -24,6 +24,8 @@ public class DistributionReportController implements Initializable {
 
     @FXML private ComboBox<String> cmbPerson;
     @FXML private ComboBox<String> cmbStatus;
+    @FXML private DatePicker dpFrom;
+    @FXML private DatePicker dpTo;
     @FXML private TableView<Distribution> tableDistribution;
     @FXML private TableColumn<Distribution, Void> colNo;
     @FXML private TableColumn<Distribution, String> colAssetCode;
@@ -86,6 +88,9 @@ public class DistributionReportController implements Initializable {
             if (!matchesExact(distribution.getStatus(), status)) {
                 continue;
             }
+            if (!ReportFilterHelper.matchesDateRange(distribution.getDate(), dpFrom, dpTo)) {
+                continue;
+            }
             data.add(distribution);
         }
 
@@ -95,6 +100,8 @@ public class DistributionReportController implements Initializable {
     private void handleRefresh() {
         cmbPerson.setValue(null);
         cmbStatus.setValue(null);
+        dpFrom.setValue(null);
+        dpTo.setValue(null);
         loadData();
         loadPeople();
         showAlert("Refresh", "Data refreshed successfully.");
@@ -107,38 +114,12 @@ public class DistributionReportController implements Initializable {
             return;
         }
 
-        try {
-            File file = FileLocationHelper.fileInDownloads("distribution_report.csv");
-            OperationFeedbackHelper.showInfo(
-                    "Export Starting",
-                    "Preparing distribution report export.\n\nRows to export: " + data.size()
-            );
+        ReportExportHelper.exportCsv("distribution_report", "Distribution Report", new ArrayList<>(data), columns());
+    }
 
-            try (FileWriter writer = new FileWriter(file)) {
-                writer.append("Asset Code,Responsible Person,Assigned To,Phone,NID,Status,Date\n");
-
-                for (Distribution distribution : data) {
-                    writer.append(csvSafe(distribution.getAssetCode())).append(",")
-                            .append(csvSafe(distribution.getResponsiblePerson())).append(",")
-                            .append(csvSafe(distribution.getAssignedTo())).append(",")
-                            .append(csvSafe(distribution.getPhone())).append(",")
-                            .append(csvSafe(distribution.getNid())).append(",")
-                            .append(csvSafe(distribution.getStatus())).append(",")
-                            .append(csvSafe(distribution.getDate())).append("\n");
-                }
-            }
-
-            OperationFeedbackHelper.showInfo(
-                    "Export Complete",
-                    "Distribution report exported successfully to:\n" + file.getAbsolutePath()
-            );
-        } catch (Exception e) {
-            e.printStackTrace();
-            OperationFeedbackHelper.showError(
-                    "Export Failed",
-                    "Distribution report export failed:\n" + e.getMessage()
-            );
-        }
+    @FXML
+    private void handleExportPdf(ActionEvent event) {
+        ReportExportHelper.exportPdf("distribution_report", "Distribution Report", new ArrayList<>(data), columns());
     }
 
     private void setupContextMenu() {
@@ -149,14 +130,16 @@ public class DistributionReportController implements Initializable {
         tableDistribution.setContextMenu(menu);
     }
 
-    private String csvSafe(String value) {
-        if (value == null) {
-            return "";
-        }
-        if (value.contains(",") || value.contains("\"") || value.contains("\n")) {
-            return "\"" + value.replace("\"", "\"\"") + "\"";
-        }
-        return value;
+    private List<ReportExportHelper.Column<Distribution>> columns() {
+        return List.of(
+                new ReportExportHelper.Column<>("Asset Code", Distribution::getAssetCode),
+                new ReportExportHelper.Column<>("Responsible Person", Distribution::getResponsiblePerson),
+                new ReportExportHelper.Column<>("Assigned To", Distribution::getAssignedTo),
+                new ReportExportHelper.Column<>("Phone", Distribution::getPhone),
+                new ReportExportHelper.Column<>("NID", Distribution::getNid),
+                new ReportExportHelper.Column<>("Status", Distribution::getStatus),
+                new ReportExportHelper.Column<>("Date", Distribution::getDate)
+        );
     }
 
     private void addIfMissing(ComboBox<String> comboBox, String value) {

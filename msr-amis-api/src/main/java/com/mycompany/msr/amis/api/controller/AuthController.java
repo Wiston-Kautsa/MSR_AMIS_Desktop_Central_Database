@@ -1,6 +1,7 @@
 package com.mycompany.msr.amis.api.controller;
 
 import com.mycompany.msr.amis.api.dto.CommonMessageResponse;
+import com.mycompany.msr.amis.api.dto.auth.InitialAdminSetupRequest;
 import com.mycompany.msr.amis.api.dto.auth.InitialPasswordChangeRequest;
 import com.mycompany.msr.amis.api.dto.auth.LoginRequest;
 import com.mycompany.msr.amis.api.dto.auth.LoginResponse;
@@ -29,6 +30,11 @@ public class AuthController {
     @PostMapping("/login")
     public LoginResponse login(@Valid @RequestBody LoginRequest request) {
         return authFacadeService.login(request);
+    }
+
+    @PostMapping("/setup/initial-admin")
+    public CommonMessageResponse setupInitialAdmin(@Valid @RequestBody InitialAdminSetupRequest request) {
+        return authFacadeService.setupInitialAdmin(request);
     }
 
     @GetMapping("/me")

@@ -26,9 +26,17 @@
                 <Region HBox.hgrow="ALWAYS"/>
                 <VBox alignment="CENTER_RIGHT" spacing="3.0" styleClass="connection-panel">
                     <children>
-                        <Label fx:id="lblConnectionStatus"
-                               text="Checking..."
-                               styleClass="connection-status-pill"/>
+                        <HBox alignment="CENTER_RIGHT" spacing="8.0">
+                            <children>
+                                <Label fx:id="lblConnectionStatus"
+                                       text="Checking..."
+                                       styleClass="connection-status-pill"/>
+                                <Button fx:id="btnGoOnline"
+                                        text="Go Online"
+                                        onAction="#handleGoOnline"
+                                        styleClass="connection-action-button"/>
+                            </children>
+                        </HBox>
                         <Label fx:id="lblConnectionDetail"
                                text="Checking central server status..."
                                styleClass="connection-detail-label"/>
@@ -74,11 +82,15 @@
                                                         styleClass="submenu-button"
                                                         onAction="#openAddEquipment"/>
 
-                                                <Button text="Equipment List"
-                                                        styleClass="submenu-button"
-                                                        onAction="#openEquipmentList"/>
+                                                 <Button text="Equipment List"
+                                                         styleClass="submenu-button"
+                                                         onAction="#openEquipmentList"/>
 
-                                            </children>
+                                                 <Button text="Maintenance Tracking"
+                                                         styleClass="submenu-button"
+                                                         onAction="#openMaintenance"/>
+
+                                             </children>
                                         </VBox>
                                     </content>
                                 </TitledPane>
@@ -152,12 +164,16 @@
                                                         styleClass="submenu-button"
                                                         onAction="#openReturnReport"/>
 
-                                                <Button text="Outstanding Report"
-                                                        styleClass="submenu-button"
-                                                        onAction="#openOutstandingReport"/>
+                                                 <Button text="Outstanding Report"
+                                                         styleClass="submenu-button"
+                                                         onAction="#openOutstandingReport"/>
 
-                                            </children>
-                                        </VBox>
+                                                 <Button text="Maintenance Report"
+                                                         styleClass="submenu-button"
+                                                         onAction="#openMaintenanceReport"/>
+
+                                             </children>
+                                         </VBox>
                                     </content>
                                 </TitledPane>
 
@@ -182,6 +198,13 @@
                                                 text="Audit Logs"
                                                 styleClass="sidebar-button"
                                                 onAction="#openAuditLogs"/>
+
+                                        <Button fx:id="btnSyncCenter"
+                                                text="Sync Center"
+                                                styleClass="sidebar-button"
+                                                onAction="#openSyncCenter"
+                                                managed="false"
+                                                visible="false"/>
                                     </children>
                                 </VBox>
                             </content>
@@ -198,12 +221,18 @@
                                                 styleClass="sidebar-button"
                                                 onAction="#openUsers"/>
 
+                                        <Button fx:id="btnDepartments"
+                                                text="Departments"
+                                                styleClass="sidebar-button"
+                                                onAction="#openDepartments"/>
+
                                         <Button fx:id="btnDataMaintenance"
                                                 text="Data Maintenance"
                                                 styleClass="sidebar-button"
                                                 onAction="#openDataMaintenance"
                                                 managed="false"
                                                 visible="false"/>
+
                                     </children>
                                 </VBox>
                             </content>
@@ -279,21 +308,21 @@
                                             </columnConstraints>
 
                                             <children>
-                                                <VBox spacing="8" styleClass="dashboard-kpi-card">
+                                                <VBox spacing="8" styleClass="dashboard-kpi-card" onMouseClicked="#openInventoryReport">
                                                     <children>
                                                         <Label text="Total Assets" wrapText="true" styleClass="dashboard-kpi-title"/>
                                                         <Label fx:id="lblTotalAssets" text="0" styleClass="dashboard-kpi-value"/>
                                                     </children>
                                                 </VBox>
 
-                                                <VBox spacing="8" styleClass="dashboard-kpi-card" GridPane.columnIndex="1">
+                                                <VBox spacing="8" styleClass="dashboard-kpi-card" GridPane.columnIndex="1" onMouseClicked="#openInventoryReport">
                                                     <children>
                                                         <Label text="Available Assets" wrapText="true" styleClass="dashboard-kpi-title"/>
                                                         <Label fx:id="lblAvailableAssets" text="0" styleClass="dashboard-kpi-value"/>
                                                     </children>
                                                 </VBox>
 
-                                                <VBox spacing="8" styleClass="dashboard-kpi-card" GridPane.columnIndex="2">
+                                                <VBox spacing="8" styleClass="dashboard-kpi-card" GridPane.columnIndex="2" onMouseClicked="#openDistributionReport">
                                                     <children>
                                                         <Label text="Borrowed This Month" wrapText="true" styleClass="dashboard-kpi-title"/>
                                                         <Label fx:id="lblBorrowedThisMonth" text="0" styleClass="dashboard-kpi-value"/>
@@ -301,7 +330,7 @@
                                                     </children>
                                                 </VBox>
 
-                                                <VBox spacing="8" styleClass="dashboard-kpi-card" GridPane.columnIndex="3">
+                                                <VBox spacing="8" styleClass="dashboard-kpi-card" GridPane.columnIndex="3" onMouseClicked="#openReturnReport">
                                                     <children>
                                                         <Label text="Returned This Month" wrapText="true" styleClass="dashboard-kpi-title"/>
                                                         <Label fx:id="lblReturnedAssets" text="0" styleClass="dashboard-kpi-value"/>

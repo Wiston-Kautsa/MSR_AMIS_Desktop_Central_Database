@@ -3,20 +3,27 @@ package com.mycompany.msr.amis.api.config;
 import java.util.Properties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.core.env.Environment;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.JavaMailSenderImpl;
 
 @Configuration
 public class MailConfig {
 
+    private final Environment environment;
+
+    public MailConfig(Environment environment) {
+        this.environment = environment;
+    }
+
     @Bean
     public JavaMailSender javaMailSender() {
-        String host = requiredEnv("MSR_AMIS_SMTP_HOST");
-        int port = parseInt(requiredEnv("MSR_AMIS_SMTP_PORT"), "MSR_AMIS_SMTP_PORT");
-        String username = requiredEnv("MSR_AMIS_SMTP_USERNAME");
-        String password = requiredEnv("MSR_AMIS_SMTP_PASSWORD");
-        Boolean configuredSsl = optionalBooleanEnv("MSR_AMIS_SMTP_SSL");
-        Boolean configuredStartTls = optionalBooleanEnv("MSR_AMIS_SMTP_STARTTLS");
+        String host = requiredConfig("MSR_AMIS_SMTP_HOST");
+        int port = parseInt(requiredConfig("MSR_AMIS_SMTP_PORT"), "MSR_AMIS_SMTP_PORT");
+        String username = requiredConfig("MSR_AMIS_SMTP_USERNAME");
+        String password = requiredConfig("MSR_AMIS_SMTP_PASSWORD");
+        Boolean configuredSsl = optionalBooleanConfig("MSR_AMIS_SMTP_SSL");
+        Boolean configuredStartTls = optionalBooleanConfig("MSR_AMIS_SMTP_STARTTLS");
         boolean useSsl = configuredSsl != null ? configuredSsl : port == 465;
         boolean useStartTls = configuredStartTls != null ? configuredStartTls : port == 587;
 
@@ -41,10 +48,10 @@ public class MailConfig {
         return sender;
     }
 
-    private static String requiredEnv(String name) {
-        String value = System.getenv(name);
+    private String requiredConfig(String name) {
+        String value = environment.getProperty(name);
         if (value == null || value.isBlank()) {
-            throw new IllegalStateException("Missing environment variable: " + name);
+            throw new IllegalStateException("Missing configuration value: " + name);
         }
         return value.trim();
     }
@@ -57,8 +64,8 @@ public class MailConfig {
         }
     }
 
-    private static Boolean optionalBooleanEnv(String name) {
-        String value = System.getenv(name);
+    private Boolean optionalBooleanConfig(String name) {
+        String value = environment.getProperty(name);
         if (value == null || value.isBlank()) {
             return null;
         }

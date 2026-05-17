@@ -1,18 +1,20 @@
 package com.mycompany.msr.amis;
 
-import java.io.File;
-import java.io.FileWriter;
 import java.net.URL;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.ResourceBundle;
+import javafx.beans.property.SimpleStringProperty;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
 import javafx.fxml.Initializable;
 import javafx.scene.control.Alert;
+import javafx.scene.control.CheckBox;
 import javafx.scene.control.ComboBox;
 import javafx.scene.control.ContextMenu;
+import javafx.scene.control.DatePicker;
 import javafx.scene.control.MenuItem;
 import javafx.scene.control.TableCell;
 import javafx.scene.control.TableColumn;
@@ -24,6 +26,9 @@ public class OutstandingReportController implements Initializable {
     private final ReportService reportService = ServiceRegistry.getReportService();
 
     @FXML private ComboBox<String> cmbPerson;
+    @FXML private DatePicker dpFrom;
+    @FXML private DatePicker dpTo;
+    @FXML private CheckBox chkOverdueOnly;
     @FXML private TableView<Distribution> tableOutstanding;
     @FXML private TableColumn<Distribution, Void> colNo;
     @FXML private TableColumn<Distribution, String> colAssetCode;
@@ -47,7 +52,11 @@ public class OutstandingReportController implements Initializable {
         colNID.setCellValueFactory(new PropertyValueFactory<>("nid"));
         colAssignmentId.setCellValueFactory(new PropertyValueFactory<>("assignmentId"));
         colDate.setCellValueFactory(new PropertyValueFactory<>("date"));
-        colStatus.setCellValueFactory(new PropertyValueFactory<>("status"));
+        colStatus.setCellValueFactory(cellData -> new SimpleStringProperty(
+                ReportFilterHelper.isOverdue(cellData.getValue().getDate())
+                        ? "OVERDUE"
+                        : cellData.getValue().getStatus()
+        ));
         colOutstandingRemarks.setCellValueFactory(new PropertyValueFactory<>("outstandingRemarks"));
         colOutstandingRemarks.setCellFactory(column -> new TableCell<>() {
             @Override
@@ -93,6 +102,13 @@ public class OutstandingReportController implements Initializable {
             if (!matchesContains(distribution.getAssignedTo(), person)) {
                 continue;
             }
+            if (!ReportFilterHelper.matchesDateRange(distribution.getDate(), dpFrom, dpTo)) {
+                continue;
+            }
+            if (chkOverdueOnly != null && chkOverdueOnly.isSelected()
+                    && !ReportFilterHelper.isOverdue(distribution.getDate())) {
+                continue;
+            }
             data.add(distribution);
         }
 
@@ -101,6 +117,9 @@ public class OutstandingReportController implements Initializable {
 
     private void handleRefresh() {
         cmbPerson.setValue(null);
+        dpFrom.setValue(null);
+        dpTo.setValue(null);
+        chkOverdueOnly.setSelected(false);
         loadData();
         loadPeople();
         showAlert("Refresh", "Outstanding data refreshed.");
@@ -113,39 +132,12 @@ public class OutstandingReportController implements Initializable {
             return;
         }
 
-        try {
-            File file = FileLocationHelper.fileInDownloads("outstanding_report.csv");
-            OperationFeedbackHelper.showInfo(
-                    "Export Starting",
-                    "Preparing outstanding report export.\n\nRows to export: " + data.size()
-            );
+        ReportExportHelper.exportCsv("outstanding_report", "Outstanding Equipment Report", new ArrayList<>(data), columns());
+    }
 
-            try (FileWriter writer = new FileWriter(file)) {
-                writer.append("Asset Code,Assigned To,Phone,NID,Assignment ID,Date,Status,Outstanding Remarks\n");
-
-                for (Distribution distribution : data) {
-                    writer.append(csvSafe(distribution.getAssetCode())).append(",")
-                            .append(csvSafe(distribution.getAssignedTo())).append(",")
-                            .append(csvSafe(distribution.getPhone())).append(",")
-                            .append(csvSafe(distribution.getNid())).append(",")
-                            .append(String.valueOf(distribution.getAssignmentId())).append(",")
-                            .append(csvSafe(distribution.getDate())).append(",")
-                            .append(csvSafe(distribution.getStatus())).append(",")
-                            .append(csvSafe(distribution.getOutstandingRemarks())).append("\n");
-                }
-            }
-
-            OperationFeedbackHelper.showInfo(
-                    "Export Complete",
-                    "Outstanding report exported successfully to:\n" + file.getAbsolutePath()
-            );
-        } catch (Exception e) {
-            e.printStackTrace();
-            OperationFeedbackHelper.showError(
-                    "Export Failed",
-                    "Outstanding report export failed:\n" + e.getMessage()
-            );
-        }
+    @FXML
+    private void handleExportPdf(ActionEvent event) {
+        ReportExportHelper.exportPdf("outstanding_report", "Outstanding Equipment Report", new ArrayList<>(data), columns());
     }
 
     private void setupContextMenu() {
@@ -164,12 +156,17 @@ public class OutstandingReportController implements Initializable {
         alert.showAndWait();
     }
 
-    private String csvSafe(String value) {
-        String safe = value == null ? "" : value;
-        if (safe.contains(",") || safe.contains("\"") || safe.contains("\n")) {
-            return "\"" + safe.replace("\"", "\"\"") + "\"";
-        }
-        return safe;
+    private List<ReportExportHelper.Column<Distribution>> columns() {
+        return List.of(
+                new ReportExportHelper.Column<>("Asset Code", Distribution::getAssetCode),
+                new ReportExportHelper.Column<>("Assigned To", Distribution::getAssignedTo),
+                new ReportExportHelper.Column<>("Phone", Distribution::getPhone),
+                new ReportExportHelper.Column<>("NID", Distribution::getNid),
+                new ReportExportHelper.Column<>("Assignment ID", distribution -> Integer.toString(distribution.getAssignmentId())),
+                new ReportExportHelper.Column<>("Date", Distribution::getDate),
+                new ReportExportHelper.Column<>("Status", distribution -> ReportFilterHelper.isOverdue(distribution.getDate()) ? "OVERDUE" : distribution.getStatus()),
+                new ReportExportHelper.Column<>("Outstanding Remarks", Distribution::getOutstandingRemarks)
+        );
     }
 
     private void addIfMissing(ComboBox<String> comboBox, String value) {

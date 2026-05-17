@@ -1,6 +1,12 @@
+$identifier = if ($env:MSR_AMIS_TEST_LOGIN_IDENTIFIER) { $env:MSR_AMIS_TEST_LOGIN_IDENTIFIER } else { $env:MSR_AMIS_SETUP_ADMIN_EMAIL }
+$password = if ($env:MSR_AMIS_TEST_LOGIN_PASSWORD) { $env:MSR_AMIS_TEST_LOGIN_PASSWORD } else { 'admin123' }
+if ([string]::IsNullOrWhiteSpace($identifier)) {
+  throw 'Set MSR_AMIS_TEST_LOGIN_IDENTIFIER or MSR_AMIS_SETUP_ADMIN_EMAIL before running this script.'
+}
+
 $body = @{
-  identifier = 'admin@msr.local'
-  password   = 'admin123'
+  identifier = $identifier
+  password   = $password
 } | ConvertTo-Json -Compress
 
 $login = Invoke-RestMethod `
