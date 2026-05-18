@@ -1,8 +1,13 @@
 package com.mycompany.msr.amis;
 
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
 import java.time.LocalDate;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 public final class ApiReportService implements ReportService {
@@ -40,9 +45,11 @@ public final class ApiReportService implements ReportService {
     @Override
     public List<Distribution> getDistributionReport() {
         try {
+            Map<String, String> localRemarks = loadLocalOutstandingRemarks();
             DistributionPayload[] payloads = apiClient.get("/api/reports/distributions", DistributionPayload[].class);
             return Arrays.stream(payloads == null ? new DistributionPayload[0] : payloads)
                     .map(DistributionPayload::toDistribution)
+                    .peek(distribution -> applyLocalOutstandingRemark(distribution, localRemarks))
                     .collect(Collectors.toList());
         } catch (Exception e) {
             throw new IllegalStateException(resolveMessage(e), e);
@@ -64,13 +71,55 @@ public final class ApiReportService implements ReportService {
     @Override
     public List<Distribution> getOutstandingReport() {
         try {
+            Map<String, String> localRemarks = loadLocalOutstandingRemarks();
             DistributionPayload[] payloads = apiClient.get("/api/reports/outstanding", DistributionPayload[].class);
             return Arrays.stream(payloads == null ? new DistributionPayload[0] : payloads)
                     .map(DistributionPayload::toDistribution)
+                    .peek(distribution -> applyLocalOutstandingRemark(distribution, localRemarks))
                     .collect(Collectors.toList());
         } catch (Exception e) {
             throw new IllegalStateException(resolveMessage(e), e);
         }
+    }
+
+    private Map<String, String> loadLocalOutstandingRemarks() {
+        Map<String, String> remarksByAsset = new HashMap<>();
+        String sql =
+                "SELECT asset_code, outstanding_remarks " +
+                "FROM distribution " +
+                "WHERE returned = 0 " +
+                "AND outstanding_remarks IS NOT NULL " +
+                "AND TRIM(outstanding_remarks) <> ''";
+        try (Connection connection = DatabaseHandler.getConnection();
+             PreparedStatement statement = connection.prepareStatement(sql);
+             ResultSet resultSet = statement.executeQuery()) {
+            while (resultSet.next()) {
+                String assetCode = normalize(resultSet.getString("asset_code")).toLowerCase();
+                String remarks = normalize(resultSet.getString("outstanding_remarks"));
+                if (!assetCode.isBlank() && !remarks.isBlank()) {
+                    remarksByAsset.put(assetCode, remarks);
+                }
+            }
+        } catch (Exception ignored) {
+            // API report data remains usable even when local cache is unavailable.
+        }
+        return remarksByAsset;
+    }
+
+    private void applyLocalOutstandingRemark(Distribution distribution, Map<String, String> localRemarks) {
+        if (distribution == null || localRemarks == null || localRemarks.isEmpty()) {
+            return;
+        }
+        if (normalize(distribution.getOutstandingRemarks()).isBlank()) {
+            String localRemark = localRemarks.get(normalize(distribution.getAssetCode()).toLowerCase());
+            if (localRemark != null && !localRemark.isBlank()) {
+                distribution.setOutstandingRemarks(localRemark);
+            }
+        }
+    }
+
+    private String normalize(String value) {
+        return value == null ? "" : value.trim();
     }
 
     private String resolveMessage(Exception e) {

@@ -148,6 +148,7 @@ public class DatabaseHandler {
                             "phone TEXT, " +
                             "nid TEXT, " +
                             "condition TEXT, " +
+                            "previous_condition TEXT, " +
                             "remarks TEXT, " +
                             "return_date TEXT DEFAULT (DATE('now'))" +
                     ")"
@@ -220,6 +221,7 @@ public class DatabaseHandler {
         ensureColumn(conn, "distribution", "date", "TEXT DEFAULT (DATE('now'))");
         ensureColumn(conn, "distribution", "outstanding_remarks", "TEXT");
         ensureColumn(conn, "returns", "remarks", "TEXT");
+        ensureColumn(conn, "returns", "previous_condition", "TEXT");
         ensureColumn(conn, "equipment", "purchase_cost", "TEXT");
         ensureColumn(conn, "equipment", "location", "TEXT");
         ensureColumn(conn, "equipment", "warranty_expiry", "TEXT");
@@ -280,10 +282,53 @@ public class DatabaseHandler {
             }
         }
 
+        runStartupDataRepairsOnce(conn);
+    }
+
+    private static void runStartupDataRepairsOnce(Connection conn) throws SQLException {
+        final String repairVersion = "2026-05-18-startup-data-repairs";
+        ensureDbMetaTable(conn);
+        if (repairVersion.equals(getDbMeta(conn, "startup_data_repair_version"))) {
+            return;
+        }
+
         repairMisalignedReturnRows(conn);
         removeDuplicateDistributionRows(conn);
         removeSupersededReturnRows(conn);
         normalizeLegacyAssetCodes(conn);
+        setDbMeta(conn, "startup_data_repair_version", repairVersion);
+    }
+
+    private static void ensureDbMetaTable(Connection conn) throws SQLException {
+        try (Statement stmt = conn.createStatement()) {
+            stmt.execute(
+                    "CREATE TABLE IF NOT EXISTS db_meta (" +
+                    "key TEXT PRIMARY KEY, " +
+                    "value TEXT NOT NULL, " +
+                    "updated_at TEXT DEFAULT CURRENT_TIMESTAMP" +
+                    ")"
+            );
+        }
+    }
+
+    private static String getDbMeta(Connection conn, String key) throws SQLException {
+        try (PreparedStatement ps = conn.prepareStatement("SELECT value FROM db_meta WHERE key=?")) {
+            ps.setString(1, key);
+            try (ResultSet rs = ps.executeQuery()) {
+                return rs.next() ? normalizedOptional(rs.getString(1)) : "";
+            }
+        }
+    }
+
+    private static void setDbMeta(Connection conn, String key, String value) throws SQLException {
+        try (PreparedStatement ps = conn.prepareStatement(
+                "INSERT INTO db_meta(key, value, updated_at) VALUES (?, ?, CURRENT_TIMESTAMP) " +
+                "ON CONFLICT(key) DO UPDATE SET value=excluded.value, updated_at=CURRENT_TIMESTAMP"
+        )) {
+            ps.setString(1, key);
+            ps.setString(2, value);
+            ps.executeUpdate();
+        }
     }
 
     private static void repairMisalignedReturnRows(Connection conn) throws SQLException {
@@ -1053,10 +1098,14 @@ public class DatabaseHandler {
 
         try (Connection conn = getConnection();
              Statement st = conn.createStatement();
-             ResultSet rs = st.executeQuery("SELECT * FROM assignments ORDER BY date DESC, id DESC")) {
+             ResultSet rs = st.executeQuery(
+                     "SELECT * FROM assignments " +
+                     "WHERE UPPER(COALESCE(status, 'ACTIVE')) NOT IN ('RETIRED', 'FROZEN') " +
+                     "ORDER BY date DESC, id DESC"
+             )) {
 
             while (rs.next()) {
-                list.add(new Assignment(
+                Assignment assignment = new Assignment(
                         rs.getInt("id"),
                         rs.getString("person"),
                         rs.getString("department"),
@@ -1064,7 +1113,9 @@ public class DatabaseHandler {
                         rs.getString("reason"),
                         rs.getInt("quantity"),
                         rs.getString("date")
-                ));
+                );
+                assignment.setStatus(rs.getString("status"));
+                list.add(assignment);
             }
 
         } catch (Exception e) {
@@ -1942,9 +1993,6 @@ public class DatabaseHandler {
             "SELECT TRIM(category) AS category, COUNT(*) AS total " +
             "FROM equipment e " +
             "WHERE UPPER(COALESCE(e.status, 'AVAILABLE')) = 'AVAILABLE' " +
-            "AND e.asset_code NOT IN (" +
-            "SELECT asset_code FROM distribution WHERE returned = 0" +
-            ") " +
             "GROUP BY TRIM(category) " +
             "ORDER BY TRIM(category)";
 
@@ -2248,12 +2296,23 @@ public class DatabaseHandler {
 
         String updateSql = "UPDATE distribution SET returned = 1 WHERE asset_code = ? AND returned = 0";
         String statusSql = "UPDATE equipment SET status = 'AVAILABLE', condition = ? WHERE asset_code = ?";
-        String insertSql = "INSERT INTO returns (asset_code, returned_by, phone, nid, condition, remarks, return_date) " +
-                           "VALUES (?, ?, ?, ?, ?, ?, DATE('now'))";
+        String previousConditionSql = "SELECT condition FROM equipment WHERE asset_code = ?";
+        String insertSql = "INSERT INTO returns (asset_code, returned_by, phone, nid, condition, previous_condition, remarks, return_date) " +
+                           "VALUES (?, ?, ?, ?, ?, ?, ?, DATE('now'))";
 
         try (Connection conn = getConnection()) {
             conn.setAutoCommit(false);
             try {
+                String previousCondition = "";
+                try (PreparedStatement previous = conn.prepareStatement(previousConditionSql)) {
+                    previous.setString(1, assetCode);
+                    try (ResultSet rs = previous.executeQuery()) {
+                        if (rs.next()) {
+                            previousCondition = normalizedOptional(rs.getString("condition"));
+                        }
+                    }
+                }
+
                 try (PreparedStatement ps1 = conn.prepareStatement(updateSql)) {
                     ps1.setString(1, assetCode);
                     int updated = ps1.executeUpdate();
@@ -2268,7 +2327,8 @@ public class DatabaseHandler {
                     ps2.setString(3, phone);
                     ps2.setString(4, nid);
                     ps2.setString(5, condition);
-                    ps2.setString(6, remarks);
+                    ps2.setString(6, previousCondition);
+                    ps2.setString(7, remarks);
                     ps2.executeUpdate();
                 }
 
@@ -2284,6 +2344,7 @@ public class DatabaseHandler {
                         "RETURNS",
                         assetCode,
                         "Equipment returned by " + returnedBy + ". Condition: " + condition +
+                                (previousCondition.isBlank() ? "" : " (previously: " + previousCondition + ")") +
                                 ", phone: " + phone + ", NID: " + nid +
                                 (normalizedOptional(remarks).isBlank() ? "" : ", remarks: " + remarks)
                 );

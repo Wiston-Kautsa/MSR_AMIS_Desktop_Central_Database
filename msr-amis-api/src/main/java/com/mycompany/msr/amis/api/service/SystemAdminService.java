@@ -26,6 +26,7 @@ public class SystemAdminService {
         deletedRows.put("returns", jdbcTemplate.update("DELETE FROM returns"));
         deletedRows.put("distribution", jdbcTemplate.update("DELETE FROM distribution"));
         deletedRows.put("assignments", jdbcTemplate.update("DELETE FROM assignments"));
+        deletedRows.put("maintenance_log", jdbcTemplate.update("DELETE FROM maintenance_log"));
         deletedRows.put("equipment", jdbcTemplate.update("DELETE FROM equipment"));
         deletedRows.put("password_reset_audit", jdbcTemplate.update("DELETE FROM password_reset_audit"));
         deletedRows.put("audit_log", jdbcTemplate.update("DELETE FROM audit_log"));
@@ -33,6 +34,7 @@ public class SystemAdminService {
         resetSequence("returns_id_seq");
         resetSequence("distribution_id_seq");
         resetSequence("assignments_id_seq");
+        resetSequence("maintenance_log_id_seq");
         resetSequence("equipment_id_seq");
         resetSequence("password_reset_audit_id_seq");
         resetSequence("audit_log_id_seq");
@@ -100,6 +102,7 @@ public class SystemAdminService {
         ensureEmpty("returns", "Clear returns before equipment.");
         ensureEmpty("distribution", "Clear distribution before equipment.");
         ensureEmpty("assignments", "Clear assignments before equipment.");
+        ensureEmpty("maintenance_log", "Clear maintenance records before equipment.");
         int deleted = jdbcTemplate.update("DELETE FROM equipment");
         resetSequence("equipment_id_seq");
         return logReset(actor, "RESET_EQUIPMENT_DATA", "equipment", deleted, "Remote equipment data cleared.");

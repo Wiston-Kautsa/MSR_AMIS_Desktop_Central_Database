@@ -56,11 +56,11 @@
                                           GridPane.columnIndex="1"/>
 
                                 <Label text="Department:" GridPane.rowIndex="1"/>
-                                <TextField fx:id="txtDepartment"
-                                           promptText="Department"
-                                           onAction="#saveAssignment"
-                                           GridPane.rowIndex="1"
-                                           GridPane.columnIndex="1"/>
+                                <ComboBox fx:id="cmbDepartment"
+                                          prefWidth="250"
+                                          promptText="Select Department"
+                                          GridPane.rowIndex="1"
+                                          GridPane.columnIndex="1"/>
 
                                 <Label text="Equipment Category:" GridPane.rowIndex="2"/>
                                 <VBox spacing="6.0"

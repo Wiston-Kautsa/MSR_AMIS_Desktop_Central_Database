@@ -2,7 +2,6 @@ package com.mycompany.msr.amis;
 
 import java.io.IOException;
 import java.net.URL;
-import java.util.Set;
 import java.util.ResourceBundle;
 import javafx.animation.KeyFrame;
 import javafx.animation.Timeline;
@@ -27,23 +26,6 @@ import javafx.util.Duration;
 
 public class DashboardsController implements Initializable {
     private static final String FRONTEND_RESOURCE_ROOT = "/com/mycompany/msr/amis/frontend/";
-    private static final Set<String> AUTO_REFRESH_PAGES = Set.of(
-            "EquipmentList.fxml",
-            "AssignmentList.fxml",
-            "ReturnEquipmentList.fxml",
-            "InventoryReport.fxml",
-            "AssignmentReport.fxml",
-            "DistributionReport.fxml",
-            "ReturnReport.fxml",
-            "OutstandingReport.fxml",
-            "MaintenanceReport.fxml",
-            "AssetHistory.fxml",
-            "AuditLogs.fxml",
-            "SyncCenter.fxml",
-            "Departments.fxml",
-            "Users.fxml",
-            "Maintenance.fxml"
-    );
 
     private final DashboardService dashboardService = ServiceRegistry.getDashboardService();
     private final ReportService reportService = ServiceRegistry.getReportService();
@@ -542,7 +524,7 @@ public class DashboardsController implements Initializable {
             connectionStatusCheckInProgress = false;
             applyConnectionStatus(new ConnectionStatusService.ConnectionStatus(
                     "OFFLINE",
-                    "Central database server is unreachable.",
+                    "API down",
                     "connection-status-offline"
             ));
         });
@@ -606,10 +588,6 @@ public class DashboardsController implements Initializable {
         }
         if (currentPageFxml == null) {
             refreshDashboard();
-            return;
-        }
-        if (AUTO_REFRESH_PAGES.contains(currentPageFxml)) {
-            loadPage(currentPageFxml);
         }
     }
 

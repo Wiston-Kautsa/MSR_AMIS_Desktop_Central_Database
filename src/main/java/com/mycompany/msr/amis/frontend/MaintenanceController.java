@@ -36,6 +36,7 @@ public class MaintenanceController implements Initializable {
     @FXML private TableColumn<MaintenanceRecord, String> colStatus;
 
     private final ObservableList<MaintenanceRecord> maintenanceRecords = FXCollections.observableArrayList();
+    private final MaintenanceService maintenanceService = ServiceRegistry.getMaintenanceService();
 
     @Override
     public void initialize(URL location, ResourceBundle resources) {
@@ -63,7 +64,7 @@ public class MaintenanceController implements Initializable {
         }
 
         try {
-            DatabaseHandler.insertMaintenanceRecord(
+            maintenanceService.createMaintenanceRecord(
                     cmbAssetCode.getValue(),
                     txtIssue.getText(),
                     txtActionTaken.getText(),
@@ -74,7 +75,6 @@ public class MaintenanceController implements Initializable {
             );
             clearForm();
             refresh();
-            OperationFeedbackHelper.showInfo("Maintenance Logged", "Maintenance record saved successfully.");
         } catch (Exception exception) {
             OperationFeedbackHelper.showError("Save Failed", exception.getMessage());
         }
@@ -94,9 +94,9 @@ public class MaintenanceController implements Initializable {
     @FXML
     private void refresh() {
         cmbAssetCode.getItems().clear();
-        for (Equipment equipment : DatabaseHandler.getAllEquipment()) {
+        for (Equipment equipment : ServiceRegistry.getEquipmentService().getAllEquipment()) {
             cmbAssetCode.getItems().add(equipment.getAssetCode());
         }
-        maintenanceRecords.setAll(DatabaseHandler.getMaintenanceRecords());
+        maintenanceRecords.setAll(maintenanceService.getMaintenanceRecords());
     }
 }

@@ -20,13 +20,13 @@ public final class ConnectionStatusService {
             if (centralReachable) {
                 return new ConnectionStatus(
                         "ONLINE (AUTO)",
-                        "PostgreSQL is reachable through the API. Local SQLite is kept as the working mirror and offline safety copy.",
+                        "API Reachable",
                         "connection-status-online"
                 );
             }
             return new ConnectionStatus(
                     "OFFLINE (AUTO)",
-                    "Central API is unreachable. Working against SQLite and queuing changes for Central Server sync.",
+                    "API down",
                     "connection-status-offline"
             );
         }
@@ -42,14 +42,14 @@ public final class ConnectionStatusService {
         if (centralReachable) {
             return new ConnectionStatus(
                     "ONLINE",
-                    "Connected to the central database server.",
+                    "API Reachable",
                     "connection-status-online"
             );
         }
 
         return new ConnectionStatus(
                 "OFFLINE",
-                "Central database server is unreachable.",
+                "API down",
                 "connection-status-offline"
         );
     }

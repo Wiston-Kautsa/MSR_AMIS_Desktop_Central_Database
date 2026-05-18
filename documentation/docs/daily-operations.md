@@ -1,4 +1,4 @@
-# MSR-AMIS Daily Operations
+﻿# MSR-AMIS Daily Operations
 
 ## Purpose
 
@@ -330,6 +330,24 @@ Maintenance appears in:
 - Maintenance Report
 - Asset History for the asset code
 
+If an asset has completed maintenance and its current equipment status is back to `AVAILABLE`, Asset History still shows the maintenance row in the timeline details.
+
+## Returns and Outstanding Reasons
+
+When returning only part of an assignment, users must enter the reason why the remaining assets are still outstanding. The system stores that reason in `distribution.outstanding_remarks` for the remaining asset codes, and the Outstanding Report displays it from there.
+
+Return Report columns are widened and long values wrap, so equipment names, serial numbers, sources, responsible officers, reasons, and remarks are visible instead of being shortened.
+
+## Export Location
+
+All desktop exports should land in:
+
+```text
+Downloads\MSR-AMIS
+```
+
+This includes CSV/PDF report exports and generated templates where the system controls the output path.
+
 ## Right-Click Actions
 
 Tables support right-click actions where available:
@@ -404,6 +422,7 @@ dist\MSR AMIS-1.0.0.msi
 dist\MSR AMIS-1.0.0.exe
 ```
 
-The current rebuilt installers were generated on May 17, 2026. This build includes the updated bulk enrolment templates, complete table column header display, equipment metadata columns, maintenance tracking/reporting, Asset History with maintenance events, Department Management, role-based Sync Center access, and active queue cleanup after successful push.
+The current rebuilt installers were generated on May 18, 2026. This build includes updated bulk enrolment templates, complete table column header display, wider report columns, equipment metadata columns, maintenance tracking/reporting, Asset History with maintenance events and direct maintenance-log fallback, Department Management, role-based Sync Center access, active queue cleanup after successful push, preserved outstanding return reasons, and centralized exports to `Downloads\MSR-AMIS`.
 
 Clients must install the updated MSI/EXE before they receive desktop fixes.
+

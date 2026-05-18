@@ -1,4 +1,4 @@
-# MSR-AMIS
+﻿# MSR-AMIS
 
 MSR-AMIS is a JavaFX desktop client backed by a Spring Boot API and PostgreSQL.
 
@@ -136,7 +136,7 @@ Generated files:
 - `dist\MSR AMIS-1.0.0.msi`
 - `dist\MSR AMIS-1.0.0.exe`
 
-Current package build: May 17, 2026. This desktop package includes the updated bulk enrolment templates, full table column headers, equipment operational metadata, maintenance tracking/reporting, Asset History with maintenance events, role-based Sync Center access, active queue cleanup after successful push, and Department Management.
+Current package build: May 18, 2026. This desktop package includes updated bulk enrolment templates, full table column headers, wider report columns, equipment operational metadata, maintenance tracking/reporting, Asset History with maintenance events and direct maintenance-log fallback, role-based Sync Center access, active queue cleanup after successful push, preserved outstanding return reasons, centralized exports to `Downloads\MSR-AMIS`, and Department Management.
 
 ## Development
 
@@ -193,3 +193,4 @@ These backup scripts are intended to run on the server where PostgreSQL tools ar
 - [Current System Alignment](documentation/docs/current-system-alignment.md)
 - [Final Corrected Design](documentation/docs/final-corrected-design.md)
 - [API Migration Plan](documentation/docs/api-migration-plan.md)
+

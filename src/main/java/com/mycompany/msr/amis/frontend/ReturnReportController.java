@@ -14,9 +14,11 @@ import javafx.scene.control.ComboBox;
 import javafx.scene.control.ContextMenu;
 import javafx.scene.control.DatePicker;
 import javafx.scene.control.MenuItem;
+import javafx.scene.control.TableCell;
 import javafx.scene.control.TableColumn;
 import javafx.scene.control.TableView;
 import javafx.scene.control.cell.PropertyValueFactory;
+import javafx.scene.text.Text;
 
 public class ReturnReportController implements Initializable {
 
@@ -64,6 +66,7 @@ public class ReturnReportController implements Initializable {
         colRemarks.setCellValueFactory(new PropertyValueFactory<>("remarks"));
         colDate.setCellValueFactory(new PropertyValueFactory<>("returnDate"));
 
+        configureTableAppearance();
         setupContextMenu();
         loadData();
         loadPeople();
@@ -153,6 +156,41 @@ public class ReturnReportController implements Initializable {
                 new ReportExportHelper.Column<>("Remarks", ReturnRecord::getRemarks),
                 new ReportExportHelper.Column<>("Date Returned", ReturnRecord::getReturnDate)
         );
+    }
+
+    private void configureTableAppearance() {
+        tableReturns.setColumnResizePolicy(TableView.UNCONSTRAINED_RESIZE_POLICY);
+        installWrappingCell(colSerialNumber);
+        installWrappingCell(colEquipmentName);
+        installWrappingCell(colSource);
+        installWrappingCell(colResponsibleOfficer);
+        installWrappingCell(colReason);
+        installWrappingCell(colReturnedBy);
+        installWrappingCell(colRemarks);
+    }
+
+    private void installWrappingCell(TableColumn<ReturnRecord, String> column) {
+        column.setCellFactory(tableColumn -> new TableCell<>() {
+            private final Text text = new Text();
+
+            {
+                text.wrappingWidthProperty().bind(tableColumn.widthProperty().subtract(24));
+                setGraphic(text);
+                setPrefHeight(USE_COMPUTED_SIZE);
+            }
+
+            @Override
+            protected void updateItem(String item, boolean empty) {
+                super.updateItem(item, empty);
+                if (empty || item == null || item.isBlank()) {
+                    text.setText("");
+                    setGraphic(null);
+                } else {
+                    text.setText(item);
+                    setGraphic(text);
+                }
+            }
+        });
     }
 
     private void setupContextMenu() {

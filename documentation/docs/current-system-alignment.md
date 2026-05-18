@@ -1,4 +1,4 @@
-# MSR-AMIS Current System Alignment
+﻿# MSR-AMIS Current System Alignment
 
 ## Purpose
 
@@ -171,9 +171,11 @@ At the time of this document:
 - the rebuilt desktop package includes the Sync Center sidebar entry
 - the desktop includes Department Management under `Administration -> Departments`
 - the desktop includes Maintenance Tracking and Maintenance Report
-- Asset History includes maintenance events as part of the asset timeline
+- Asset History includes maintenance events as part of the asset timeline and checks local `maintenance_log` for selected assets so completed maintenance remains visible
 - PostgreSQL includes `maintenance_log` schema support
-- the May 17, 2026 desktop installer includes updated bulk enrolment templates, complete table column headers, equipment metadata columns, maintenance tracking/reporting, Asset History maintenance events, role-based Sync Center access, and Department Management
+- outstanding return reasons are preserved in `distribution.outstanding_remarks`
+- exports are centralized under `Downloads\MSR-AMIS`
+- the May 18, 2026 desktop installer includes updated bulk enrolment templates, complete table column headers and wider report columns, equipment metadata columns, maintenance tracking/reporting, Asset History maintenance events and direct maintenance-log fallback, role-based Sync Center access, preserved outstanding return reasons, centralized exports, and Department Management
 
 ## Conclusion
 
@@ -185,3 +187,4 @@ It is now better described as:
 - with a working Spring Boot backend
 - backed by PostgreSQL
 - in stabilization and deployment phase
+

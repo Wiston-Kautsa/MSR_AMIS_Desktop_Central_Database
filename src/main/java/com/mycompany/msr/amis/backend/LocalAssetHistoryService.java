@@ -82,23 +82,41 @@ public final class LocalAssetHistoryService implements AssetHistoryService {
                 "    WHERE LOWER(TRIM(d.asset_code)) = LOWER(TRIM(?)) " +
                 "    UNION ALL " +
                 "    SELECT m.maintenance_date AS activity_date, " +
-                "           CASE WHEN UPPER(COALESCE(m.status, '')) = 'COMPLETED' THEN 'MAINTENANCE COMPLETED' ELSE 'MAINTENANCE' END AS event_type, " +
+                "           CASE WHEN UPPER(COALESCE(m.status, '')) = 'COMPLETED' THEN 'MAINTENANCE COMPLETED' ELSE 'SENT TO MAINTENANCE' END AS event_type, " +
                 "           COALESCE(m.performed_by, '') AS actor, " +
                 "           '' AS affected_person, " +
                 "           'Issue: ' || COALESCE(m.issue, '') || " +
                 "           CASE WHEN COALESCE(TRIM(m.action_taken), '') = '' THEN '' ELSE ' | Action taken: ' || TRIM(m.action_taken) END || " +
-                "           CASE WHEN COALESCE(TRIM(m.cost), '') = '' THEN '' ELSE ' | Cost: ' || TRIM(m.cost) END AS details, " +
-                "           COALESCE(m.status, '') AS status, " +
+                "           CASE WHEN COALESCE(TRIM(m.cost), '') = '' THEN '' ELSE ' | Cost: ' || TRIM(m.cost) END || " +
+                "           ' | Maintenance status: ' || COALESCE(m.status, '') AS details, " +
+                "           CASE WHEN UPPER(COALESCE(m.status, '')) = 'COMPLETED' THEN 'AVAILABLE' ELSE 'MAINTENANCE' END AS status, " +
                 "           3 AS event_order, " +
                 "           m.id AS record_id " +
                 "    FROM maintenance_log m " +
                 "    WHERE LOWER(TRIM(m.asset_code)) = LOWER(TRIM(?)) " +
                 "    UNION ALL " +
+                "    SELECT a.action_time AS activity_date, " +
+                "           'STATUS CHANGED' AS event_type, " +
+                "           COALESCE(a.performed_by, '') AS actor, " +
+                "           '' AS affected_person, " +
+                "           COALESCE(a.details, '') AS details, " +
+                "           REPLACE(COALESCE(a.action, ''), 'EQUIPMENT_', '') AS status, " +
+                "           4 AS event_order, " +
+                "           a.id AS record_id " +
+                "    FROM audit_log a " +
+                "    WHERE (LOWER(TRIM(COALESCE(a.entity, ''))) = 'equipment' " +
+                "           OR LOWER(TRIM(COALESCE(a.module_name, ''))) = 'equipment') " +
+                "      AND (LOWER(TRIM(COALESCE(a.entity_id, ''))) = LOWER(TRIM(?)) " +
+                "           OR LOWER(COALESCE(a.details, '')) LIKE '%' || LOWER(TRIM(?)) || '%') " +
+                "      AND UPPER(COALESCE(a.action, '')) LIKE 'EQUIPMENT_%' " +
+                "    UNION ALL " +
                 "    SELECT r.return_date AS activity_date, " +
                 "           'RETURNED' AS event_type, " +
                 "           COALESCE(r.returned_by, '') AS actor, " +
                 "           '' AS affected_person, " +
-                "           CASE WHEN COALESCE(TRIM(r.condition), '') = '' THEN 'Asset returned' ELSE 'Condition: ' || TRIM(r.condition) END || " +
+                "           CASE WHEN COALESCE(TRIM(r.condition), '') = '' THEN 'Asset returned' ELSE 'Returned condition: ' || TRIM(r.condition) END || " +
+                "           CASE WHEN COALESCE(TRIM(r.previous_condition), '') = '' OR LOWER(TRIM(r.previous_condition)) = LOWER(TRIM(COALESCE(r.condition, ''))) THEN '' ELSE ' | Condition changed from: ' || TRIM(r.previous_condition) || ' to: ' || TRIM(COALESCE(r.condition, '')) END || " +
+                "           ' | Equipment status changed to: AVAILABLE' || " +
                 "           CASE WHEN COALESCE(TRIM(r.remarks), '') = '' THEN '' ELSE ' | Remarks: ' || TRIM(r.remarks) END || " +
                 "           CASE WHEN COALESCE(TRIM(r.phone), '') = '' THEN '' ELSE ' | Phone: ' || TRIM(r.phone) END || " +
                 "           CASE WHEN COALESCE(TRIM(r.nid), '') = '' THEN '' ELSE ' | NID: ' || TRIM(r.nid) END AS details, " +
@@ -116,6 +134,8 @@ public final class LocalAssetHistoryService implements AssetHistoryService {
             ps.setString(2, assetCode);
             ps.setString(3, assetCode);
             ps.setString(4, assetCode);
+            ps.setString(5, assetCode);
+            ps.setString(6, assetCode);
             try (ResultSet rs = ps.executeQuery()) {
                 while (rs.next()) {
                     records.add(new AssetHistoryRecord(

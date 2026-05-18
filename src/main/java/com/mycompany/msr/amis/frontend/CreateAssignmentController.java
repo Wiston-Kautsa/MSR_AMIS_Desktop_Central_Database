@@ -23,10 +23,10 @@ import javafx.scene.control.TextField;
 
 public class CreateAssignmentController implements Initializable {
 
-    private static final String DEFAULT_DEPARTMENT = "NLGFC";
+    private static final String DEFAULT_DEPARTMENT = "MSR";
 
     @FXML private ComboBox<String> cmbPerson;
-    @FXML private TextField txtDepartment;
+    @FXML private ComboBox<String> cmbDepartment;
     @FXML private ComboBox<String> cmbEquipmentType;
     @FXML private TextField txtReason;
     @FXML private TextField txtQuantity;
@@ -48,12 +48,14 @@ public class CreateAssignmentController implements Initializable {
     private final Map<String, User> usersByName = new LinkedHashMap<>();
     private final AssignmentService assignmentService = ServiceRegistry.getAssignmentService();
     private final UserService userService = ServiceRegistry.getUserService();
+    private final DepartmentService departmentService = ServiceRegistry.getDepartmentService();
 
     @Override
     public void initialize(URL url, ResourceBundle rb) {
         setupTable();
         setupRightClickMenu();
         loadUsers();
+        loadDepartments();
         loadEquipmentTypes();
         loadAssignments();
 
@@ -62,10 +64,6 @@ public class CreateAssignmentController implements Initializable {
             cmbPerson.getSelectionModel().selectedItemProperty().addListener(
                     (obs, oldValue, newValue) -> fillDepartmentFromSelectedUser()
             );
-        }
-
-        if (txtDepartment != null) {
-            txtDepartment.setText(DEFAULT_DEPARTMENT);
         }
 
         if (cmbEquipmentType != null) {
@@ -100,19 +98,47 @@ public class CreateAssignmentController implements Initializable {
         }
     }
 
+    private void loadDepartments() {
+        if (cmbDepartment == null) {
+            return;
+        }
+
+        String selected = comboText(cmbDepartment);
+        cmbDepartment.getItems().clear();
+
+        try {
+            for (String department : departmentService.getDepartments()) {
+                if (department != null && !department.isBlank() && !cmbDepartment.getItems().contains(department.trim())) {
+                    cmbDepartment.getItems().add(department.trim());
+                }
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+        if (!cmbDepartment.getItems().contains(DEFAULT_DEPARTMENT)) {
+            cmbDepartment.getItems().add(0, DEFAULT_DEPARTMENT);
+        }
+        cmbDepartment.setValue(selected.isBlank() ? DEFAULT_DEPARTMENT : selected);
+    }
+
     private void fillDepartmentFromSelectedUser() {
-        if (cmbPerson == null || txtDepartment == null) {
+        if (cmbPerson == null || cmbDepartment == null) {
             return;
         }
 
         User selectedUser = usersByName.get(cmbPerson.getValue());
         if (selectedUser == null) {
-            txtDepartment.setText(DEFAULT_DEPARTMENT);
+            cmbDepartment.setValue(DEFAULT_DEPARTMENT);
             return;
         }
 
         String department = selectedUser.getDepartment();
-        txtDepartment.setText((department == null || department.isBlank()) ? DEFAULT_DEPARTMENT : department);
+        String value = (department == null || department.isBlank()) ? DEFAULT_DEPARTMENT : department.trim();
+        if (!cmbDepartment.getItems().contains(value)) {
+            cmbDepartment.getItems().add(value);
+        }
+        cmbDepartment.setValue(value);
     }
 
     private void loadEquipmentTypes() {
@@ -220,7 +246,7 @@ public class CreateAssignmentController implements Initializable {
     @FXML
     private void saveAssignment() {
         String person = cmbPerson != null && cmbPerson.getValue() != null ? cmbPerson.getValue() : "";
-        String dept = safe(txtDepartment);
+        String dept = comboText(cmbDepartment);
         String type = cmbEquipmentType != null && cmbEquipmentType.getValue() != null
                 ? cmbEquipmentType.getValue().trim()
                 : "";
@@ -231,12 +257,15 @@ public class CreateAssignmentController implements Initializable {
             User selectedUser = usersByName.get(person);
             if (selectedUser != null && selectedUser.getDepartment() != null && !selectedUser.getDepartment().isBlank()) {
                 dept = selectedUser.getDepartment().trim();
-                txtDepartment.setText(dept);
+                if (!cmbDepartment.getItems().contains(dept)) {
+                    cmbDepartment.getItems().add(dept);
+                }
+                cmbDepartment.setValue(dept);
             }
         }
 
-        if (person.isEmpty() || type.isEmpty() || reason.isEmpty() || qtyText.isEmpty()) {
-            showWarning("Missing Fields", "Responsible person, equipment category, reason, and quantity are required.");
+        if (person.isEmpty() || dept.isEmpty() || type.isEmpty() || reason.isEmpty() || qtyText.isEmpty()) {
+            showWarning("Missing Fields", "Responsible person, department, equipment category, reason, and quantity are required.");
             return;
         }
 
@@ -260,6 +289,7 @@ public class CreateAssignmentController implements Initializable {
 
             assignmentService.createAssignment(person, dept.isEmpty() ? DEFAULT_DEPARTMENT : dept, type, reason, qty);
             clearForm();
+            loadDepartments();
             loadAssignments();
             loadEquipmentTypes();
             updateAvailableStockLabel();
@@ -280,7 +310,9 @@ public class CreateAssignmentController implements Initializable {
         if (txtReason != null) {
             txtReason.clear();
         }
-        txtDepartment.setText(DEFAULT_DEPARTMENT);
+        if (cmbDepartment != null) {
+            cmbDepartment.setValue(DEFAULT_DEPARTMENT);
+        }
         txtQuantity.clear();
         updateAvailableStockLabel();
     }
@@ -329,6 +361,10 @@ public class CreateAssignmentController implements Initializable {
 
     private String safe(TextField field) {
         return field.getText() == null ? "" : field.getText().trim();
+    }
+
+    private String comboText(ComboBox<String> comboBox) {
+        return comboBox == null || comboBox.getValue() == null ? "" : comboBox.getValue().trim();
     }
 
     private String csvSafe(String value) {

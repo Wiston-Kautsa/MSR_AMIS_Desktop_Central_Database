@@ -65,11 +65,11 @@
             <columns>
                 <TableColumn fx:id="colNo" text="No." prefWidth="55"/>
                 <TableColumn fx:id="colActivityDate" text="Activity Date" prefWidth="150"/>
-                <TableColumn fx:id="colEventType" text="Event Type" prefWidth="150"/>
-                <TableColumn fx:id="colActor" text="Actor" prefWidth="220"/>
-                <TableColumn fx:id="colAffectedPerson" text="Affected Person" prefWidth="240"/>
-                <TableColumn fx:id="colDetails" text="Details" prefWidth="620"/>
-                <TableColumn fx:id="colStatus" text="Status" prefWidth="150"/>
+                <TableColumn fx:id="colEventType" text="Event Type" prefWidth="210"/>
+                <TableColumn fx:id="colActor" text="Actor" prefWidth="200"/>
+                <TableColumn fx:id="colAffectedPerson" text="Affected Person" prefWidth="220"/>
+                <TableColumn fx:id="colDetails" text="Details" prefWidth="520"/>
+                <TableColumn fx:id="colStatus" text="Status" prefWidth="180"/>
             </columns>
         </TableView>
 

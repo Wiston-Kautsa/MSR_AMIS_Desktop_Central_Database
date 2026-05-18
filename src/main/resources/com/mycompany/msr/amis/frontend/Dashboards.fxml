@@ -50,10 +50,11 @@
         <ScrollPane fitToWidth="true"
                     hbarPolicy="NEVER"
                     vbarPolicy="AS_NEEDED"
-                    prefWidth="260"
+                    minWidth="320"
+                    prefWidth="320"
                     styleClass="sidebar-scroll">
             <content>
-                <VBox spacing="15" prefWidth="260" styleClass="sidebar">
+                <VBox spacing="15" minWidth="320" prefWidth="320" styleClass="sidebar">
 
                     <padding>
                         <Insets top="20" left="15" right="15" bottom="20"/>

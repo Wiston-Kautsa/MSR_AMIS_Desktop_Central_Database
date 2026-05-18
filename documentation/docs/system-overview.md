@@ -1,4 +1,4 @@
-# MSR-AMIS System Overview
+﻿# MSR-AMIS System Overview
 
 ## Purpose
 
@@ -82,7 +82,7 @@ Assignments track the person, department, equipment type, reason, quantity, and 
 - Return Equipment
 - Return Equipment List
 
-Returns record who returned the asset, contact details, condition, remarks, and return date. Returned assets become available according to return rules.
+Returns record who returned the asset, contact details, condition, remarks, and return date. If only part of an assignment is returned, the entered outstanding reason is saved against the remaining outstanding assets in `distribution.outstanding_remarks`. Returned assets become available according to return rules.
 
 ### Reports
 
@@ -94,7 +94,7 @@ Returns record who returned the asset, contact details, condition, remarks, and 
 - Outstanding Report
 - Maintenance Report
 
-Reports support filtering and export where implemented. Cost fields use Malawi Kwacha formatting, for example `MWK 150,000.00`.
+Reports support filtering and export where implemented. Report tables use wider columns and wrapped long text so names, serial numbers, sources, reasons, remarks, and responsible officers remain visible. Cost fields use Malawi Kwacha formatting, for example `MWK 150,000.00`.
 
 Asset History shows a single timeline per asset code. It includes:
 
@@ -103,6 +103,8 @@ Asset History shows a single timeline per asset code. It includes:
 - maintenance
 - maintenance completed
 - return
+
+Asset History reads maintenance activity from the normal timeline and also checks local `maintenance_log` records for the selected asset, so completed maintenance remains visible even after the current equipment status returns to `AVAILABLE`.
 
 ### Data & Records
 
@@ -389,7 +391,7 @@ Generated outputs:
 - `dist\MSR AMIS-1.0.0.msi`
 - `dist\MSR AMIS-1.0.0.exe`
 
-Current rebuilt desktop installers: May 17, 2026.
+Current rebuilt desktop installers: May 18, 2026.
 
 The current build includes:
 
@@ -397,14 +399,15 @@ The current build includes:
 - offline-capable `AUTO` mode
 - Sync Center
 - role-based Sync Center access
-- active queue cleanup after successful push
+- active queue cleanup after successful push, preserved outstanding return reasons, and centralized exports to `Downloads\MSR-AMIS`
 - Department Management
 - Maintenance Tracking
 - Maintenance Report
-- Asset History with maintenance events
+- Asset History with maintenance events and direct maintenance-log fallback
 - audit logs
 - operational reports
 - local currency formatting
+- exports saved under `Downloads\MSR-AMIS`
 - updated dashboard connection state
 
 ## Production Recommendation
@@ -414,3 +417,4 @@ Use `REMOTE_API` for normal centralized production.
 Use `AUTO` only where offline work is intentionally allowed and administrators are trained to monitor Sync Center.
 
 Use `LOCAL_DATABASE` only for development or controlled local-only fallback.
+

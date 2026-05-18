@@ -19,6 +19,8 @@ set "JAVAFX_MODULE_PATH=%M2_REPO%\org\openjfx\javafx-base\%JAVAFX_VERSION%\javaf
 set "RUNTIME_MODULES=java.sql,java.net.http,java.prefs,javafx.controls,javafx.fxml"
 set "UPGRADE_UUID=7a94ac66-f88f-4a0d-86b5-34c407af6f22"
 set "WIX_HOME=%ProgramFiles%\WiX Toolset v7.0\bin"
+set "PACKAGED_DATA_MODE=AUTO"
+set "PACKAGED_API_BASE_URL=http://localhost:8090"
 
 if exist "%WIX_HOME%\wix.exe" set "PATH=%WIX_HOME%;%PATH%"
 
@@ -50,6 +52,15 @@ if errorlevel 1 goto :fail
 
 if not exist "%INPUT_DIR%" mkdir "%INPUT_DIR%"
 copy /Y "%TARGET_DIR%\%MAIN_JAR%" "%INPUT_DIR%\%MAIN_JAR%" >nul
+if errorlevel 1 goto :fail
+
+call :load_desktop_env "%BUILD_ROOT%.env"
+(
+  echo MSR_AMIS_DATA_MODE=%PACKAGED_DATA_MODE%
+  echo MSR_AMIS_API_BASE_URL=%PACKAGED_API_BASE_URL%
+  echo APP_MODE=%PACKAGED_DATA_MODE%
+  echo API_BASE_URL=%PACKAGED_API_BASE_URL%
+) > "%INPUT_DIR%\.env"
 if errorlevel 1 goto :fail
 
 if not exist "%DIST_DIR%" mkdir "%DIST_DIR%"
@@ -131,6 +142,16 @@ echo Installer was not created because WiX is not installed.
 echo Install WiX Toolset and add it to PATH, then rerun this script.
 echo WiX v4/v5: wix.exe
 echo WiX v3: candle.exe and light.exe
+goto :eof
+
+:load_desktop_env
+if not exist "%~1" goto :eof
+for /f "usebackq tokens=1,* delims==" %%A in ("%~1") do (
+  if /i "%%A"=="MSR_AMIS_DATA_MODE" set "PACKAGED_DATA_MODE=%%B"
+  if /i "%%A"=="APP_MODE" set "PACKAGED_DATA_MODE=%%B"
+  if /i "%%A"=="MSR_AMIS_API_BASE_URL" set "PACKAGED_API_BASE_URL=%%B"
+  if /i "%%A"=="API_BASE_URL" set "PACKAGED_API_BASE_URL=%%B"
+)
 goto :eof
 
 :fail

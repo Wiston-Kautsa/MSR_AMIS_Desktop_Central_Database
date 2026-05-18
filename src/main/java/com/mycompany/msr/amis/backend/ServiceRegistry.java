@@ -17,6 +17,7 @@ public final class ServiceRegistry {
     private static final DataMaintenanceService DATA_MAINTENANCE_SERVICE = createDataMaintenanceService();
     private static final SyncCenterService SYNC_CENTER_SERVICE = createSyncCenterService();
     private static final DepartmentService DEPARTMENT_SERVICE = createDepartmentService();
+    private static final MaintenanceService MAINTENANCE_SERVICE = createMaintenanceService();
 
     private ServiceRegistry() {
     }
@@ -87,6 +88,10 @@ public final class ServiceRegistry {
 
     public static DepartmentService getDepartmentService() {
         return DEPARTMENT_SERVICE;
+    }
+
+    public static MaintenanceService getMaintenanceService() {
+        return MAINTENANCE_SERVICE;
     }
 
     private static AuthService createAuthService() {
@@ -171,5 +176,12 @@ public final class ServiceRegistry {
             return new LocalDepartmentService();
         }
         return new ApiDepartmentService(API_CLIENT);
+    }
+
+    private static MaintenanceService createMaintenanceService() {
+        if (CONFIGURATION.usesLocalDatabase()) {
+            return new LocalMaintenanceService();
+        }
+        return new ApiMaintenanceService(API_CLIENT);
     }
 }

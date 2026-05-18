@@ -8,9 +8,12 @@ import java.net.http.HttpResponse;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 public final class AppConfiguration {
 
@@ -20,7 +23,7 @@ public final class AppConfiguration {
     private static final String API_BASE_URL_PROPERTY = "msr.amis.api.base-url";
     private static final String API_BASE_URL_ENV = "MSR_AMIS_API_BASE_URL";
     private static final String API_BASE_URL_ENV_ALIAS = "API_BASE_URL";
-    private static final Path ENV_FILE = Path.of(".env");
+    private static final String ENV_FILE_NAME = ".env";
     private static final Duration API_PROBE_TIMEOUT = Duration.ofSeconds(4);
 
     private final DataAccessMode configuredMode;
@@ -163,12 +166,13 @@ public final class AppConfiguration {
 
     private static Map<String, String> loadEnvFile() {
         Map<String, String> values = new HashMap<>();
-        if (!Files.exists(ENV_FILE)) {
+        Path envFile = findEnvFile();
+        if (envFile == null) {
             return values;
         }
 
         try {
-            List<String> lines = Files.readAllLines(ENV_FILE);
+            List<String> lines = Files.readAllLines(envFile);
             for (String rawLine : lines) {
                 String line = rawLine == null ? "" : rawLine.trim();
                 if (line.isEmpty() || line.startsWith("#")) {
@@ -192,5 +196,61 @@ public final class AppConfiguration {
             // Keep startup resilient; OS env and system properties still work.
         }
         return values;
+    }
+
+    private static Path findEnvFile() {
+        for (Path candidate : envFileCandidates()) {
+            if (candidate != null && Files.isRegularFile(candidate)) {
+                return candidate;
+            }
+        }
+        return null;
+    }
+
+    private static List<Path> envFileCandidates() {
+        Set<Path> candidates = new LinkedHashSet<>();
+        addEnvCandidate(candidates, Path.of(""));
+
+        addEnvCandidate(candidates, Path.of(System.getProperty("user.dir", "")));
+
+        String appDir = System.getProperty("jpackage.app-path");
+        if (appDir != null && !appDir.isBlank()) {
+            Path appPath = Path.of(appDir).toAbsolutePath();
+            addEnvCandidate(candidates, appPath.getParent());
+            addEnvCandidate(candidates, appPath.getParent() == null ? null : appPath.getParent().resolve("app"));
+        }
+
+        String javaHome = System.getProperty("java.home");
+        if (javaHome != null && !javaHome.isBlank()) {
+            Path runtimeDir = Path.of(javaHome).toAbsolutePath().getParent();
+            addEnvCandidate(candidates, runtimeDir == null ? null : runtimeDir.getParent());
+            addEnvCandidate(candidates, runtimeDir == null || runtimeDir.getParent() == null
+                    ? null
+                    : runtimeDir.getParent().resolve("app"));
+        }
+
+        addEnvCandidate(candidates, resolveUserConfigDir("LOCALAPPDATA"));
+        addEnvCandidate(candidates, resolveUserConfigDir("APPDATA"));
+
+        String userHome = System.getProperty("user.home");
+        if (userHome != null && !userHome.isBlank()) {
+            candidates.add(Path.of(userHome).resolve(".msr-amis.env"));
+        }
+
+        return new ArrayList<>(candidates);
+    }
+
+    private static Path resolveUserConfigDir(String environmentKey) {
+        String value = System.getenv(environmentKey);
+        if (value == null || value.isBlank()) {
+            return null;
+        }
+        return Path.of(value).resolve("MSR AMIS");
+    }
+
+    private static void addEnvCandidate(Set<Path> candidates, Path directory) {
+        if (directory != null) {
+            candidates.add(directory.resolve(ENV_FILE_NAME).toAbsolutePath().normalize());
+        }
     }
 }

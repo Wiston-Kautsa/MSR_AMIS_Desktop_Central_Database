@@ -375,13 +375,13 @@ public class DistributeEquipmentController implements Initializable {
         FileChooser chooser = new FileChooser();
         chooser.setTitle("Save Distribution Template");
         chooser.setInitialFileName("distribution_bulk_template.xlsx");
-        FileLocationHelper.useDownloadsDirectory(chooser);
+        FileLocationHelper.useExportDirectory(chooser);
         chooser.getExtensionFilters().add(
                 new FileChooser.ExtensionFilter("Excel Files", "*.xlsx")
         );
 
-        File targetFile = chooser.showSaveDialog(null);
-        if (targetFile == null) {
+        File selectedTargetFile = chooser.showSaveDialog(null);
+        if (selectedTargetFile == null) {
             OperationFeedbackHelper.showWarning(
                     "Download Cancelled",
                     "Distribution template download was cancelled."
@@ -389,9 +389,11 @@ public class DistributeEquipmentController implements Initializable {
             return;
         }
 
+        File targetFile = FileLocationHelper.forceIntoExportDirectory(selectedTargetFile);
+
         OperationFeedbackHelper.showInfo(
                 "Preparing Template",
-                "Creating the distribution bulk template in Downloads."
+                "Creating the distribution bulk template in Downloads\\MSR-AMIS."
         );
 
         try (Workbook workbook = new XSSFWorkbook()) {
