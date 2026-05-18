@@ -260,11 +260,8 @@ public final class LocalSyncCenterService implements SyncCenterService {
             throw new IllegalStateException("A live central session is required before pending offline actions can be synced.");
         }
         List<SyncValidationIssue> validationIssues = validateBeforeSync();
-        long blockingIssues = validationIssues.stream()
-                .filter(issue -> "ERROR".equalsIgnoreCase(issue.getSeverity()))
-                .count();
-        if (blockingIssues > 0) {
-            throw new IllegalStateException("Pre-sync validation failed: " + blockingIssues
+        if (!validationIssues.isEmpty()) {
+            throw new IllegalStateException("Pre-sync validation failed: " + validationIssues.size()
                     + " issue(s). Open Validation Issues before pushing.");
         }
 
@@ -678,16 +675,12 @@ public final class LocalSyncCenterService implements SyncCenterService {
 
     private void collectInvalidReturns(Connection connection, List<SyncValidationIssue> issues) throws Exception {
         try (PreparedStatement ps = connection.prepareStatement(
-                "SELECT r.id, r.asset_code FROM returns r " +
-                        "WHERE NOT EXISTS (" +
-                        "    SELECT 1 FROM distribution d " +
-                        "    WHERE LOWER(TRIM(d.asset_code)) = LOWER(TRIM(r.asset_code)) " +
-                        "    LIMIT 1" +
-                        ")"
+                "SELECT r.id, r.asset_code FROM returns r LEFT JOIN distribution d ON LOWER(TRIM(d.asset_code))=LOWER(TRIM(r.asset_code)) " +
+                        "WHERE d.id IS NULL"
         ); ResultSet rs = ps.executeQuery()) {
             while (rs.next()) {
-                issues.add(new SyncValidationIssue("WARNING", "RETURN_WITHOUT_DISTRIBUTION", "Return",
-                        rs.getString("asset_code"), "Return has no matching distribution. Verify legacy/imported data before syncing."));
+                issues.add(new SyncValidationIssue("ERROR", "RETURN_WITHOUT_DISTRIBUTION", "Return",
+                        rs.getString("asset_code"), "Return has no matching distribution."));
             }
         }
     }
@@ -1010,41 +1003,30 @@ public final class LocalSyncCenterService implements SyncCenterService {
         return null;
     }
 
-    private Assignment resolveRemoteAssignment(JsonNode primary, JsonNode fallback) throws SyncConflictException {
+    private Assignment resolveRemoteAssignment(JsonNode primary, JsonNode fallback) {
         JsonNode source = primary != null && !primary.isMissingNode() ? primary : fallback;
         if (source == null || source.isMissingNode()) {
             return null;
         }
         int remoteId = source.path("id").asInt(0);
-        List<Assignment> assignments = remoteMirrorCoordinator.getRemoteAssignmentService().getAssignments();
-        if (remoteId > 0) {
-            for (Assignment assignment : assignments) {
-                if (assignment.getId() == remoteId) {
-                    return assignment;
-                }
-            }
-            return null;
-        }
-
         String person = normalize(source.path("person").asText());
         String department = normalize(source.path("department").asText());
         String equipmentType = normalize(source.path("equipmentType").asText());
         String reason = normalize(source.path("reason").asText());
         int quantity = source.path("quantity").asInt(0);
-        List<Assignment> matches = new ArrayList<>();
-        for (Assignment assignment : assignments) {
+        for (Assignment assignment : remoteMirrorCoordinator.getRemoteAssignmentService().getAssignments()) {
+            if (remoteId > 0 && assignment.getId() == remoteId) {
+                return assignment;
+            }
             if (person.equalsIgnoreCase(normalize(assignment.getPerson()))
                     && department.equalsIgnoreCase(normalize(assignment.getDepartment()))
                     && equipmentType.equalsIgnoreCase(normalize(assignment.getEquipmentType()))
                     && reason.equalsIgnoreCase(normalize(assignment.getReason()))
                     && quantity == assignment.getQuantity()) {
-                matches.add(assignment);
+                return assignment;
             }
         }
-        if (matches.size() > 1) {
-            throw new SyncConflictException("Assignment sync is ambiguous because multiple central assignments match the queued record.");
-        }
-        return matches.isEmpty() ? null : matches.get(0);
+        return null;
     }
 
     private User resolveRemoteUser(JsonNode primary, JsonNode fallback) {

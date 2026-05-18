@@ -35,21 +35,21 @@
 
         <TableView fx:id="tableReturns" VBox.vgrow="ALWAYS">
             <columns>
-                <TableColumn fx:id="colNo" text="No." minWidth="60" prefWidth="70"/>
-                <TableColumn fx:id="colAssetCode" text="Asset Code" minWidth="150" prefWidth="170"/>
-                <TableColumn fx:id="colSerialNumber" text="IMEI/Serial Number" minWidth="240" prefWidth="280"/>
-                <TableColumn fx:id="colEquipmentName" text="Equipment Name" minWidth="300" prefWidth="340"/>
-                <TableColumn fx:id="colCategory" text="Category" minWidth="150" prefWidth="170"/>
-                <TableColumn fx:id="colSource" text="Source" minWidth="190" prefWidth="220"/>
-                <TableColumn fx:id="colResponsibleOfficer" text="Responsible Officer" minWidth="240" prefWidth="280"/>
-                <TableColumn fx:id="colDateTaken" text="Date Given Out" minWidth="160" prefWidth="180"/>
-                <TableColumn fx:id="colReason" text="Reason" minWidth="240" prefWidth="280"/>
-                <TableColumn fx:id="colReturnedBy" text="Returned By" minWidth="190" prefWidth="220"/>
-                <TableColumn fx:id="colPhone" text="Phone" minWidth="130" prefWidth="150"/>
-                <TableColumn fx:id="colNID" text="NID" minWidth="140" prefWidth="160"/>
-                <TableColumn fx:id="colCondition" text="Return Condition" minWidth="190" prefWidth="220"/>
-                <TableColumn fx:id="colRemarks" text="Remarks" minWidth="240" prefWidth="280"/>
-                <TableColumn fx:id="colDate" text="Date Returned" minWidth="160" prefWidth="180"/>
+                <TableColumn fx:id="colNo" text="No." prefWidth="55"/>
+                <TableColumn fx:id="colAssetCode" text="Asset Code" prefWidth="110"/>
+                <TableColumn fx:id="colSerialNumber" text="IMEI/Serial" prefWidth="150"/>
+                <TableColumn fx:id="colEquipmentName" text="Equipment Name" prefWidth="140"/>
+                <TableColumn fx:id="colCategory" text="Category" prefWidth="110"/>
+                <TableColumn fx:id="colSource" text="Source" prefWidth="120"/>
+                <TableColumn fx:id="colResponsibleOfficer" text="Responsible Officer" prefWidth="190"/>
+                <TableColumn fx:id="colDateTaken" text="Date Given Out" prefWidth="150"/>
+                <TableColumn fx:id="colReason" text="Reason" prefWidth="180"/>
+                <TableColumn fx:id="colReturnedBy" text="Returned By" prefWidth="120"/>
+                <TableColumn fx:id="colPhone" text="Phone" prefWidth="110"/>
+                <TableColumn fx:id="colNID" text="NID" prefWidth="110"/>
+                <TableColumn fx:id="colCondition" text="Return Condition" prefWidth="160"/>
+                <TableColumn fx:id="colRemarks" text="Remarks" prefWidth="160"/>
+                <TableColumn fx:id="colDate" text="Date Returned" prefWidth="150"/>
             </columns>
         </TableView>
 

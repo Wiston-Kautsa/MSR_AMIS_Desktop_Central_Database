@@ -180,11 +180,8 @@ public final class SyncCenterController implements Initializable {
             AccessControl.requireRole(AccessControl.ROLE_SUPER_ADMIN, AccessControl.ROLE_ADMIN);
             List<SyncValidationIssue> issues = syncCenterService.validateBeforeSync();
             tblValidationIssues.getItems().setAll(issues);
-            long blockingIssues = issues.stream()
-                    .filter(issue -> "ERROR".equalsIgnoreCase(issue.getSeverity()))
-                    .count();
-            if (blockingIssues > 0) {
-                throw new IllegalStateException("Pre-sync validation failed: " + blockingIssues
+            if (!issues.isEmpty()) {
+                throw new IllegalStateException("Pre-sync validation failed: " + issues.size()
                         + " issue(s). Use Validation Issues -> Fix Before Sync.");
             }
             if (hasDestructiveActions()) {

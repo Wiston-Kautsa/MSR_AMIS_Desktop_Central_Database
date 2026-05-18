@@ -35,7 +35,6 @@ public class MaintenanceReportController implements Initializable {
 
     private final ObservableList<MaintenanceRecord> data = FXCollections.observableArrayList();
     private List<MaintenanceRecord> allMaintenance = List.of();
-    private final MaintenanceService maintenanceService = ServiceRegistry.getMaintenanceService();
 
     @Override
     public void initialize(URL url, ResourceBundle resourceBundle) {
@@ -93,7 +92,7 @@ public class MaintenanceReportController implements Initializable {
     }
 
     private void loadData() {
-        allMaintenance = new ArrayList<>(maintenanceService.getMaintenanceRecords());
+        allMaintenance = new ArrayList<>(DatabaseHandler.getMaintenanceRecords());
         data.setAll(allMaintenance);
         tableMaintenance.setItems(data);
     }

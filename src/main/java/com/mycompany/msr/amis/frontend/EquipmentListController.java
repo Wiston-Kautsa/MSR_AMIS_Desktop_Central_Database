@@ -84,7 +84,7 @@ public class EquipmentListController implements Initializable {
     @Override
     public void initialize(URL url, ResourceBundle rb) {
 
-        equipmentTable.setColumnResizePolicy(TableView.UNCONSTRAINED_RESIZE_POLICY);
+        equipmentTable.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
 
         TableNumbering.install(colNo);
         colAssetCode.setCellValueFactory(new PropertyValueFactory<>("assetCode"));

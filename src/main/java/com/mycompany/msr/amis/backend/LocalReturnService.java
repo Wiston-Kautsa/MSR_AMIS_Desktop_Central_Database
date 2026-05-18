@@ -49,9 +49,6 @@ public final class LocalReturnService implements ReturnService {
             ReturnSaveResult result = remoteMirrorCoordinator.getRemoteReturnService()
                     .saveReturns(assignmentId, equipmentType, items, outstandingRemarks);
             remoteMirrorCoordinator.synchronizeFromRemote(java.util.Map.of());
-            if (outstandingRemarks != null && !outstandingRemarks.isEmpty()) {
-                DatabaseHandler.updateOutstandingReturnRemarks(outstandingRemarks);
-            }
             return result;
         }
         Assignment assignment = findAssignment(assignmentId);

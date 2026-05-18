@@ -93,7 +93,6 @@ public final class LocalDataMaintenanceService implements DataMaintenanceService
             ensureEmpty(connection, "returns", "Clear returns before equipment.");
             ensureEmpty(connection, "distribution", "Clear distribution before equipment.");
             ensureEmpty(connection, "assignments", "Clear assignments before equipment.");
-            ensureEmpty(connection, "maintenance_log", "Clear maintenance records before equipment.");
             int deleted = deleteTable(connection, "equipment");
             resetSequence(connection, "equipment");
             DatabaseHandler.logAudit("RESET_EQUIPMENT_DATA", "SYSTEM", "equipment",
@@ -118,14 +117,12 @@ public final class LocalDataMaintenanceService implements DataMaintenanceService
             deletedRows.put("returns", deleteTable(connection, "returns"));
             deletedRows.put("distribution", deleteTable(connection, "distribution"));
             deletedRows.put("assignments", deleteTable(connection, "assignments"));
-            deletedRows.put("maintenance_log", deleteTable(connection, "maintenance_log"));
             deletedRows.put("equipment", deleteTable(connection, "equipment"));
             deletedRows.put("password_reset_audit", deleteTable(connection, "password_reset_audit"));
             deletedRows.put("audit_log", deleteTable(connection, "audit_log"));
             resetSequence(connection, "returns");
             resetSequence(connection, "distribution");
             resetSequence(connection, "assignments");
-            resetSequence(connection, "maintenance_log");
             resetSequence(connection, "equipment");
             resetSequence(connection, "password_reset_audit");
             resetSequence(connection, "audit_log");

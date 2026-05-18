@@ -122,7 +122,6 @@ public class ReturnEquipmentController implements Initializable {
     private final Map<String, Assignment> assignmentMap = new LinkedHashMap<>();
     private final List<String> outstandingAssetCodes = new ArrayList<>();
     private final Set<String> stagedResolvedAssetCodes = new LinkedHashSet<>();
-    private final Map<String, String> pendingOutstandingReasons = new LinkedHashMap<>();
     private final List<StagedReturnItem> stagedReturnItems = new ArrayList<>();
     private final DataFormatter dataFormatter = new DataFormatter();
 
@@ -207,7 +206,6 @@ public class ReturnEquipmentController implements Initializable {
         stagedResolvedAssetCodes.clear();
         stagedReturnItems.clear();
         outstandingAssetCodes.clear();
-        pendingOutstandingReasons.clear();
 
         if (selectedAssignment == null) {
             requiredReturnQty = 0;
@@ -330,7 +328,6 @@ public class ReturnEquipmentController implements Initializable {
         clearEntryFields();
         stagedReturnItems.clear();
         stagedResolvedAssetCodes.clear();
-        pendingOutstandingReasons.clear();
         selectedFile = null;
 
         if (lblFileName != null) {
@@ -470,13 +467,13 @@ public class ReturnEquipmentController implements Initializable {
         FileChooser chooser = new FileChooser();
         chooser.setTitle("Save Return Template");
         chooser.setInitialFileName("return_bulk_template.xlsx");
-        FileLocationHelper.useExportDirectory(chooser);
+        FileLocationHelper.useDownloadsDirectory(chooser);
         chooser.getExtensionFilters().add(
                 new FileChooser.ExtensionFilter("Excel Files", "*.xlsx")
         );
 
-        File selectedTargetFile = chooser.showSaveDialog(null);
-        if (selectedTargetFile == null) {
+        File targetFile = chooser.showSaveDialog(null);
+        if (targetFile == null) {
             OperationFeedbackHelper.showWarning(
                     "Download Cancelled",
                     "Return template download was cancelled."
@@ -484,11 +481,9 @@ public class ReturnEquipmentController implements Initializable {
             return;
         }
 
-        File targetFile = FileLocationHelper.forceIntoExportDirectory(selectedTargetFile);
-
         OperationFeedbackHelper.showInfo(
                 "Preparing Template",
-                "Creating the return bulk template in Downloads\\MSR-AMIS."
+                "Creating the return bulk template in Downloads."
         );
 
         try (Workbook workbook = new XSSFWorkbook()) {
@@ -626,9 +621,6 @@ public class ReturnEquipmentController implements Initializable {
     private void enterOutstandingReason(ActionEvent event) {
         Map<String, String> outstandingReasons = collectOutstandingReasons();
         if (outstandingReasons == null) {
-            return;
-        }
-        if (!persistOutstandingReasons(outstandingReasons)) {
             return;
         }
         if (stagedReturnItems.isEmpty()) {
@@ -875,40 +867,16 @@ public class ReturnEquipmentController implements Initializable {
         String reason = txtOutstandingReason == null || txtOutstandingReason.getText() == null
                 ? ""
                 : txtOutstandingReason.getText().trim();
-        if (!reason.isEmpty()) {
-            for (String assetCode : remainingAssets) {
-                pendingOutstandingReasons.put(assetCode, reason);
-            }
-        }
-
-        for (String assetCode : remainingAssets) {
-            String recordedReason = pendingOutstandingReasons.get(assetCode);
-            if (recordedReason != null && !recordedReason.trim().isEmpty()) {
-                reasons.put(assetCode, recordedReason.trim());
-            }
-        }
-
-        if (reasons.size() != remainingAssets.size()) {
+        if (reason.isEmpty()) {
             showWarning("Enter the outstanding equipment reason before saving.");
             focusOutstandingReasons();
             return null;
         }
 
+        for (String assetCode : remainingAssets) {
+            reasons.put(assetCode, reason);
+        }
         return reasons;
-    }
-
-    private boolean persistOutstandingReasons(Map<String, String> outstandingReasons) {
-        if (outstandingReasons == null || outstandingReasons.isEmpty()) {
-            return true;
-        }
-        try {
-            DatabaseHandler.updateOutstandingReturnRemarks(outstandingReasons);
-            refreshOutstandingReasonRows();
-            return true;
-        } catch (Exception e) {
-            showError("Failed to save outstanding reason: " + e.getMessage());
-            return false;
-        }
     }
 
     private void showInfo(String msg) {
@@ -988,7 +956,6 @@ public class ReturnEquipmentController implements Initializable {
         stagedReturnItems.clear();
         stagedResolvedAssetCodes.clear();
         outstandingAssetCodes.clear();
-        pendingOutstandingReasons.clear();
         selectedAssignment = null;
         requiredReturnQty = 0;
         selectedFile = null;

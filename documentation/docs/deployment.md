@@ -1,4 +1,4 @@
-﻿# MSR-AMIS Deployment
+# MSR-AMIS Deployment
 
 ## Production Shape
 
@@ -166,7 +166,7 @@ Install either:
 - `dist\MSR AMIS-1.0.0.msi`
 - `dist\MSR AMIS-1.0.0.exe`
 
-Current installer build: May 18, 2026. This package contains the latest desktop changes for bulk enrolment, equipment/report table columns, maintenance tracking/reporting, Asset History with maintenance events and direct maintenance-log fallback, online/offline Sync Center behavior, role-based Sync Center access, active queue cleanup after successful push, preserved outstanding return reasons, centralized exports to `Downloads\MSR-AMIS`, and Department Management.
+Current installer build: May 17, 2026. This package contains the latest desktop changes for bulk enrolment, equipment/report table columns, maintenance tracking/reporting, Asset History with maintenance events, online/offline Sync Center behavior, role-based Sync Center access, active queue cleanup after successful push, and Department Management.
 
 Client desktop configuration:
 
@@ -225,8 +225,6 @@ Before wider rollout:
 - verify each client points to the server API URL, not `localhost`
 - test login, equipment, bulk enrolment, assignment, distribution, return, maintenance, reports, user management, audit logs, and Sync Center
 - test Asset History for an asset that has registration, distribution, maintenance, and return events
-- test Return Report long columns and Outstanding Report outstanding reasons
-- test one export and confirm it is created under `Downloads\MSR-AMIS`
 - test department create, rename, delete-blocked-when-in-use, and default `MSR` protection
 - test one offline workflow in `AUTO` mode and confirm Sync Center applies or rejects queued changes correctly
 - confirm PostgreSQL backup and restore procedures outside the desktop app
@@ -273,4 +271,3 @@ To schedule a daily Windows backup task at 10 PM:
 ```
 
 For production, schedule backups and periodically test restore on a separate database.
-

@@ -11,7 +11,6 @@ import javafx.stage.FileChooser;
 public final class FileLocationHelper {
 
     private static final String APP_FOLDER_NAME = "MSR AMIS";
-    private static final String EXPORT_FOLDER_NAME = "MSR-AMIS";
 
     private FileLocationHelper() {
     }
@@ -24,14 +23,6 @@ public final class FileLocationHelper {
         return downloads;
     }
 
-    public static File getExportDirectory() {
-        File exportDirectory = new File(getDownloadsDirectory(), EXPORT_FOLDER_NAME);
-        if (!exportDirectory.exists()) {
-            exportDirectory.mkdirs();
-        }
-        return exportDirectory;
-    }
-
     public static void useDownloadsDirectory(FileChooser chooser) {
         File downloads = getDownloadsDirectory();
         if (downloads.exists() && downloads.isDirectory()) {
@@ -39,26 +30,8 @@ public final class FileLocationHelper {
         }
     }
 
-    public static void useExportDirectory(FileChooser chooser) {
-        File exportDirectory = getExportDirectory();
-        if (exportDirectory.exists() && exportDirectory.isDirectory()) {
-            chooser.setInitialDirectory(exportDirectory);
-        }
-    }
-
     public static File fileInDownloads(String fileName) {
-        return new File(getExportDirectory(), fileName);
-    }
-
-    public static File exportFile(String fileName) {
-        return fileInDownloads(fileName);
-    }
-
-    public static File forceIntoExportDirectory(File selectedFile) {
-        String fileName = selectedFile == null || selectedFile.getName().isBlank()
-                ? "export"
-                : selectedFile.getName();
-        return exportFile(fileName);
+        return new File(getDownloadsDirectory(), fileName);
     }
 
     public static Path getApplicationDataDirectory() {

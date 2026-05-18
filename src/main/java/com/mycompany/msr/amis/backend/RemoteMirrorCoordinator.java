@@ -5,18 +5,15 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Duration;
-import java.util.concurrent.CompletableFuture;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
-import javafx.application.Platform;
 
 public final class RemoteMirrorCoordinator {
 
     private static final Duration PROBE_TIMEOUT = Duration.ofSeconds(4);
     private static final long PROBE_CACHE_TTL_MS = 30_000L;
-    private static final long QUIET_SYNC_CACHE_TTL_MS = 300_000L;
     private static final ThreadLocal<Boolean> AUTO_MIRROR_SUPPRESSED = ThreadLocal.withInitial(() -> false);
 
     private final AppConfiguration configuration;
@@ -31,14 +28,10 @@ public final class RemoteMirrorCoordinator {
     private final ApiReportService remoteReportService;
     private final ApiAssetHistoryService remoteAssetHistoryService;
     private final ApiDataMaintenanceService remoteDataMaintenanceService;
-    private final ApiMaintenanceService remoteMaintenanceService;
     private final LocalMirrorRepository localMirrorRepository = new LocalMirrorRepository();
     private final HttpClient probeClient = HttpClient.newBuilder().connectTimeout(PROBE_TIMEOUT).build();
     private volatile long lastProbeAt;
     private volatile boolean lastProbeResult;
-    private volatile boolean probeInFlight;
-    private volatile long lastQuietSyncAt;
-    private volatile boolean quietSyncInFlight;
 
     public RemoteMirrorCoordinator(AppConfiguration configuration, ApiClient apiClient) {
         this.configuration = configuration;
@@ -53,7 +46,6 @@ public final class RemoteMirrorCoordinator {
         this.remoteReportService = apiClient == null ? null : new ApiReportService(apiClient);
         this.remoteAssetHistoryService = apiClient == null ? null : new ApiAssetHistoryService(apiClient);
         this.remoteDataMaintenanceService = apiClient == null ? null : new ApiDataMaintenanceService(apiClient);
-        this.remoteMaintenanceService = apiClient == null ? null : new ApiMaintenanceService(apiClient);
     }
 
     public boolean isMirrorConfigured() {
@@ -117,10 +109,6 @@ public final class RemoteMirrorCoordinator {
         return remoteDataMaintenanceService;
     }
 
-    public ApiMaintenanceService getRemoteMaintenanceService() {
-        return remoteMaintenanceService;
-    }
-
     public void handleRemoteLogin(User user, String plainPassword) throws Exception {
         Map<String, String> passwordOverrides = new HashMap<>();
         if (user != null && user.getEmail() != null && !user.getEmail().isBlank()
@@ -141,21 +129,11 @@ public final class RemoteMirrorCoordinator {
     }
 
     public void synchronizeQuietlyIfOnline() {
-        if (Platform.isFxApplicationThread()) {
-            synchronizeQuietlyInBackground();
-            return;
-        }
-        long now = System.currentTimeMillis();
-        if (now - lastQuietSyncAt < QUIET_SYNC_CACHE_TTL_MS) {
-            return;
-        }
         if (!hasRemoteSession()) {
             return;
         }
-
         try {
             synchronizeFromRemote(Map.of());
-            lastQuietSyncAt = System.currentTimeMillis();
         } catch (Exception ignored) {
             // Keep local workflows available if the mirror refresh fails mid-session.
         }
@@ -165,43 +143,7 @@ public final class RemoteMirrorCoordinator {
         if (AUTO_MIRROR_SUPPRESSED.get()) {
             return;
         }
-        if (Platform.isFxApplicationThread()) {
-            synchronizeQuietlyInBackground();
-        } else {
-            forceQuietSync();
-        }
-    }
-
-    public void forceQuietSync() {
-        if (!hasRemoteSession()) {
-            return;
-        }
-        try {
-            synchronizeFromRemote(Map.of());
-            lastQuietSyncAt = System.currentTimeMillis();
-        } catch (Exception ignored) {
-            // Remote mutations should not break the foreground workflow if mirror refresh fails.
-        }
-    }
-
-    private void synchronizeQuietlyInBackground() {
-        long now = System.currentTimeMillis();
-        if (quietSyncInFlight || now - lastQuietSyncAt < QUIET_SYNC_CACHE_TTL_MS) {
-            return;
-        }
-        quietSyncInFlight = true;
-        CompletableFuture.runAsync(() -> {
-            try {
-                if (hasRemoteSession()) {
-                    synchronizeFromRemote(Map.of());
-                    lastQuietSyncAt = System.currentTimeMillis();
-                }
-            } catch (Exception ignored) {
-                // Background sync is opportunistic; explicit Sync Center actions handle visible failures.
-            } finally {
-                quietSyncInFlight = false;
-            }
-        });
+        synchronizeQuietlyIfOnline();
     }
 
     public static void runWithAutoMirrorSuppressed(CheckedRunnable runnable) throws Exception {
@@ -225,7 +167,6 @@ public final class RemoteMirrorCoordinator {
         List<Assignment> assignments = remoteReportService.getAssignmentReport();
         List<Distribution> distributions = remoteReportService.getDistributionReport();
         List<ReturnRecord> returns = remoteReportService.getReturnReport();
-        List<MaintenanceRecord> maintenanceRecords = remoteMaintenanceService.getMaintenanceRecords();
         List<AuditLog> auditLogs = fetchAuditLogs();
 
         localMirrorRepository.synchronizeFromRemote(
@@ -236,7 +177,6 @@ public final class RemoteMirrorCoordinator {
                 assignments,
                 distributions,
                 returns,
-                maintenanceRecords,
                 auditLogs
         );
     }
@@ -277,30 +217,10 @@ public final class RemoteMirrorCoordinator {
         if (now - lastProbeAt < PROBE_CACHE_TTL_MS) {
             return lastProbeResult;
         }
-        if (Platform.isFxApplicationThread()) {
-            refreshReachabilityAsync();
-            return lastProbeResult;
-        }
         boolean reachable = isReachable("/actuator/health") || isReachable("/");
         lastProbeResult = reachable;
         lastProbeAt = now;
         return reachable;
-    }
-
-    private void refreshReachabilityAsync() {
-        if (probeInFlight) {
-            return;
-        }
-        probeInFlight = true;
-        CompletableFuture.runAsync(() -> {
-            try {
-                boolean reachable = isReachable("/actuator/health") || isReachable("/");
-                lastProbeResult = reachable;
-                lastProbeAt = System.currentTimeMillis();
-            } finally {
-                probeInFlight = false;
-            }
-        });
     }
 
     private boolean isReachable(String path) {

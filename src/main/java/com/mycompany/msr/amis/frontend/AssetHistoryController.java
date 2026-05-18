@@ -3,8 +3,6 @@ package com.mycompany.msr.amis;
 import java.io.File;
 import java.io.FileWriter;
 import java.net.URL;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.ResourceBundle;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
@@ -85,8 +83,7 @@ public class AssetHistoryController implements Initializable {
         }
 
         applySummary(result.getSummary());
-        List<AssetHistoryRecord> displayRecords = includeLocalMaintenanceRecords(result.getRecords());
-        data.setAll(displayRecords);
+        data.setAll(result.getRecords());
     }
 
     @FXML
@@ -138,92 +135,6 @@ public class AssetHistoryController implements Initializable {
         lblCurrentStatus.setText(valueOrDash(summary.getCurrentStatus()));
     }
 
-    private List<AssetHistoryRecord> includeLocalMaintenanceRecords(List<AssetHistoryRecord> records) {
-        List<AssetHistoryRecord> merged = new ArrayList<>(records == null ? List.of() : records);
-        for (MaintenanceRecord maintenance : DatabaseHandler.getMaintenanceRecords()) {
-            if (maintenance == null || !sameAsset(currentAssetCode, maintenance.getAssetCode())) {
-                continue;
-            }
-            AssetHistoryRecord historyRecord = toMaintenanceHistoryRecord(maintenance);
-            if (!containsHistoryRecord(merged, historyRecord)) {
-                merged.add(historyRecord);
-            }
-        }
-        merged.sort((first, second) -> {
-            int dateCompare = valueOrEmpty(second.getActivityDate()).compareTo(valueOrEmpty(first.getActivityDate()));
-            if (dateCompare != 0) {
-                return dateCompare;
-            }
-            return valueOrEmpty(second.getEventType()).compareTo(valueOrEmpty(first.getEventType()));
-        });
-        return merged;
-    }
-
-    private AssetHistoryRecord toMaintenanceHistoryRecord(MaintenanceRecord record) {
-        boolean completed = "COMPLETED".equalsIgnoreCase(record.getStatus());
-        return new AssetHistoryRecord(
-                record.getMaintenanceDate(),
-                completed ? "MAINTENANCE COMPLETED" : "SENT TO MAINTENANCE",
-                record.getPerformedBy(),
-                "",
-                buildMaintenanceDetails(record),
-                completed ? "AVAILABLE" : "MAINTENANCE"
-        );
-    }
-
-    private String buildMaintenanceDetails(MaintenanceRecord record) {
-        StringBuilder details = new StringBuilder();
-        appendDetail(details, "Issue", record.getIssue());
-        appendDetail(details, "Action taken", record.getActionTaken());
-        appendDetail(details, "Cost", record.getCost());
-        appendDetail(details, "Maintenance status", record.getStatus());
-        return details.toString();
-    }
-
-    private void appendDetail(StringBuilder details, String label, String value) {
-        if (value == null || value.isBlank()) {
-            return;
-        }
-        if (details.length() > 0) {
-            details.append(" | ");
-        }
-        details.append(label).append(": ").append(value.trim());
-    }
-
-    private boolean containsHistoryRecord(List<AssetHistoryRecord> records, AssetHistoryRecord candidate) {
-        String candidateKey = historyKey(candidate);
-        for (AssetHistoryRecord record : records) {
-            if (historyKey(record).equals(candidateKey)) {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    private String historyKey(AssetHistoryRecord record) {
-        if (record == null) {
-            return "";
-        }
-        return normalizeKey(record.getActivityDate()) + "|"
-                + normalizeKey(record.getEventType()) + "|"
-                + normalizeKey(record.getActor()) + "|"
-                + normalizeKey(record.getAffectedPerson()) + "|"
-                + normalizeKey(record.getDetails()) + "|"
-                + normalizeKey(record.getStatus());
-    }
-
-    private boolean sameAsset(String first, String second) {
-        return normalizeKey(first).equals(normalizeKey(second));
-    }
-
-    private String normalizeKey(String value) {
-        return value == null ? "" : value.trim().toLowerCase();
-    }
-
-    private String valueOrEmpty(String value) {
-        return value == null ? "" : value;
-    }
-
     private void setupContextMenu() {
         ContextMenu menu = new ContextMenu();
         MenuItem refresh = new MenuItem("Refresh Asset History");
@@ -240,16 +151,16 @@ public class AssetHistoryController implements Initializable {
         tableHistory.setColumnResizePolicy(TableView.UNCONSTRAINED_RESIZE_POLICY);
         colActivityDate.setPrefWidth(150);
         colActivityDate.setMinWidth(150);
-        colEventType.setPrefWidth(210);
-        colEventType.setMinWidth(190);
-        colActor.setPrefWidth(200);
-        colActor.setMinWidth(180);
-        colAffectedPerson.setPrefWidth(220);
-        colAffectedPerson.setMinWidth(200);
-        colDetails.setPrefWidth(520);
-        colDetails.setMinWidth(420);
-        colStatus.setPrefWidth(180);
-        colStatus.setMinWidth(170);
+        colEventType.setPrefWidth(150);
+        colEventType.setMinWidth(150);
+        colActor.setPrefWidth(220);
+        colActor.setMinWidth(220);
+        colAffectedPerson.setPrefWidth(240);
+        colAffectedPerson.setMinWidth(240);
+        colDetails.setPrefWidth(620);
+        colDetails.setMinWidth(620);
+        colStatus.setPrefWidth(150);
+        colStatus.setMinWidth(150);
 
         colDetails.setCellFactory(column -> new TableCell<AssetHistoryRecord, String>() {
             private final Text text = new Text();

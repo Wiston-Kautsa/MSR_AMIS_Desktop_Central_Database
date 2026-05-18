@@ -225,14 +225,14 @@ public class AddEquipmentController implements Initializable {
         FileChooser chooser = new FileChooser();
         chooser.setTitle("Save Bulk Enrolment Template");
         chooser.setInitialFileName("equipment_bulk_template.xlsx");
-        FileLocationHelper.useExportDirectory(chooser);
+        FileLocationHelper.useDownloadsDirectory(chooser);
         chooser.getExtensionFilters().add(
                 new FileChooser.ExtensionFilter("Excel Files", "*.xlsx")
         );
 
-        File selectedTargetFile = chooser.showSaveDialog(null);
+        File targetFile = chooser.showSaveDialog(null);
 
-        if (selectedTargetFile == null) {
+        if (targetFile == null) {
             OperationFeedbackHelper.showWarning(
                     "Download Cancelled",
                     "Template download was cancelled."
@@ -240,11 +240,9 @@ public class AddEquipmentController implements Initializable {
             return;
         }
 
-        File targetFile = FileLocationHelper.forceIntoExportDirectory(selectedTargetFile);
-
         OperationFeedbackHelper.showInfo(
                 "Preparing Template",
-                "Creating the bulk equipment template in Downloads\\MSR-AMIS."
+                "Creating the bulk equipment template in Downloads."
         );
 
         try (Workbook wb = new XSSFWorkbook()) {

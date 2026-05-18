@@ -120,10 +120,7 @@
     -fx-background-color: transparent;
     -fx-text-fill: white;
     -fx-font-size: 14px;
-    -fx-min-width: 260;
-    -fx-pref-width: 260;
-    -fx-max-width: 260;
-    -fx-wrap-text: true;
+    -fx-pref-width: 200;
     -fx-padding: 10;
     -fx-alignment: CENTER_LEFT;
 }
@@ -138,10 +135,7 @@
 .submenu-button{
     -fx-background-color: transparent;
     -fx-text-fill: white;
-    -fx-min-width: 260;
-    -fx-pref-width: 260;
-    -fx-max-width: 260;
-    -fx-wrap-text: true;
+    -fx-pref-width: 200;
     -fx-padding: 6 0 6 20;
     -fx-alignment: CENTER_LEFT;
 }
@@ -423,7 +417,6 @@
     -fx-background-radius: 6;
     -fx-background-color: #34495e;
     -fx-text-fill: white;   /* FIX: ensures text is visible */
-    -fx-wrap-text: true;
     -fx-padding: 10 20 10 20;
 }
 

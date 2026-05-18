@@ -316,7 +316,6 @@ public class OperationsService {
                 );
             }
             String remarks = normalize(item.remarks());
-            String previousCondition = getEquipmentCondition(item.originalAssetCode());
 
             if (item.replacement()) {
                 String replacementAssetCode = insertReplacementEquipment(request.equipmentType(), item.enteredIdentifier(), "Replacement return for " + item.originalAssetCode());
@@ -331,9 +330,9 @@ public class OperationsService {
             }
 
             jdbcTemplate.update(
-                    "INSERT INTO returns(asset_code, returned_by, phone, nid, item_condition, previous_condition, remarks, return_date) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+                    "INSERT INTO returns(asset_code, returned_by, phone, nid, item_condition, remarks, return_date) VALUES (?, ?, ?, ?, ?, ?, ?)",
                     item.originalAssetCode(), item.returnedBy().trim(), item.phone().trim(), item.nid().trim(),
-                    item.condition().trim(), previousCondition, remarks, Date.valueOf(LocalDate.now())
+                    item.condition().trim(), remarks, Date.valueOf(LocalDate.now())
             );
             jdbcTemplate.update("UPDATE equipment SET status = 'AVAILABLE', item_condition = ? WHERE asset_code = ?",
                     item.condition().trim(), item.originalAssetCode());
@@ -344,9 +343,7 @@ public class OperationsService {
                     "RETURNS",
                     item.originalAssetCode(),
                     "Equipment returned by " + item.returnedBy().trim() + ". Condition: " + item.condition().trim() +
-                            (previousCondition.isBlank() ? "" : " (previously: " + previousCondition + ")") +
-                            ", phone: " + item.phone().trim() + ", NID: " + item.nid().trim() +
-                            (remarks.isBlank() ? "" : ", remarks: " + remarks)
+                            ", phone: " + item.phone().trim() + ", NID: " + item.nid().trim()
             );
         }
 
@@ -526,15 +523,6 @@ public class OperationsService {
                 normalizedIdentifier
         );
         return count != null && count > 0;
-    }
-
-    private String getEquipmentCondition(String assetCode) {
-        List<String> conditions = jdbcTemplate.query(
-                "SELECT COALESCE(item_condition, '') FROM equipment WHERE asset_code = ?",
-                (rs, rowNum) -> normalize(rs.getString(1)),
-                assetCode
-        );
-        return conditions.isEmpty() ? "" : conditions.get(0);
     }
 
     private String normalize(String value) {

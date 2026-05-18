@@ -44,9 +44,6 @@ public final class ApiReturnService implements ReturnService {
         request.items = items.stream().map(ReturnItemRequest::from).collect(Collectors.toList());
         ReturnBatchResponse response = apiClient.post("/api/returns/complete", request, ReturnBatchResponse.class);
         ServiceRegistry.getRemoteMirrorCoordinator().refreshAfterRemoteMutation();
-        if (outstandingRemarks != null && !outstandingRemarks.isEmpty()) {
-            DatabaseHandler.updateOutstandingReturnRemarks(outstandingRemarks);
-        }
         return new ReturnSaveResult(response.replacementAssetCodes == null ? List.of() : response.replacementAssetCodes);
     }
 

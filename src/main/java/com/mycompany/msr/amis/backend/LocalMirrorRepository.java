@@ -17,7 +17,6 @@ public final class LocalMirrorRepository {
                                       List<Assignment> assignments,
                                       List<Distribution> distributions,
                                       List<ReturnRecord> returns,
-                                      List<MaintenanceRecord> maintenanceRecords,
                                       List<AuditLog> auditLogs) throws Exception {
         if (users == null || users.isEmpty()) {
             throw new IllegalStateException("Central synchronization failed because no users were returned.");
@@ -32,7 +31,6 @@ public final class LocalMirrorRepository {
                 deleteAll(connection, "distribution");
                 deleteAll(connection, "assignments");
                 deleteAll(connection, "equipment");
-                deleteAll(connection, "maintenance_log");
                 deleteAll(connection, "audit_log");
                 deleteAll(connection, "users");
                 deleteAll(connection, "departments");
@@ -43,7 +41,6 @@ public final class LocalMirrorRepository {
                 insertAssignments(connection, assignments);
                 insertDistributions(connection, distributions);
                 insertReturns(connection, returns);
-                insertMaintenanceRecords(connection, maintenanceRecords);
                 insertAuditLogs(connection, auditLogs);
 
                 connection.commit();
@@ -301,29 +298,6 @@ public final class LocalMirrorRepository {
         }
     }
 
-    private void insertMaintenanceRecords(Connection connection, List<MaintenanceRecord> maintenanceRecords) throws Exception {
-        try (PreparedStatement ps = connection.prepareStatement(
-                "INSERT INTO maintenance_log (id, asset_code, issue, action_taken, performed_by, maintenance_date, cost, status) " +
-                        "VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
-        )) {
-            for (MaintenanceRecord record : maintenanceRecords == null ? List.<MaintenanceRecord>of() : maintenanceRecords) {
-                if (record == null) {
-                    continue;
-                }
-                ps.setInt(1, record.getId());
-                ps.setString(2, normalize(record.getAssetCode()));
-                ps.setString(3, normalize(record.getIssue()));
-                ps.setString(4, normalizeNullable(record.getActionTaken()));
-                ps.setString(5, normalizeNullable(record.getPerformedBy()));
-                ps.setString(6, normalize(record.getMaintenanceDate()));
-                ps.setString(7, normalizeNullable(record.getCost()));
-                ps.setString(8, normalizeMaintenanceStatus(record.getStatus()));
-                ps.addBatch();
-            }
-            ps.executeBatch();
-        }
-    }
-
     private void insertAuditLogs(Connection connection, List<AuditLog> auditLogs) throws Exception {
         try (PreparedStatement ps = connection.prepareStatement(
                 "INSERT INTO audit_log (id, username, action, module_name, details, action_time, performed_by, entity) " +
@@ -407,11 +381,6 @@ public final class LocalMirrorRepository {
     private String normalizeStatus(String status) {
         String normalized = normalize(status);
         return normalized.isBlank() ? AccessControl.STATUS_ACTIVE : normalized;
-    }
-
-    private String normalizeMaintenanceStatus(String status) {
-        String normalized = normalize(status).toUpperCase();
-        return normalized.isBlank() ? "OPEN" : normalized;
     }
 
     private String normalize(String value) {
