@@ -73,7 +73,7 @@ MSR_AMIS_RESERVED_ADMIN_EMAILS=setup-admin@example.com
 MSR_AMIS_RESERVED_USER_EMAILS=setup-user@example.com
 ```
 
-Account emails are configured from environment values, or from `.env` during development. `MSR_AMIS_PRIMARY_SUPER_ADMIN_EMAIL`, `MSR_AMIS_SETUP_ADMIN_EMAIL`, and `MSR_AMIS_SETUP_USER_EMAIL` can be changed without code changes. `MSR_AMIS_RESERVED_SUPER_ADMIN_EMAILS`, `MSR_AMIS_RESERVED_ADMIN_EMAILS`, and `MSR_AMIS_RESERVED_USER_EMAILS` are comma-separated lists, so reserved addresses can be added or removed by editing `.env` or the server environment and restarting the API.
+Account emails are configured from environment values, or from `.env` during development. `MSR_AMIS_PRIMARY_SUPER_ADMIN_EMAIL`, `MSR_AMIS_SETUP_ADMIN_EMAIL`, and `MSR_AMIS_SETUP_USER_EMAIL` can be changed without code changes. The configured primary Super Admin uses `MSRAMIS Admin` as both username and display name after migrations run. `MSR_AMIS_RESERVED_SUPER_ADMIN_EMAILS`, `MSR_AMIS_RESERVED_ADMIN_EMAILS`, and `MSR_AMIS_RESERVED_USER_EMAILS` are comma-separated lists, so reserved addresses can be added or removed by editing `.env` or the server environment and restarting the API.
 
 Password reset email sender settings use the same `.env` file during development:
 

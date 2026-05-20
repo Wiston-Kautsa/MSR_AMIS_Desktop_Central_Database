@@ -122,7 +122,7 @@ MSR_AMIS_RESERVED_ADMIN_EMAILS=setup-admin@example.com
 MSR_AMIS_RESERVED_USER_EMAILS=setup-user@example.com
 ```
 
-`MSR_AMIS_PRIMARY_SUPER_ADMIN_EMAIL` identifies the protected top-level super admin account. `MSR_AMIS_SETUP_ADMIN_EMAIL` and `MSR_AMIS_SETUP_USER_EMAIL` identify the temporary setup accounts. The three `MSR_AMIS_RESERVED_*_EMAILS` values are comma-separated lists. Add an address to reserve it; remove an address to stop reserving it.
+`MSR_AMIS_PRIMARY_SUPER_ADMIN_EMAIL` identifies the protected top-level super admin account. The configured primary Super Admin uses `MSRAMIS Admin` as both username and display name after migrations run. `MSR_AMIS_SETUP_ADMIN_EMAIL` and `MSR_AMIS_SETUP_USER_EMAIL` identify the temporary setup accounts. The three `MSR_AMIS_RESERVED_*_EMAILS` values are comma-separated lists. Add an address to reserve it; remove an address to stop reserving it.
 
 After changing these values, restart the API. For a clean PostgreSQL database, Flyway applies the configured setup and primary account emails during migration. For an existing database, changing these values changes protection and reservation policy; it does not automatically rename arbitrary existing user records unless a migration explicitly handles that case.
 
