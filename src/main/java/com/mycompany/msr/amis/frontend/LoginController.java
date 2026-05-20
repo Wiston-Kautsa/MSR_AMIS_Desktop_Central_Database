@@ -585,25 +585,8 @@ public class LoginController implements Initializable {
         if (chkRememberLogin != null && !chkRememberLogin.isSelected()) {
             return;
         }
-        if (!rememberedLoginStore.hasSavedPassword(email, password)) {
-            confirmSaveCredentials(email, () -> {
-                rememberedLoginStore.save(email, password);
-                rememberedEmails = rememberedLoginStore.getEmails();
-            });
-            return;
-        }
         rememberedLoginStore.save(email, password);
         rememberedEmails = rememberedLoginStore.getEmails();
-    }
-
-    private void confirmSaveCredentials(String email, Runnable onConfirm) {
-        OperationFeedbackHelper.showConfirmation(
-                "Remember this login?",
-                "Save sign-in credentials for " + email + " on this Windows user account?\n\nOnly choose Save on a private, trusted computer.",
-                "Save",
-                "Do Not Save",
-                onConfirm
-        );
     }
 
     private String getEmailInput() {
