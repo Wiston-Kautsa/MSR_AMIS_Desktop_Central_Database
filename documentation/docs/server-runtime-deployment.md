@@ -74,7 +74,7 @@ MSR_AMIS_DB_URL=jdbc:postgresql://localhost:5432/msr_amis
 MSR_AMIS_DB_USERNAME=msr_amis_user
 MSR_AMIS_DB_PASSWORD=strong_password_here
 MSR_AMIS_JWT_SECRET=replace_with_real_base64_secret
-MSR_AMIS_PRIMARY_SUPER_ADMIN_EMAIL=your-super-admin@example.com
+MSR_AMIS_PRIMARY_SUPER_ADMIN_EMAIL=msramis@nlgfc.gov.mw
 ```
 
 Generate a JWT secret:

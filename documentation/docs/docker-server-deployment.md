@@ -71,7 +71,7 @@ MSR_AMIS_DB_PASSWORD=strong_database_password
 MSR_AMIS_API_PORT=8090
 MSR_AMIS_JWT_SECRET=strong_base64_secret
 
-MSR_AMIS_PRIMARY_SUPER_ADMIN_EMAIL=your-super-admin@example.com
+MSR_AMIS_PRIMARY_SUPER_ADMIN_EMAIL=msramis@nlgfc.gov.mw
 MSR_AMIS_SETUP_ADMIN_EMAIL=setup-admin@example.com
 MSR_AMIS_SETUP_USER_EMAIL=setup-user@example.com
 ```

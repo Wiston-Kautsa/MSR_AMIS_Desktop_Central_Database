@@ -65,10 +65,10 @@ MSR_AMIS_DB_PASSWORD=postgres
 MSR_AMIS_JWT_SECRET=your_base64_secret
 MSR_AMIS_JWT_EXPIRATION_SECONDS=28800
 MSR_AMIS_EXPOSE_RESET_CODE_ON_EMAIL_FAILURE=false
-MSR_AMIS_PRIMARY_SUPER_ADMIN_EMAIL=primary-super-admin@example.com
+MSR_AMIS_PRIMARY_SUPER_ADMIN_EMAIL=msramis@nlgfc.gov.mw
 MSR_AMIS_SETUP_ADMIN_EMAIL=setup-admin@example.com
 MSR_AMIS_SETUP_USER_EMAIL=setup-user@example.com
-MSR_AMIS_RESERVED_SUPER_ADMIN_EMAILS=primary-super-admin@example.com
+MSR_AMIS_RESERVED_SUPER_ADMIN_EMAILS=msramis@nlgfc.gov.mw
 MSR_AMIS_RESERVED_ADMIN_EMAILS=setup-admin@example.com
 MSR_AMIS_RESERVED_USER_EMAILS=setup-user@example.com
 ```
