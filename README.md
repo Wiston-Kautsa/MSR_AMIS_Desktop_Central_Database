@@ -88,7 +88,7 @@ MSR_AMIS_SMTP_SSL=false
 MSR_AMIS_SMTP_TIMEOUT_MS=10000
 MSR_AMIS_SUPER_USER_STATUS_EMAILS_ENABLED=true
 MSR_AMIS_OPERATION_EMAILS_ENABLED=false
-MSR_AMIS_OPERATION_EMAIL_RECIPIENTS=admin@example.com
+MSR_AMIS_OPERATION_EMAIL_RECIPIENTS=msramis@nlgfc.gov.mw
 ```
 
 Use `localhost` only when the desktop and API run on the same computer. Client machines must point to the API server address.

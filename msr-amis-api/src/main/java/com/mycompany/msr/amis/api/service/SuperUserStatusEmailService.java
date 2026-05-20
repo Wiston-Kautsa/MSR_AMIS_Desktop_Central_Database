@@ -1,13 +1,8 @@
 package com.mycompany.msr.amis.api.service;
 
-import com.mycompany.msr.amis.api.domain.UserAccount;
-import com.mycompany.msr.amis.api.domain.UserRole;
-import com.mycompany.msr.amis.api.domain.UserStatus;
-import com.mycompany.msr.amis.api.repository.UserRepository;
 import java.time.OffsetDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.LinkedHashSet;
-import java.util.List;
 import java.util.Set;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -22,14 +17,11 @@ public class SuperUserStatusEmailService {
     private static final Logger LOGGER = LoggerFactory.getLogger(SuperUserStatusEmailService.class);
 
     private final JavaMailSender mailSender;
-    private final UserRepository userRepository;
     private final Environment environment;
 
     public SuperUserStatusEmailService(JavaMailSender mailSender,
-                                       UserRepository userRepository,
                                        Environment environment) {
         this.mailSender = mailSender;
-        this.userRepository = userRepository;
         this.environment = environment;
     }
 
@@ -42,7 +34,7 @@ public class SuperUserStatusEmailService {
                 return;
             }
 
-            Set<String> recipients = activeSuperUserEmails();
+            Set<String> recipients = configuredPrimarySuperAdminEmails();
             if (recipients.isEmpty()) {
                 return;
             }
@@ -76,17 +68,11 @@ public class SuperUserStatusEmailService {
         return Boolean.parseBoolean(environment.getProperty("MSR_AMIS_SUPER_USER_STATUS_EMAILS_ENABLED", "false"));
     }
 
-    private Set<String> activeSuperUserEmails() {
-        List<UserAccount> superUsers = userRepository.findByRoleAndStatusOrderByFullNameAsc(
-                UserRole.SUPER_ADMIN,
-                UserStatus.ACTIVE
-        );
+    private Set<String> configuredPrimarySuperAdminEmails() {
         Set<String> emails = new LinkedHashSet<>();
-        for (UserAccount user : superUsers) {
-            String email = normalize(user.getEmail());
-            if (!email.isBlank()) {
-                emails.add(email);
-            }
+        String email = normalize(environment.getProperty("MSR_AMIS_PRIMARY_SUPER_ADMIN_EMAIL"));
+        if (!email.isBlank()) {
+            emails.add(email);
         }
         return emails;
     }

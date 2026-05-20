@@ -92,8 +92,9 @@ MSR_AMIS_RESERVED_SUPER_ADMIN_EMAILS=msramis@nlgfc.gov.mw
 MSR_AMIS_RESERVED_ADMIN_EMAILS=setup-admin@example.com
 MSR_AMIS_RESERVED_USER_EMAILS=setup-user@example.com
 MSR_AMIS_EXPOSE_RESET_CODE_ON_EMAIL_FAILURE=false
+MSR_AMIS_SUPER_USER_STATUS_EMAILS_ENABLED=true
 MSR_AMIS_OPERATION_EMAILS_ENABLED=false
-MSR_AMIS_OPERATION_EMAIL_RECIPIENTS=admin@example.com
+MSR_AMIS_OPERATION_EMAIL_RECIPIENTS=msramis@nlgfc.gov.mw
 ```
 
 If PostgreSQL is hosted on a separate database server, use that server address:
@@ -145,7 +146,7 @@ MSR_AMIS_SUPER_USER_STATUS_EMAILS_ENABLED=true
 
 To change the email account used by the system, change `MSR_AMIS_SMTP_USERNAME`, `MSR_AMIS_SMTP_PASSWORD`, and `MSR_AMIS_SMTP_FROM`, then restart the API. For Gmail, use an app password instead of the normal account password.
 
-When `MSR_AMIS_SUPER_USER_STATUS_EMAILS_ENABLED=true`, every active user with role `SUPER_ADMIN` receives an email for system status events recorded in the backend audit log. These notifications include the action, module, record ID, actor, and details. Email delivery failures are logged by the API and do not block the original system action.
+When `MSR_AMIS_SUPER_USER_STATUS_EMAILS_ENABLED=true`, only `MSR_AMIS_PRIMARY_SUPER_ADMIN_EMAIL` receives system status emails for backend audit events. These notifications include the action, module, record ID, actor, and details. Email delivery failures are logged by the API and do not block the original system action.
 
 When `MSR_AMIS_OPERATION_EMAILS_ENABLED=true`, distribution and return actions send operational emails to the comma-separated recipients in `MSR_AMIS_OPERATION_EMAIL_RECIPIENTS`. These messages use the configured SMTP sender and never roll back a completed distribution or return if email delivery fails.
 
