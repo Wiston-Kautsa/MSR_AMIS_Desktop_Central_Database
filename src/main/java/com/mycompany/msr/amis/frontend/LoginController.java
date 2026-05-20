@@ -11,14 +11,19 @@ import javafx.application.Platform;
 import javafx.concurrent.Task;
 import javafx.fxml.FXML;
 import javafx.fxml.Initializable;
+import javafx.animation.KeyFrame;
+import javafx.animation.PauseTransition;
+import javafx.animation.Timeline;
 import javafx.scene.control.Button;
 import javafx.scene.control.CheckBox;
 import javafx.scene.control.ComboBox;
 import javafx.scene.control.Label;
 import javafx.scene.control.PasswordField;
+import javafx.scene.control.ProgressBar;
 import javafx.scene.control.TextField;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
+import javafx.util.Duration;
 
 public class LoginController implements Initializable {
 
@@ -34,8 +39,11 @@ public class LoginController implements Initializable {
     @FXML private CheckBox chkShowPassword;
     @FXML private CheckBox chkRememberLogin;
     @FXML private Label lblLoginStatus;
+    @FXML private Label lblLoginProgress;
     @FXML private Label lblDefaultAdmin;
     @FXML private Button btnLogin;
+    @FXML private VBox loginProgressPanel;
+    @FXML private ProgressBar loginProgressBar;
 
     @FXML private VBox loginPanel;
     @FXML private VBox resetPanel;
@@ -53,6 +61,7 @@ public class LoginController implements Initializable {
     @FXML private Label lblInitialPasswordStatus;
     @FXML private HBox initialPasswordStatusBanner;
     @FXML private Button btnInitialPasswordChange;
+    private Timeline loginProgressTimeline;
 
     @Override
     public void initialize(URL url, ResourceBundle resourceBundle) {
@@ -110,7 +119,8 @@ public class LoginController implements Initializable {
         }
         loginInProgress = true;
         setLoginFormDisabled(true);
-        showStatus("Authenticating...");
+        startLoginProgress();
+        showStatus("Checking account credentials...");
 
         Task<User> loginTask = new Task<>() {
             @Override
@@ -118,9 +128,10 @@ public class LoginController implements Initializable {
                 return authService.authenticate(email, password);
             }
         };
-        loginTask.setOnSucceeded(event -> completeLogin(email, password, loginTask.getValue()));
+        loginTask.setOnSucceeded(event -> finishLoginProgress(() -> completeLogin(email, password, loginTask.getValue())));
         loginTask.setOnFailed(event -> {
             loginInProgress = false;
+            stopLoginProgress(false);
             setLoginFormDisabled(false);
             Throwable failure = loginTask.getException();
             showStatus(failure == null || failure.getMessage() == null || failure.getMessage().isBlank()
@@ -171,7 +182,7 @@ public class LoginController implements Initializable {
     private void setLoginFormDisabled(boolean disabled) {
         if (btnLogin != null) {
             btnLogin.setDisable(disabled);
-            btnLogin.setText(disabled ? "AUTHENTICATING..." : "LOGIN");
+            btnLogin.setText(disabled ? "LOADING..." : "LOGIN");
         }
         if (cmbEmail != null) {
             cmbEmail.setDisable(disabled);
@@ -181,6 +192,65 @@ public class LoginController implements Initializable {
         }
         if (txtPasswordVisible != null) {
             txtPasswordVisible.setDisable(disabled);
+        }
+    }
+
+    private void startLoginProgress() {
+        stopLoginProgress(false);
+        setLoginProgressVisible(true);
+        updateLoginProgress(0.0);
+
+        loginProgressTimeline = new Timeline(new KeyFrame(Duration.millis(90), event -> {
+            double current = loginProgressBar == null ? 0.0 : loginProgressBar.getProgress();
+            double next = current < 0.35
+                    ? current + 0.035
+                    : current < 0.70
+                    ? current + 0.018
+                    : current + 0.007;
+            updateLoginProgress(Math.min(next, 0.95));
+        }));
+        loginProgressTimeline.setCycleCount(Timeline.INDEFINITE);
+        loginProgressTimeline.play();
+    }
+
+    private void finishLoginProgress(Runnable afterComplete) {
+        if (loginProgressTimeline != null) {
+            loginProgressTimeline.stop();
+            loginProgressTimeline = null;
+        }
+        updateLoginProgress(1.0);
+        showStatus("Loading complete. Opening system...");
+
+        PauseTransition pause = new PauseTransition(Duration.millis(250));
+        pause.setOnFinished(event -> afterComplete.run());
+        pause.play();
+    }
+
+    private void stopLoginProgress(boolean keepVisible) {
+        if (loginProgressTimeline != null) {
+            loginProgressTimeline.stop();
+            loginProgressTimeline = null;
+        }
+        if (!keepVisible) {
+            setLoginProgressVisible(false);
+            updateLoginProgress(0.0);
+        }
+    }
+
+    private void updateLoginProgress(double progress) {
+        double bounded = Math.max(0.0, Math.min(1.0, progress));
+        if (loginProgressBar != null) {
+            loginProgressBar.setProgress(bounded);
+        }
+        if (lblLoginProgress != null) {
+            lblLoginProgress.setText(Math.round(bounded * 100) + "%");
+        }
+    }
+
+    private void setLoginProgressVisible(boolean visible) {
+        if (loginProgressPanel != null) {
+            loginProgressPanel.setManaged(visible);
+            loginProgressPanel.setVisible(visible);
         }
     }
 

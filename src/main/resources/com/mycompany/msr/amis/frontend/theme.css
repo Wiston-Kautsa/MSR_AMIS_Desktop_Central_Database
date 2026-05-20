@@ -564,9 +564,35 @@
 }
 
 .login-message{
-    -fx-text-fill: #dc2626;
+    -fx-text-fill: #0f4c5c;
     -fx-font-size: 12px;
     -fx-line-spacing: 2px;
+}
+
+.login-progress-panel{
+    -fx-background-color: #eff8ff;
+    -fx-background-radius: 14;
+    -fx-border-color: #9dcaf2;
+    -fx-border-radius: 14;
+    -fx-padding: 12 14 12 14;
+}
+
+.login-progress-text{
+    -fx-text-fill: #12344d;
+    -fx-font-size: 12px;
+    -fx-font-weight: bold;
+}
+
+.login-progress-percent{
+    -fx-text-fill: #0f4c81;
+    -fx-font-size: 12px;
+    -fx-font-weight: bold;
+    -fx-alignment: CENTER_RIGHT;
+}
+
+.login-progress-bar{
+    -fx-accent: #0f766e;
+    -fx-pref-height: 10;
 }
 
 .login-helper{
