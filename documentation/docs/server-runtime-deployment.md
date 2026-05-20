@@ -1,7 +1,9 @@
-# Server Runtime Deployment
+# Alternative Java Runtime Deployment
 
-Use this when the server will run PostgreSQL as a normal database service and
-the API as a Java process.
+The recommended local server deployment is Docker Compose. Use
+[Docker Server Deployment](docker-server-deployment.md) unless the server
+administrator has deliberately chosen to run PostgreSQL as a normal database
+service and the API as a Java process.
 
 ```text
 Desktop client PCs -> API on server :8090 -> PostgreSQL on server :5432

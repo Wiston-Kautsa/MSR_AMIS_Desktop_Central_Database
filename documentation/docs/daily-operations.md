@@ -241,8 +241,8 @@ Users can log in offline only after they have logged in online on the same compu
 Email addresses must be unique. The system uses the full normalized email as the internal username for created accounts, so these are different accounts:
 
 ```text
-wkautsa@yahoo.com
-wkautsa@nlgfc.gov.mw
+user.personal@example.com
+user@nlgfc.gov.mw
 ```
 
 The same exact email cannot belong to multiple users.

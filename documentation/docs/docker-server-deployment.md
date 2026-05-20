@@ -1,25 +1,25 @@
-# Docker Server Deployment
+# MSR-AMIS Docker Server Deployment
 
-Use this when the server will clone the project from Git and Docker will run
-both PostgreSQL and the API.
+This is the recommended server deployment for MSR-AMIS.
 
 ```text
-Desktop client PCs -> API container :8090 -> PostgreSQL container :5432
+Desktop client PCs -> API container on server :8090 -> PostgreSQL container
 ```
 
-The server needs the Git checkout because Docker builds the API image from the
-`msr-amis-api` source. Desktop users do not receive source code, database
-credentials, or `docker.env`.
+The server clones the project from GitHub. Docker then builds and runs the API
+and PostgreSQL. Desktop users receive only the desktop installer and their login
+details. They must not receive `docker.env`, database credentials, or server
+source access unless they are part of the deployment team.
 
-## 1. Install Server Requirements
+Repository:
 
-Install:
+```text
+https://github.com/Wiston-Kautsa/MSR_AMIS_Desktop_Central_Database.git
+```
 
-- Git
-- Docker
-- Docker Compose plugin
+## Step 1 - Install Server Requirements
 
-Ubuntu example:
+Run this on the Ubuntu/Debian server:
 
 ```bash
 sudo apt update
@@ -28,7 +28,7 @@ sudo systemctl enable docker
 sudo systemctl start docker
 ```
 
-Check:
+Check the tools:
 
 ```bash
 git --version
@@ -36,44 +36,30 @@ docker --version
 docker compose version
 ```
 
-## 2. Clone The Project
-
-On the server:
+Optional: allow the current Linux user to run Docker without `sudo`:
 
 ```bash
-git clone YOUR_REPOSITORY_URL
-cd MSR-AMIS_destop_application
+sudo usermod -aG docker $USER
+newgrp docker
 ```
 
-For updates later:
+If this is skipped, run Docker commands with `sudo`.
+
+## Step 2 - Clone The Project
+
+Run this on the server:
 
 ```bash
-git pull
+git clone https://github.com/Wiston-Kautsa/MSR_AMIS_Desktop_Central_Database.git
+cd MSR_AMIS_Desktop_Central_Database
 ```
 
-## 3. Configure Docker Environment
+## Step 3 - Create The Server Docker Environment
 
-Create the real server environment file:
+Create the real server config file:
 
 ```bash
 cp docker.env.example docker.env
-```
-
-Edit `docker.env` and replace every placeholder:
-
-```env
-POSTGRES_DB=msr_amis
-POSTGRES_USER=msr_amis_user
-POSTGRES_PASSWORD=strong_database_password
-
-MSR_AMIS_DB_USERNAME=msr_amis_user
-MSR_AMIS_DB_PASSWORD=strong_database_password
-MSR_AMIS_API_PORT=8090
-MSR_AMIS_JWT_SECRET=strong_base64_secret
-
-MSR_AMIS_PRIMARY_SUPER_ADMIN_EMAIL=msramis@nlgfc.gov.mw
-MSR_AMIS_SETUP_ADMIN_EMAIL=setup-admin@example.com
-MSR_AMIS_SETUP_USER_EMAIL=setup-user@example.com
 ```
 
 Generate a JWT secret:
@@ -82,9 +68,52 @@ Generate a JWT secret:
 openssl rand -base64 64
 ```
 
-Keep `docker.env` only on the server.
+Edit `docker.env`:
 
-## 4. Start The Containers
+```bash
+nano docker.env
+```
+
+Set these values before starting the system:
+
+```env
+POSTGRES_DB=msr_amis
+POSTGRES_USER=msr_amis_user
+POSTGRES_PASSWORD=replace_with_strong_database_password
+
+MSR_AMIS_DB_USERNAME=msr_amis_user
+MSR_AMIS_DB_PASSWORD=replace_with_same_strong_database_password
+MSR_AMIS_API_PORT=8090
+MSR_AMIS_JWT_SECRET=replace_with_generated_base64_secret
+MSR_AMIS_JWT_EXPIRATION_SECONDS=28800
+
+MSR_AMIS_PRIMARY_SUPER_ADMIN_EMAIL=msramis@nlgfc.gov.mw
+MSR_AMIS_SETUP_ADMIN_EMAIL=setup-admin@example.com
+MSR_AMIS_SETUP_USER_EMAIL=setup-user@example.com
+MSR_AMIS_RESERVED_SUPER_ADMIN_EMAILS=msramis@nlgfc.gov.mw
+MSR_AMIS_RESERVED_ADMIN_EMAILS=setup-admin@example.com
+MSR_AMIS_RESERVED_USER_EMAILS=setup-user@example.com
+
+MSR_AMIS_EXPOSE_RESET_CODE_ON_EMAIL_FAILURE=false
+
+MSR_AMIS_SMTP_HOST=mail.nlgfc.gov.mw
+MSR_AMIS_SMTP_PORT=465
+MSR_AMIS_SMTP_USERNAME=msramis@nlgfc.gov.mw
+MSR_AMIS_SMTP_PASSWORD=replace_with_mailbox_password
+MSR_AMIS_SMTP_FROM=msramis@nlgfc.gov.mw
+MSR_AMIS_SMTP_STARTTLS=false
+MSR_AMIS_SMTP_SSL=true
+MSR_AMIS_SMTP_TIMEOUT_MS=10000
+
+MSR_AMIS_SUPER_USER_STATUS_EMAILS_ENABLED=true
+MSR_AMIS_OPERATION_EMAILS_ENABLED=false
+MSR_AMIS_OPERATION_EMAIL_RECIPIENTS=msramis@nlgfc.gov.mw
+```
+
+Keep `docker.env` only on the server. It is ignored by Git and must not be
+committed.
+
+## Step 4 - Start The System
 
 From the project root on the server:
 
@@ -98,12 +127,22 @@ This starts:
 - `msr-amis-api`
 
 PostgreSQL data is stored in the Docker volume
-`msr-amis-postgres-data`, so data survives container rebuilds.
+`msr-amis-postgres-data`, so data survives normal rebuilds and restarts.
 
-## 5. Check Status
+Do not run `docker compose down -v` unless you intentionally want to delete the
+database volume.
+
+## Step 5 - Check Container Status
 
 ```bash
 docker compose --env-file ./docker.env ps
+```
+
+Expected result:
+
+```text
+msr-amis-db    healthy
+msr-amis-api   healthy
 ```
 
 Check API health on the server:
@@ -118,25 +157,47 @@ Expected:
 {"status":"UP"}
 ```
 
-## 6. Open Firewall
+If the API is not healthy, check logs:
 
-Allow inbound TCP `8090`.
+```bash
+docker compose --env-file ./docker.env logs api
+docker compose --env-file ./docker.env logs db
+```
 
-Ubuntu example:
+## Step 6 - Open The Firewall
+
+Allow client computers to reach the API:
 
 ```bash
 sudo ufw allow 8090/tcp
+sudo ufw status
 ```
 
-From a client PC:
+From a client PC, test:
 
 ```powershell
 Invoke-RestMethod http://SERVER_IP_OR_NAME:8090/actuator/health
 ```
 
-## 7. Configure Desktop Clients
+The response should show `UP`.
 
-Client `.env` files must point to the server:
+## Step 7 - Confirm The Primary Super Admin
+
+The configured primary Super Admin is:
+
+```text
+email:    msramis@nlgfc.gov.mw
+username: MSRAMIS Admin
+name:     MSRAMIS Admin
+role:     SUPER_ADMIN
+```
+
+The API migration sets this username and display name automatically when the
+server starts.
+
+## Step 8 - Configure Desktop Clients
+
+On each desktop client, the installed `.env` must point to the server API:
 
 ```env
 MSR_AMIS_DATA_MODE=REMOTE_API
@@ -147,9 +208,13 @@ APP_MODE=REMOTE_API
 API_BASE_URL=http://SERVER_IP_OR_NAME:8090
 ```
 
-## 8. Build Desktop Installer For This Server
+Use the actual server IP address or DNS name.
 
-On your development machine:
+Do not use `localhost` on client PCs unless the API is running on that same PC.
+
+## Step 9 - Build The Desktop Installer For This Server
+
+On the development machine, set the server API URL before packaging:
 
 ```powershell
 $env:MSR_AMIS_PACKAGE_API_BASE_URL="http://SERVER_IP_OR_NAME:8090"
@@ -162,17 +227,34 @@ Give users only:
 - their username
 - their password
 
-## 9. Update The Server Later
+## Step 10 - Update The Server Later
 
 On the server:
 
 ```bash
+cd MSR_AMIS_Desktop_Central_Database
 git pull
 docker compose --env-file ./docker.env up -d --build
+docker compose --env-file ./docker.env ps
+curl http://localhost:8090/actuator/health
 ```
 
-Check health again:
+## Step 11 - Stop Or Restart The System
+
+Restart:
 
 ```bash
-curl http://localhost:8090/actuator/health
+docker compose --env-file ./docker.env restart
+```
+
+Stop without deleting data:
+
+```bash
+docker compose --env-file ./docker.env down
+```
+
+Start again:
+
+```bash
+docker compose --env-file ./docker.env up -d
 ```

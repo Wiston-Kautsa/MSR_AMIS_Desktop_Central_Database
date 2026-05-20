@@ -133,18 +133,18 @@ Password reset emails use SMTP configuration. The API and local desktop fallback
 Required SMTP settings:
 
 ```env
-MSR_AMIS_SMTP_HOST=smtp.gmail.com
-MSR_AMIS_SMTP_PORT=587
-MSR_AMIS_SMTP_USERNAME=your-email@example.com
-MSR_AMIS_SMTP_PASSWORD=your-app-password
-MSR_AMIS_SMTP_FROM=your-email@example.com
-MSR_AMIS_SMTP_STARTTLS=true
-MSR_AMIS_SMTP_SSL=false
+MSR_AMIS_SMTP_HOST=mail.nlgfc.gov.mw
+MSR_AMIS_SMTP_PORT=465
+MSR_AMIS_SMTP_USERNAME=msramis@nlgfc.gov.mw
+MSR_AMIS_SMTP_PASSWORD=replace_with_mailbox_password
+MSR_AMIS_SMTP_FROM=msramis@nlgfc.gov.mw
+MSR_AMIS_SMTP_STARTTLS=false
+MSR_AMIS_SMTP_SSL=true
 MSR_AMIS_SMTP_TIMEOUT_MS=10000
 MSR_AMIS_SUPER_USER_STATUS_EMAILS_ENABLED=true
 ```
 
-To change the email account used by the system, change `MSR_AMIS_SMTP_USERNAME`, `MSR_AMIS_SMTP_PASSWORD`, and `MSR_AMIS_SMTP_FROM`, then restart the API. For Gmail, use an app password instead of the normal account password.
+To change the email account used by the system, change `MSR_AMIS_SMTP_USERNAME`, `MSR_AMIS_SMTP_PASSWORD`, and `MSR_AMIS_SMTP_FROM`, then restart the API.
 
 When `MSR_AMIS_SUPER_USER_STATUS_EMAILS_ENABLED=true`, only `MSR_AMIS_PRIMARY_SUPER_ADMIN_EMAIL` receives system status emails for backend audit events. These notifications include the action, module, record ID, actor, and details. Email delivery failures are logged by the API and do not block the original system action.
 

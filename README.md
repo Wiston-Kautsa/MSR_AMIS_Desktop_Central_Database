@@ -78,13 +78,13 @@ Account emails are configured from environment values, or from `.env` during dev
 Password reset email sender settings use the same `.env` file during development:
 
 ```env
-MSR_AMIS_SMTP_HOST=smtp.gmail.com
-MSR_AMIS_SMTP_PORT=587
-MSR_AMIS_SMTP_USERNAME=your-email@example.com
-MSR_AMIS_SMTP_PASSWORD=your-app-password
-MSR_AMIS_SMTP_FROM=your-email@example.com
-MSR_AMIS_SMTP_STARTTLS=true
-MSR_AMIS_SMTP_SSL=false
+MSR_AMIS_SMTP_HOST=mail.nlgfc.gov.mw
+MSR_AMIS_SMTP_PORT=465
+MSR_AMIS_SMTP_USERNAME=msramis@nlgfc.gov.mw
+MSR_AMIS_SMTP_PASSWORD=replace_with_mailbox_password
+MSR_AMIS_SMTP_FROM=msramis@nlgfc.gov.mw
+MSR_AMIS_SMTP_STARTTLS=false
+MSR_AMIS_SMTP_SSL=true
 MSR_AMIS_SMTP_TIMEOUT_MS=10000
 MSR_AMIS_SUPER_USER_STATUS_EMAILS_ENABLED=true
 MSR_AMIS_OPERATION_EMAILS_ENABLED=false
@@ -133,38 +133,26 @@ Normal client `.env` files must use `http://SERVER_IP_OR_NAME:8090`. See [Troubl
 
 For temporary online testing, host only the API and PostgreSQL. Testers install the desktop `.exe`, log in, and the app calls the hosted API.
 
-Use [server.env.example](server.env.example) for server-only environment variables and [Server Hosting](documentation/docs/server-hosting.md) for the deployment checklist. For server runtime setup, use [Server Runtime Deployment](documentation/docs/server-runtime-deployment.md). For Git-based Docker deployment, use [Docker Server Deployment](documentation/docs/docker-server-deployment.md).
+Use [Docker Server Deployment](documentation/docs/docker-server-deployment.md) as the main local server deployment guide. The server clones this repository from GitHub, creates a real `docker.env`, and starts the API and PostgreSQL with Docker Compose.
 
-Prepare server runtime files:
+Server quick start:
 
-```powershell
-.\scripts\package-server-deployment.ps1
+```bash
+git clone https://github.com/Wiston-Kautsa/MSR_AMIS_Desktop_Central_Database.git
+cd MSR_AMIS_Desktop_Central_Database
+cp docker.env.example docker.env
+nano docker.env
+docker compose --env-file ./docker.env up -d --build
+docker compose --env-file ./docker.env ps
+curl http://localhost:8090/actuator/health
 ```
-
-This creates a copyable server bundle in `dist\server`.
 
 The desktop client is installed on user machines, then its `.env` API URL is set to the server address, for example `http://SERVER_IP_OR_NAME:8090`.
-
-Docker deployment is also available when the server clones the project from Git:
-
-```powershell
-Copy-Item docker.env.example docker.env
-# Edit docker.env and replace database password, JWT secret, account emails, and SMTP values.
-docker compose --env-file .\docker.env up -d --build
-docker compose --env-file .\docker.env ps
-Invoke-RestMethod http://localhost:8090/actuator/health
-```
-
-Build the API jar:
-
-```powershell
-.\scripts\build-api.cmd
-```
 
 Build a tester desktop installer that points to the hosted API:
 
 ```powershell
-$env:MSR_AMIS_PACKAGE_API_BASE_URL="https://YOUR_API_HOST"
+$env:MSR_AMIS_PACKAGE_API_BASE_URL="http://SERVER_IP_OR_NAME:8090"
 .\scripts\build-desktop.cmd
 ```
 
@@ -242,7 +230,9 @@ These backup scripts are intended to run on the server where PostgreSQL tools ar
 - [Sync Implementation Blueprint](documentation/docs/sync-implementation-blueprint.md)
 - [Architecture](documentation/docs/architecture.md)
 - [Configuration](documentation/docs/configuration.md)
-- [Deployment](documentation/docs/deployment.md) including PostgreSQL server hosting and backup guidance
+- [Docker Server Deployment](documentation/docs/docker-server-deployment.md)
+- [Server Deployment Steps](documentation/docs/server-deployment-steps.md)
+- [Deployment](documentation/docs/deployment.md)
 - [Daily Operations](documentation/docs/daily-operations.md)
 - [Troubleshooting](documentation/docs/troubleshooting.md)
 - [Current System Alignment](documentation/docs/current-system-alignment.md)

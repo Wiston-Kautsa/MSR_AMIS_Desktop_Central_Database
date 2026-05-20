@@ -4,15 +4,15 @@ This folder contains the project documentation set for MSR-AMIS.
 
 Main documents:
 
+- [Docker Server Deployment](docs/docker-server-deployment.md)
+- [Server Deployment Steps](docs/server-deployment-steps.md)
+- [Server Hosting](docs/server-hosting.md)
 - [System Overview](docs/system-overview.md)
 - [Sync Backend Contract](docs/sync-backend-contract.md)
 - [Sync Implementation Blueprint](docs/sync-implementation-blueprint.md)
 - [Architecture](docs/architecture.md)
 - [Configuration](docs/configuration.md)
 - [Deployment](docs/deployment.md)
-- [Server Hosting](docs/server-hosting.md)
-- [Server Runtime Deployment](docs/server-runtime-deployment.md)
-- [Docker Server Deployment](docs/docker-server-deployment.md)
 - [Daily Operations](docs/daily-operations.md)
 - [Troubleshooting](docs/troubleshooting.md)
 - [Current System Alignment](docs/current-system-alignment.md)
@@ -23,7 +23,9 @@ API module notes remain in:
 
 - [API README](../msr-amis-api/README.md)
 
-For server setup, see the PostgreSQL hosting and backup sections in the deployment guide. For `API not reachable`, use the troubleshooting checklist.
+For the local server setup, use [Docker Server Deployment](docs/docker-server-deployment.md). The Java runtime guide is kept only as an alternative for administrators who deliberately choose not to use Docker: [Alternative Java Runtime Deployment](docs/server-runtime-deployment.md).
+
+For `API not reachable`, use the troubleshooting checklist.
 
 Server backup scripts:
 
