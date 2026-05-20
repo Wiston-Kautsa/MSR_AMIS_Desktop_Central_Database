@@ -1407,3 +1407,48 @@
 .sync-settings-panel{
     -fx-background-color: white;
 }
+
+.operation-feedback-card{
+    -fx-background-color: white;
+    -fx-background-radius: 8;
+    -fx-border-radius: 8;
+    -fx-border-width: 1;
+    -fx-effect: dropshadow(gaussian, rgba(15,23,42,0.18), 18, 0.18, 0, 6);
+}
+
+.operation-feedback-info{
+    -fx-border-color: #2c7be5;
+}
+
+.operation-feedback-warning{
+    -fx-border-color: #c47f00;
+}
+
+.operation-feedback-error{
+    -fx-border-color: #c43d3d;
+}
+
+.operation-feedback-title{
+    -fx-font-size: 14px;
+    -fx-font-weight: bold;
+    -fx-text-fill: #12344d;
+}
+
+.operation-feedback-message{
+    -fx-font-size: 13px;
+    -fx-text-fill: #334155;
+}
+
+.operation-feedback-dismiss{
+    -fx-background-color: #edf2f7;
+    -fx-text-fill: #12344d;
+    -fx-background-radius: 6;
+    -fx-padding: 6 12 6 12;
+}
+
+.operation-feedback-confirm{
+    -fx-background-color: #12344d;
+    -fx-text-fill: white;
+    -fx-background-radius: 6;
+    -fx-padding: 6 12 6 12;
+}

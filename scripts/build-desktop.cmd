@@ -13,6 +13,7 @@ set "APP_DIR=%DIST_DIR%\%APP_NAME%"
 set "INSTALLER_BASENAME=%APP_NAME%-%APP_VERSION%"
 set "INSTALLER_EXE=%DIST_DIR%\%INSTALLER_BASENAME%.exe"
 set "INSTALLER_MSI=%DIST_DIR%\%INSTALLER_BASENAME%.msi"
+set "ICON_PATH=%BUILD_ROOT%packaging\msr-amis-icon.ico"
 set "JAVAFX_VERSION=17.0.8"
 set "M2_REPO=%USERPROFILE%\.m2\repository"
 set "JAVAFX_MODULE_PATH=%M2_REPO%\org\openjfx\javafx-base\%JAVAFX_VERSION%\javafx-base-%JAVAFX_VERSION%-win.jar;%M2_REPO%\org\openjfx\javafx-graphics\%JAVAFX_VERSION%\javafx-graphics-%JAVAFX_VERSION%-win.jar;%M2_REPO%\org\openjfx\javafx-controls\%JAVAFX_VERSION%\javafx-controls-%JAVAFX_VERSION%-win.jar;%M2_REPO%\org\openjfx\javafx-fxml\%JAVAFX_VERSION%\javafx-fxml-%JAVAFX_VERSION%-win.jar"
@@ -62,6 +63,7 @@ jpackage ^
   --dest "%DIST_DIR%" ^
   --main-jar "%MAIN_JAR%" ^
   --main-class "%MAIN_CLASS%" ^
+  --icon "%ICON_PATH%" ^
   --module-path "%JAVAFX_MODULE_PATH%" ^
   --add-modules %RUNTIME_MODULES% ^
   --java-options "--add-modules=%RUNTIME_MODULES%" ^
@@ -69,6 +71,20 @@ jpackage ^
   --win-console
 
 if errorlevel 1 goto :fail
+
+if defined MSR_AMIS_PACKAGE_API_BASE_URL (
+  > "%APP_DIR%\.env" echo MSR_AMIS_DATA_MODE=REMOTE_API
+  >> "%APP_DIR%\.env" echo MSR_AMIS_API_BASE_URL=%MSR_AMIS_PACKAGE_API_BASE_URL%
+  >> "%APP_DIR%\.env" echo APP_MODE=REMOTE_API
+  >> "%APP_DIR%\.env" echo API_BASE_URL=%MSR_AMIS_PACKAGE_API_BASE_URL%
+) else (
+  > "%APP_DIR%\.env" echo MSR_AMIS_DATA_MODE=REMOTE_API
+  >> "%APP_DIR%\.env" echo MSR_AMIS_API_BASE_URL=http://SERVER_IP_OR_NAME:8090
+  >> "%APP_DIR%\.env" echo APP_MODE=REMOTE_API
+  >> "%APP_DIR%\.env" echo API_BASE_URL=http://SERVER_IP_OR_NAME:8090
+  copy /Y "%BUILD_ROOT%desktop-client.env.example" "%APP_DIR%\desktop-client.env.example" >nul
+  if errorlevel 1 goto :fail
+)
 
 set "HAS_WIX="
 where wix.exe >nul 2>nul && set "HAS_WIX=1"
@@ -83,6 +99,7 @@ jpackage ^
   --app-version "%APP_VERSION%" ^
   --dest "%DIST_DIR%" ^
   --app-image "%APP_DIR%" ^
+  --icon "%ICON_PATH%" ^
   --vendor "MSR AMIS" ^
   --win-dir-chooser ^
   --win-menu ^
@@ -100,6 +117,7 @@ jpackage ^
   --app-version "%APP_VERSION%" ^
   --dest "%DIST_DIR%" ^
   --app-image "%APP_DIR%" ^
+  --icon "%ICON_PATH%" ^
   --vendor "MSR AMIS" ^
   --win-dir-chooser ^
   --win-menu ^

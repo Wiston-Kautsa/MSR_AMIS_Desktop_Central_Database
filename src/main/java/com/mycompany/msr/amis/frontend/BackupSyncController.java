@@ -74,7 +74,7 @@ public class BackupSyncController implements Initializable {
     @Override
     public void initialize(URL url, ResourceBundle resourceBundle) {
         if (!canAccessBackupSync()) {
-            throw new SecurityException("Backup & Restore is available only to Admin and Super Admin in LOCAL_DATABASE mode.");
+            throw new SecurityException("Backup & Restore is available only to Super Admin in LOCAL_DATABASE mode.");
         }
         configureTables();
         configureRoleVisibility();
@@ -530,6 +530,6 @@ public class BackupSyncController implements Initializable {
 
     private boolean canAccessBackupSync() {
         return ServiceRegistry.getConfiguration().usesLocalDatabase()
-                && Session.hasRole(AccessControl.ROLE_SUPER_ADMIN, AccessControl.ROLE_ADMIN);
+                && Session.hasRole(AccessControl.ROLE_SUPER_ADMIN);
     }
 }

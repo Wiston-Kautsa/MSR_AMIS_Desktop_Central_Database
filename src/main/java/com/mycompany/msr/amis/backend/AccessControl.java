@@ -40,7 +40,11 @@ public final class AccessControl {
     }
 
     public static boolean canManageUsers() {
-        return Session.isSetupMode() || Session.hasRole(ROLE_SUPER_ADMIN, ROLE_ADMIN);
+        return Session.isSetupMode() || Session.hasRole(ROLE_SUPER_ADMIN);
+    }
+
+    public static boolean canManageDepartments() {
+        return Session.hasRole(ROLE_SUPER_ADMIN);
     }
 
     public static boolean canDeleteRecords() {
@@ -52,15 +56,15 @@ public final class AccessControl {
     }
 
     public static boolean canViewAuditLogs() {
-        return Session.hasRole(ROLE_SUPER_ADMIN, ROLE_ADMIN);
+        return Session.hasRole(ROLE_SUPER_ADMIN);
     }
 
     public static boolean canAccessSyncCenter() {
-        return Session.hasRole(ROLE_SUPER_ADMIN, ROLE_ADMIN);
+        return Session.hasRole(ROLE_SUPER_ADMIN);
     }
 
     public static boolean canRetryRejectedSyncItems() {
-        return Session.hasRole(ROLE_SUPER_ADMIN, ROLE_ADMIN);
+        return Session.hasRole(ROLE_SUPER_ADMIN);
     }
 
     public static boolean canAssignRole(String role) {

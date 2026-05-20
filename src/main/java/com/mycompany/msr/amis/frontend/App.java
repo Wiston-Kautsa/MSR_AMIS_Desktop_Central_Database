@@ -1,9 +1,11 @@
 package com.mycompany.msr.amis;
 
 import javafx.application.Application;
+import javafx.application.Platform;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
+import javafx.scene.image.Image;
 import javafx.stage.Screen;
 import javafx.stage.Stage;
 import javafx.geometry.Rectangle2D;
@@ -34,6 +36,7 @@ public class App extends Application {
         scene = new Scene(loadFXML("Login"), LOGIN_WIDTH, LOGIN_HEIGHT);
 
         stage.setTitle("MSR AMIS");
+        loadApplicationIcon(stage);
         stage.setScene(scene);
         stage.setResizable(true);
         stage.setWidth(LOGIN_WIDTH);
@@ -54,6 +57,10 @@ public class App extends Application {
         scene.setRoot(loadFXML(fxml));
     }
 
+    static Scene getScene() {
+        return scene;
+    }
+
     static void showLoginPage() throws IOException {
         primaryStage.setFullScreen(false);
         primaryStage.setMaximized(false);
@@ -64,14 +71,24 @@ public class App extends Application {
     }
 
     static void showDashboardPage() throws IOException {
-        scene.setRoot(loadFXML("Dashboards"));
+        FXMLLoader loader = createLoader("Dashboards");
+        Parent dashboardRoot = loader.load();
+        scene.setRoot(dashboardRoot);
+        DashboardsController controller = loader.getController();
+        if (controller != null) {
+            controller.showDashboardHome();
+            Platform.runLater(controller::showDashboardHome);
+        }
         openDashboardFullScreen();
+        Platform.runLater(App::openDashboardFullScreen);
     }
 
     private static void openDashboardFullScreen() {
         Rectangle2D bounds = Screen.getPrimary().getVisualBounds();
         primaryStage.setFullScreen(false);
         primaryStage.setMaximized(false);
+        primaryStage.setMinWidth(Math.min(DASHBOARD_WIDTH, bounds.getWidth()));
+        primaryStage.setMinHeight(Math.min(DASHBOARD_HEIGHT, bounds.getHeight()));
         primaryStage.setX(bounds.getMinX());
         primaryStage.setY(bounds.getMinY());
         primaryStage.setWidth(bounds.getWidth());
@@ -89,8 +106,19 @@ public class App extends Application {
     }
 
     private static Parent loadFXML(String fxml) throws IOException {
-        FXMLLoader fxmlLoader = new FXMLLoader(App.class.getResource(FRONTEND_RESOURCE_ROOT + fxml + ".fxml"));
-        return fxmlLoader.load();
+        return createLoader(fxml).load();
+    }
+
+    private static FXMLLoader createLoader(String fxml) {
+        return new FXMLLoader(App.class.getResource(FRONTEND_RESOURCE_ROOT + fxml + ".fxml"));
+    }
+
+    private static void loadApplicationIcon(Stage stage) {
+        try {
+            stage.getIcons().add(new Image(App.class.getResourceAsStream(FRONTEND_RESOURCE_ROOT + "msr-amis-icon.png")));
+        } catch (Exception ignored) {
+            // The packaged executable icon is still supplied by jpackage.
+        }
     }
 
     public static void main(String[] args) {

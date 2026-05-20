@@ -1,0 +1,41 @@
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: msr-amis-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-msr_amis}
+      POSTGRES_USER: ${POSTGRES_USER:-msr_amis_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in docker.env}
+    volumes:
+      - msr-amis-postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U \"$${POSTGRES_USER}\" -d \"$${POSTGRES_DB}\""]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  api:
+    build:
+      context: ./msr-amis-api
+    container_name: msr-amis-api
+    restart: unless-stopped
+    env_file:
+      - ./docker.env
+    environment:
+      MSR_AMIS_DB_URL: jdbc:postgresql://db:5432/${POSTGRES_DB:-msr_amis}
+      MSR_AMIS_API_PORT: 8090
+    ports:
+      - "${MSR_AMIS_API_PORT:-8090}:8090"
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:8090/actuator/health | grep -q UP"]
+      interval: 30s
+      timeout: 5s
+      retries: 10
+      start_period: 60s
+
+volumes:
+  msr-amis-postgres-data:

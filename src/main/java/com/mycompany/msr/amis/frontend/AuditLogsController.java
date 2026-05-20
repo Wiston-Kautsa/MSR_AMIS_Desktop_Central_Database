@@ -39,7 +39,7 @@ public class AuditLogsController implements Initializable {
 
     @Override
     public void initialize(URL url, ResourceBundle resourceBundle) {
-        AccessControl.requireRole(AccessControl.ROLE_SUPER_ADMIN, AccessControl.ROLE_ADMIN);
+        AccessControl.requireRole(AccessControl.ROLE_SUPER_ADMIN);
         configureTable();
         configureScope();
         setupContextMenu();

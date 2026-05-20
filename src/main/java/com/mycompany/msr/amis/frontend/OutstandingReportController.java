@@ -149,11 +149,11 @@ public class OutstandingReportController implements Initializable {
     }
 
     private void showAlert(String title, String message) {
-        Alert alert = new Alert(Alert.AlertType.INFORMATION);
-        alert.setTitle(title);
-        alert.setHeaderText(null);
-        alert.setContentText(message);
-        alert.showAndWait();
+        if (title != null && title.toLowerCase().contains("error")) {
+            OperationFeedbackHelper.showError(title, message);
+        } else {
+            OperationFeedbackHelper.showInfo(title, message);
+        }
     }
 
     private List<ReportExportHelper.Column<Distribution>> columns() {

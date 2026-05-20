@@ -93,6 +93,22 @@ MSR_AMIS_OPERATION_EMAIL_RECIPIENTS=admin@example.com
 
 Use `localhost` only when the desktop and API run on the same computer. Client machines must point to the API server address.
 
+For installed desktop clients, use [desktop-client.env.example](desktop-client.env.example). Rename it to `.env` in the installed `MSR AMIS` folder and replace `SERVER_IP_OR_NAME` with the computer or server running the API. The packaged desktop now checks for `.env` in the launch folder, the packaged `app` folder, and the installed application folder.
+
+The installer also places an editable `.env` file in the installed `MSR AMIS` folder. If the API server IP changes, edit that file and restart the desktop application:
+
+```env
+MSR_AMIS_API_BASE_URL=http://NEW_SERVER_IP:8090
+API_BASE_URL=http://NEW_SERVER_IP:8090
+```
+
+To build an installer that already contains the client API URL, set `MSR_AMIS_PACKAGE_API_BASE_URL` before running the package script:
+
+```powershell
+$env:MSR_AMIS_PACKAGE_API_BASE_URL="http://SERVER_IP_OR_NAME:8090"
+.\scripts\build-desktop.cmd
+```
+
 Saved desktop credentials are opt-in. The login screen asks before saving credentials after successful sign-in. It does not fill saved credentials by default; saved emails appear as suggestions while typing, and the password fills only after selecting a saved email. For the strongest production setup, store saved secrets in the operating-system credential vault; otherwise save only the email address and require the password at sign-in.
 
 Equipment purchase cost and maintenance cost use local currency display, for example `MWK 150,000.00`. Users can type plain numbers and the desktop formats them before saving.
@@ -112,6 +128,45 @@ Invoke-RestMethod http://SERVER_IP_OR_NAME:8090/actuator/health
 ```
 
 Normal client `.env` files must use `http://SERVER_IP_OR_NAME:8090`. See [Troubleshooting](documentation/docs/troubleshooting.md) for the full checklist covering API startup, PostgreSQL, firewall, client configuration, and Sync Center recovery.
+
+## Server Hosting For Testers
+
+For temporary online testing, host only the API and PostgreSQL. Testers install the desktop `.exe`, log in, and the app calls the hosted API.
+
+Use [server.env.example](server.env.example) for server-only environment variables and [Server Hosting](documentation/docs/server-hosting.md) for the deployment checklist. For server runtime setup, use [Server Runtime Deployment](documentation/docs/server-runtime-deployment.md). For Git-based Docker deployment, use [Docker Server Deployment](documentation/docs/docker-server-deployment.md).
+
+Prepare server runtime files:
+
+```powershell
+.\scripts\package-server-deployment.ps1
+```
+
+This creates a copyable server bundle in `dist\server`.
+
+The desktop client is installed on user machines, then its `.env` API URL is set to the server address, for example `http://SERVER_IP_OR_NAME:8090`.
+
+Docker deployment is also available when the server clones the project from Git:
+
+```powershell
+Copy-Item docker.env.example docker.env
+# Edit docker.env and replace database password, JWT secret, account emails, and SMTP values.
+docker compose --env-file .\docker.env up -d --build
+docker compose --env-file .\docker.env ps
+Invoke-RestMethod http://localhost:8090/actuator/health
+```
+
+Build the API jar:
+
+```powershell
+.\scripts\build-api.cmd
+```
+
+Build a tester desktop installer that points to the hosted API:
+
+```powershell
+$env:MSR_AMIS_PACKAGE_API_BASE_URL="https://YOUR_API_HOST"
+.\scripts\build-desktop.cmd
+```
 
 ## Main Modes
 

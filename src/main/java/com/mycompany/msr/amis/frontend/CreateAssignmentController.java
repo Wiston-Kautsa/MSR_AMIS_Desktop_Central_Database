@@ -342,10 +342,10 @@ public class CreateAssignmentController implements Initializable {
     }
 
     private void showWarning(String title, String message) {
-        new Alert(Alert.AlertType.WARNING, message).showAndWait();
+        OperationFeedbackHelper.showWarning(title, message);
     }
 
     private void showError(String title, String message) {
-        new Alert(Alert.AlertType.ERROR, message).showAndWait();
+        OperationFeedbackHelper.showError(title, message);
     }
 }

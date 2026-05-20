@@ -36,7 +36,7 @@ public final class DepartmentsController implements Initializable {
 
     @Override
     public void initialize(URL url, ResourceBundle resourceBundle) {
-        AccessControl.requireRole(AccessControl.ROLE_SUPER_ADMIN, AccessControl.ROLE_ADMIN);
+        AccessControl.requireRole(AccessControl.ROLE_SUPER_ADMIN);
         configureTable();
         refreshDepartments();
     }
@@ -171,11 +171,7 @@ public final class DepartmentsController implements Initializable {
 
     private void showError(String message) {
         showStatus(message);
-        Alert alert = new Alert(Alert.AlertType.ERROR);
-        alert.setTitle("Department Error");
-        alert.setHeaderText(null);
-        alert.setContentText(message);
-        alert.showAndWait();
+        OperationFeedbackHelper.showError("Department Error", message);
     }
 
     private String resolveMessage(Exception exception) {

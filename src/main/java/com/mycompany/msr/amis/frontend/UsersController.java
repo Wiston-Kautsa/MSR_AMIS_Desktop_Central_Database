@@ -71,7 +71,7 @@ public class UsersController implements Initializable {
     @Override
     public void initialize(URL url, ResourceBundle rb) {
         if (!Session.isSetupMode()) {
-            AccessControl.requireRole(AccessControl.ROLE_SUPER_ADMIN, AccessControl.ROLE_ADMIN);
+            AccessControl.requireRole(AccessControl.ROLE_SUPER_ADMIN);
         }
         configureRoleChoices(cmbRole);
         loadDepartments();
@@ -167,7 +167,7 @@ public class UsersController implements Initializable {
             MenuItem unfreeze = new MenuItem("Unfreeze User");
             unfreeze.setOnAction(e -> updateUserStatus(row.getItem(), AccessControl.STATUS_ACTIVE));
 
-            MenuItem refresh = new MenuItem("Refresh Users");
+            MenuItem refresh = new MenuItem("Refresh User Management");
             refresh.setOnAction(e -> refreshUsers());
 
             menu.getItems().add(edit);
@@ -284,6 +284,26 @@ public class UsersController implements Initializable {
     @FXML
     private void handleRefreshUsers(ActionEvent event) {
         refreshUsers();
+    }
+
+    @FXML
+    private void handleEditSelectedUser(ActionEvent event) {
+        editUser(selectedUser());
+    }
+
+    @FXML
+    private void handleFreezeSelectedUser(ActionEvent event) {
+        updateUserStatus(selectedUser(), AccessControl.STATUS_FROZEN);
+    }
+
+    @FXML
+    private void handleUnfreezeSelectedUser(ActionEvent event) {
+        updateUserStatus(selectedUser(), AccessControl.STATUS_ACTIVE);
+    }
+
+    @FXML
+    private void handleDeleteSelectedUser(ActionEvent event) {
+        deleteUser(selectedUser());
     }
 
     @FXML
@@ -437,6 +457,10 @@ public class UsersController implements Initializable {
         }
     }
 
+    private User selectedUser() {
+        return tableUsers == null ? null : tableUsers.getSelectionModel().getSelectedItem();
+    }
+
     private void refreshUsers() {
         loadDepartments();
         loadUsers();
@@ -446,7 +470,7 @@ public class UsersController implements Initializable {
         if (Session.isSetupMode()) {
             updateSetupProgress();
         } else {
-            showStatus("Users and departments refreshed.");
+            showStatus("User Management refreshed.");
         }
     }
 
@@ -467,11 +491,13 @@ public class UsersController implements Initializable {
     }
 
     private void showAlert(String title, String msg) {
-        Alert alert = new Alert(Alert.AlertType.INFORMATION);
-        alert.setTitle(title);
-        alert.setHeaderText(null);
-        alert.setContentText(msg);
-        alert.showAndWait();
+        if (title != null && title.toLowerCase().contains("error")) {
+            OperationFeedbackHelper.showError(title, msg);
+        } else if (title != null && title.toLowerCase().contains("denied")) {
+            OperationFeedbackHelper.showWarning(title, msg);
+        } else {
+            OperationFeedbackHelper.showInfo(title, msg);
+        }
     }
 
     private String comboText(ComboBox<String> comboBox) {

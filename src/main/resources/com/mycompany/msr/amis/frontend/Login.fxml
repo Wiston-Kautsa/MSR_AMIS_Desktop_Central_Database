@@ -125,7 +125,8 @@
                                                     </children>
                                                 </HBox>
 
-                                                <Button text="LOGIN"
+                                                <Button fx:id="btnLogin"
+                                                        text="LOGIN"
                                                         prefHeight="46.0"
                                                         maxWidth="1.7976931348623157E308"
                                                         defaultButton="true"
@@ -309,6 +310,80 @@
                                                         </VBox>
                                                     </content>
                                                 </TitledPane>
+                                            </children>
+                                        </VBox>
+
+                                        <VBox fx:id="initialPasswordPanel"
+                                              spacing="14.0"
+                                              alignment="CENTER_LEFT"
+                                              maxWidth="1.7976931348623157E308"
+                                              managed="false"
+                                              visible="false"
+                                              styleClass="embedded-reset-panel">
+                                            <children>
+                                                <VBox spacing="6.0">
+                                                    <children>
+                                                        <Label text="Change Password" styleClass="login-title"/>
+                                                        <Label text="Your account requires a new password before opening the dashboard."
+                                                               wrapText="true"
+                                                               styleClass="login-subtitle"/>
+                                                    </children>
+                                                </VBox>
+                                                <HBox fx:id="initialPasswordStatusBanner"
+                                                      spacing="10.0"
+                                                      alignment="CENTER_LEFT"
+                                                      maxWidth="1.7976931348623157E308"
+                                                      styleClass="reset-status-banner">
+                                                    <children>
+                                                        <Label text="SECURITY" styleClass="reset-status-chip"/>
+                                                        <Label fx:id="lblInitialPasswordStatus"
+                                                               text="Create a strong password to continue."
+                                                               wrapText="true"
+                                                               maxWidth="1.7976931348623157E308"
+                                                               HBox.hgrow="ALWAYS"
+                                                               styleClass="reset-status-text"/>
+                                                    </children>
+                                                </HBox>
+                                                <VBox spacing="8.0" maxWidth="1.7976931348623157E308">
+                                                    <children>
+                                                        <Label text="New Password" styleClass="login-input-label"/>
+                                                        <PasswordField fx:id="txtInitialNewPassword"
+                                                                       promptText="Enter new password"
+                                                                       onAction="#handleInitialPasswordChange"
+                                                                       prefHeight="44.0"
+                                                                       maxWidth="1.7976931348623157E308"
+                                                                       styleClass="login-input"/>
+                                                    </children>
+                                                </VBox>
+                                                <VBox spacing="8.0" maxWidth="1.7976931348623157E308">
+                                                    <children>
+                                                        <Label text="Confirm Password" styleClass="login-input-label"/>
+                                                        <PasswordField fx:id="txtInitialConfirmPassword"
+                                                                       promptText="Confirm new password"
+                                                                       onAction="#handleInitialPasswordChange"
+                                                                       prefHeight="44.0"
+                                                                       maxWidth="1.7976931348623157E308"
+                                                                       styleClass="login-input"/>
+                                                    </children>
+                                                </VBox>
+                                                <HBox spacing="10.0" maxWidth="1.7976931348623157E308">
+                                                    <children>
+                                                        <Button fx:id="btnInitialPasswordChange"
+                                                                text="Change Password"
+                                                                prefHeight="42.0"
+                                                                maxWidth="1.7976931348623157E308"
+                                                                HBox.hgrow="ALWAYS"
+                                                                defaultButton="true"
+                                                                onAction="#handleInitialPasswordChange"
+                                                                styleClass="login-primary-button"/>
+                                                        <Button text="Sign Out"
+                                                                prefHeight="42.0"
+                                                                maxWidth="1.7976931348623157E308"
+                                                                HBox.hgrow="ALWAYS"
+                                                                onAction="#handleInitialPasswordSignOut"
+                                                                styleClass="login-secondary-button"/>
+                                                    </children>
+                                                </HBox>
                                             </children>
                                         </VBox>
 

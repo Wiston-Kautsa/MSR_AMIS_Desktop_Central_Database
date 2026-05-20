@@ -156,7 +156,7 @@ public final class SyncCenterController implements Initializable {
     @Override
     public void initialize(URL url, ResourceBundle resourceBundle) {
         if (!AccessControl.canAccessSyncCenter()) {
-            throw new SecurityException("Sync Center is available only to Admin and Super Admin.");
+            throw new SecurityException("Sync Center is available only to Super Admin.");
         }
         configurePaneStateMemory();
         configureTables();
@@ -177,7 +177,7 @@ public final class SyncCenterController implements Initializable {
             return;
         }
         try {
-            AccessControl.requireRole(AccessControl.ROLE_SUPER_ADMIN, AccessControl.ROLE_ADMIN);
+            AccessControl.requireRole(AccessControl.ROLE_SUPER_ADMIN);
             List<SyncValidationIssue> issues = syncCenterService.validateBeforeSync();
             tblValidationIssues.getItems().setAll(issues);
             if (!issues.isEmpty()) {
@@ -227,7 +227,7 @@ public final class SyncCenterController implements Initializable {
     private void handleRetryRejected() {
         try {
             if (!AccessControl.canRetryRejectedSyncItems()) {
-                throw new SecurityException("Retrying failed sync items is available only to Admin and Super Admin.");
+                throw new SecurityException("Retrying failed sync items is available only to Super Admin.");
             }
             String message = syncCenterService.retryRejectedQueue();
             retryCount++;

@@ -23,7 +23,7 @@ spring:
       setupUserEmail: ${MSR_AMIS_SETUP_USER_EMAIL:}
 
 server:
-  port: ${MSR_AMIS_API_PORT:8090}
+  port: ${MSR_AMIS_API_PORT:${PORT:8090}}
 
 management:
   endpoints:

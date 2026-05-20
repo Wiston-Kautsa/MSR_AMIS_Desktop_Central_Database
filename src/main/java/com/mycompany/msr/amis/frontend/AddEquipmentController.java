@@ -478,14 +478,14 @@ public class AddEquipmentController implements Initializable {
 
     // ================= ALERTS =================
     private void showInfo(String msg) {
-        new Alert(Alert.AlertType.INFORMATION, msg).showAndWait();
+        OperationFeedbackHelper.showInfo("Equipment", msg);
     }
 
     private void showWarning(String msg) {
-        new Alert(Alert.AlertType.WARNING, msg).showAndWait();
+        OperationFeedbackHelper.showWarning("Equipment", msg);
     }
 
     private void showError(String msg) {
-        new Alert(Alert.AlertType.ERROR, msg).showAndWait();
+        OperationFeedbackHelper.showError("Equipment", msg);
     }
 }

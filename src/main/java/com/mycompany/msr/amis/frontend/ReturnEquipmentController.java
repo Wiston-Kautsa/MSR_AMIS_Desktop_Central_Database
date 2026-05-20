@@ -880,15 +880,15 @@ public class ReturnEquipmentController implements Initializable {
     }
 
     private void showInfo(String msg) {
-        new Alert(Alert.AlertType.INFORMATION, msg).showAndWait();
+        OperationFeedbackHelper.showInfo("Return Equipment", msg);
     }
 
     private void showWarning(String msg) {
-        new Alert(Alert.AlertType.WARNING, msg).showAndWait();
+        OperationFeedbackHelper.showWarning("Return Equipment", msg);
     }
 
     private void showError(String msg) {
-        new Alert(Alert.AlertType.ERROR, msg).showAndWait();
+        OperationFeedbackHelper.showError("Return Equipment", msg);
     }
 
     private void clearAssignmentDetails() {

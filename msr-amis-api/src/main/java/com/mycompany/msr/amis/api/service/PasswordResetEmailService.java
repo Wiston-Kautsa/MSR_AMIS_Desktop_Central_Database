@@ -32,9 +32,10 @@ public class PasswordResetEmailService {
             message.setTo(recipientEmail);
             message.setSubject("MSR AMIS password reset code");
             message.setText(
-                    "Your MSR AMIS password reset code is " + resetCode + ".\n\n"
-                            + "The code expires in 10 minutes.\n"
-                            + "If you did not request this reset, contact your administrator."
+                    "Use this code to reset your MSR AMIS password:\n\n"
+                            + resetCode + "\n\n"
+                            + "This code expires in 10 minutes.\n"
+                            + "If you did not request a password reset, contact your administrator."
             );
             mailSender.send(message);
             LOGGER.info("Password reset code email sent to {}", recipientEmail);

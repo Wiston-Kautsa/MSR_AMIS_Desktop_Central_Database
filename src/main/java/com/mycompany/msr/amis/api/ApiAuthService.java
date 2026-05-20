@@ -28,7 +28,7 @@ public final class ApiAuthService implements AuthService {
 
     @Override
     public boolean isTemporarySetupAccount(User user) {
-        return user != null && AccessControl.isTemporarySetupAccountEmail(user.getEmail());
+        return user != null && (user.isTemporary() || AccessControl.isTemporarySetupAccountEmail(user.getEmail()));
     }
 
     @Override
@@ -131,6 +131,7 @@ public final class ApiAuthService implements AuthService {
         public String email;
         public String status;
         public boolean mustChangePassword;
+        public boolean temporary;
 
         private User toUser() {
             return new User(
@@ -142,7 +143,8 @@ public final class ApiAuthService implements AuthService {
                     department,
                     "",
                     email,
-                    status
+                    status,
+                    temporary
             );
         }
     }

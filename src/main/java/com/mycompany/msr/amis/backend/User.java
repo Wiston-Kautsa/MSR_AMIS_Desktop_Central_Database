@@ -16,10 +16,17 @@ public class User {
     private final StringProperty phone;
     private final StringProperty email;
     private final StringProperty status;
+    private final boolean temporary;
 
     public User(int id, String fullName, String username,
                 String password, String role, String department,
                 String phone, String email, String status) {
+        this(id, fullName, username, password, role, department, phone, email, status, false);
+    }
+
+    public User(int id, String fullName, String username,
+                String password, String role, String department,
+                String phone, String email, String status, boolean temporary) {
 
         this.id = new SimpleIntegerProperty(id);
         this.fullName = new SimpleStringProperty(fullName);
@@ -30,6 +37,7 @@ public class User {
         this.phone = new SimpleStringProperty(phone);
         this.email = new SimpleStringProperty(email);
         this.status = new SimpleStringProperty(status);
+        this.temporary = temporary;
     }
 
     public int getId() {
@@ -66,6 +74,10 @@ public class User {
 
     public String getStatus() {
         return status.get();
+    }
+
+    public boolean isTemporary() {
+        return temporary;
     }
 
     public IntegerProperty idProperty() {
@@ -146,6 +158,7 @@ public class User {
                 ", department='" + getDepartment() + '\'' +
                 ", email='" + getEmail() + '\'' +
                 ", status='" + getStatus() + '\'' +
+                ", temporary=" + temporary +
                 '}';
     }
 }

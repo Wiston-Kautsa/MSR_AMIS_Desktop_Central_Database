@@ -9,8 +9,10 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
 import java.util.HashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 public final class AppConfiguration {
 
@@ -20,17 +22,23 @@ public final class AppConfiguration {
     private static final String API_BASE_URL_PROPERTY = "msr.amis.api.base-url";
     private static final String API_BASE_URL_ENV = "MSR_AMIS_API_BASE_URL";
     private static final String API_BASE_URL_ENV_ALIAS = "API_BASE_URL";
-    private static final Path ENV_FILE = Path.of(".env");
+    private static final String AUTO_MIRROR_AFTER_MUTATION_PROPERTY = "msr.amis.auto-mirror-after-mutation";
+    private static final String AUTO_MIRROR_AFTER_MUTATION_ENV = "MSR_AMIS_AUTO_MIRROR_AFTER_MUTATION";
     private static final Duration API_PROBE_TIMEOUT = Duration.ofSeconds(4);
 
     private final DataAccessMode configuredMode;
     private final DataAccessMode dataAccessMode;
     private final String apiBaseUrl;
+    private final boolean autoMirrorAfterMutation;
 
-    private AppConfiguration(DataAccessMode configuredMode, DataAccessMode dataAccessMode, String apiBaseUrl) {
+    private AppConfiguration(DataAccessMode configuredMode,
+                             DataAccessMode dataAccessMode,
+                             String apiBaseUrl,
+                             boolean autoMirrorAfterMutation) {
         this.configuredMode = configuredMode;
         this.dataAccessMode = dataAccessMode;
         this.apiBaseUrl = apiBaseUrl;
+        this.autoMirrorAfterMutation = autoMirrorAfterMutation;
     }
 
     public static AppConfiguration load() {
@@ -57,7 +65,13 @@ public final class AppConfiguration {
         }
         String normalizedApiBaseUrl = configuredApiBaseUrl.trim();
         DataAccessMode effectiveMode = resolveEffectiveMode(mode, normalizedApiBaseUrl);
-        return new AppConfiguration(mode, effectiveMode, normalizedApiBaseUrl);
+        boolean autoMirrorAfterMutation = resolveBoolean(
+                AUTO_MIRROR_AFTER_MUTATION_PROPERTY,
+                AUTO_MIRROR_AFTER_MUTATION_ENV,
+                envFileValues,
+                false
+        );
+        return new AppConfiguration(mode, effectiveMode, normalizedApiBaseUrl, autoMirrorAfterMutation);
     }
 
     private static DataAccessMode resolveEffectiveMode(DataAccessMode configuredMode, String apiBaseUrl) {
@@ -95,6 +109,10 @@ public final class AppConfiguration {
 
     public String getApiBaseUrl() {
         return apiBaseUrl;
+    }
+
+    public boolean isAutoMirrorAfterMutationEnabled() {
+        return autoMirrorAfterMutation;
     }
 
     private static boolean isApiReachable(String baseUrl) {
@@ -161,36 +179,89 @@ public final class AppConfiguration {
         return null;
     }
 
+    private static boolean resolveBoolean(String propertyKey,
+                                          String envKey,
+                                          Map<String, String> envFileValues,
+                                          boolean fallback) {
+        String value = envFileValues.get(envKey);
+        if (value == null || value.isBlank()) {
+            value = System.getProperty(propertyKey);
+        }
+        if (value == null || value.isBlank()) {
+            value = System.getenv(envKey);
+        }
+        if (value == null || value.isBlank()) {
+            return fallback;
+        }
+        String normalized = value.trim();
+        return "true".equalsIgnoreCase(normalized)
+                || "1".equals(normalized)
+                || "yes".equalsIgnoreCase(normalized);
+    }
+
     private static Map<String, String> loadEnvFile() {
         Map<String, String> values = new HashMap<>();
-        if (!Files.exists(ENV_FILE)) {
-            return values;
-        }
-
-        try {
-            List<String> lines = Files.readAllLines(ENV_FILE);
-            for (String rawLine : lines) {
-                String line = rawLine == null ? "" : rawLine.trim();
-                if (line.isEmpty() || line.startsWith("#")) {
-                    continue;
-                }
-
-                int separator = line.indexOf('=');
-                if (separator <= 0) {
-                    continue;
-                }
-
-                String key = line.substring(0, separator).trim();
-                String value = line.substring(separator + 1).trim();
-                if ((value.startsWith("\"") && value.endsWith("\""))
-                        || (value.startsWith("'") && value.endsWith("'"))) {
-                    value = value.substring(1, value.length() - 1);
-                }
-                values.put(key, value);
+        for (Path envFile : envFileCandidates()) {
+            if (!Files.exists(envFile)) {
+                continue;
             }
-        } catch (IOException ignored) {
-            // Keep startup resilient; OS env and system properties still work.
+
+            try {
+                List<String> lines = Files.readAllLines(envFile);
+                for (String rawLine : lines) {
+                    String line = rawLine == null ? "" : rawLine.trim();
+                    if (line.isEmpty() || line.startsWith("#")) {
+                        continue;
+                    }
+
+                    int separator = line.indexOf('=');
+                    if (separator <= 0) {
+                        continue;
+                    }
+
+                    String key = line.substring(0, separator).trim();
+                    String value = line.substring(separator + 1).trim();
+                    if ((value.startsWith("\"") && value.endsWith("\""))
+                            || (value.startsWith("'") && value.endsWith("'"))) {
+                        value = value.substring(1, value.length() - 1);
+                    }
+                    values.put(key, value);
+                }
+                return values;
+            } catch (IOException ignored) {
+                // Keep startup resilient; OS env and system properties still work.
+            }
         }
         return values;
+    }
+
+    private static Set<Path> envFileCandidates() {
+        Set<Path> candidates = new LinkedHashSet<>();
+        candidates.add(Path.of(".env").toAbsolutePath().normalize());
+
+        Path appLocation = appLocation();
+        if (appLocation != null) {
+            Path appDirectory = Files.isDirectory(appLocation) ? appLocation : appLocation.getParent();
+            if (appDirectory != null) {
+                candidates.add(appDirectory.resolve(".env").toAbsolutePath().normalize());
+                Path installDirectory = appDirectory.getParent();
+                if (installDirectory != null) {
+                    candidates.add(installDirectory.resolve(".env").toAbsolutePath().normalize());
+                }
+            }
+        }
+        return candidates;
+    }
+
+    private static Path appLocation() {
+        try {
+            URI location = AppConfiguration.class.getProtectionDomain()
+                    .getCodeSource()
+                    .getLocation()
+                    .toURI();
+            return Path.of(location);
+        } catch (Exception ignored) {
+            return null;
+        }
     }
 }

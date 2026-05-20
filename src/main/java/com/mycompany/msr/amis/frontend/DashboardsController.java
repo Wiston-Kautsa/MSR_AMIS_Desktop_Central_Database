@@ -90,8 +90,8 @@ public class DashboardsController implements Initializable {
             btnUsers.setVisible(AccessControl.canManageUsers());
         }
         if (btnDepartments != null) {
-            btnDepartments.setManaged(AccessControl.canManageUsers());
-            btnDepartments.setVisible(AccessControl.canManageUsers());
+            btnDepartments.setManaged(AccessControl.canManageDepartments());
+            btnDepartments.setVisible(AccessControl.canManageDepartments());
         }
         if (btnBackupSync != null) {
             boolean allowed = canAccessBackupSync();
@@ -192,6 +192,10 @@ public class DashboardsController implements Initializable {
 
     @FXML
     private void openDashboard(ActionEvent event) {
+        showDashboardHome();
+    }
+
+    public void showDashboardHome() {
         if (contentArea == null || dashboardHome == null) {
             return;
         }
@@ -349,7 +353,7 @@ public class DashboardsController implements Initializable {
     private void openBackupSync() {
         try {
             if (!canAccessBackupSync()) {
-                throw new SecurityException("Backup & Restore is available only to Admin and Super Admin in LOCAL_DATABASE mode.");
+                throw new SecurityException("Backup & Restore is available only to Super Admin in LOCAL_DATABASE mode.");
             }
             loadPage("BackupSync.fxml");
         } catch (SecurityException e) {
@@ -360,7 +364,7 @@ public class DashboardsController implements Initializable {
     @FXML
     private void openAuditLogs() {
         try {
-            AccessControl.requireRole(AccessControl.ROLE_SUPER_ADMIN, AccessControl.ROLE_ADMIN);
+            AccessControl.requireRole(AccessControl.ROLE_SUPER_ADMIN);
             loadPage("AuditLogs.fxml");
         } catch (SecurityException e) {
             OperationFeedbackHelper.showError("Access Denied", e.getMessage());
@@ -370,7 +374,7 @@ public class DashboardsController implements Initializable {
     @FXML
     private void openUsers() {
         try {
-            AccessControl.requireRole(AccessControl.ROLE_SUPER_ADMIN, AccessControl.ROLE_ADMIN);
+            AccessControl.requireRole(AccessControl.ROLE_SUPER_ADMIN);
             loadPage("Users.fxml");
         } catch (SecurityException e) {
             OperationFeedbackHelper.showError("Access Denied", e.getMessage());
@@ -380,7 +384,7 @@ public class DashboardsController implements Initializable {
     @FXML
     private void openDepartments() {
         try {
-            AccessControl.requireRole(AccessControl.ROLE_SUPER_ADMIN, AccessControl.ROLE_ADMIN);
+            AccessControl.requireRole(AccessControl.ROLE_SUPER_ADMIN);
             loadPage("Departments.fxml");
         } catch (SecurityException e) {
             OperationFeedbackHelper.showError("Access Denied", e.getMessage());
@@ -403,7 +407,7 @@ public class DashboardsController implements Initializable {
     private void openSyncCenter() {
         try {
             if (!AccessControl.canAccessSyncCenter()) {
-                throw new SecurityException("Sync Center is available only to Admin and Super Admin.");
+                throw new SecurityException("Sync Center is available only to Super Admin.");
             }
             loadPage("SyncCenter.fxml");
         } catch (SecurityException e) {
@@ -666,7 +670,7 @@ public class DashboardsController implements Initializable {
 
     private boolean canAccessBackupSync() {
         return ServiceRegistry.getConfiguration().usesLocalDatabase()
-                && Session.hasRole(AccessControl.ROLE_SUPER_ADMIN, AccessControl.ROLE_ADMIN);
+                && Session.hasRole(AccessControl.ROLE_SUPER_ADMIN);
     }
 
     private boolean canAccessDataMaintenance() {

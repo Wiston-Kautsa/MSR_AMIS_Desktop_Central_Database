@@ -334,24 +334,22 @@ public class EquipmentListController implements Initializable {
             return;
         }
 
-        Alert confirm = new Alert(AlertType.CONFIRMATION);
-        confirm.setTitle("Confirm Delete");
-        confirm.setHeaderText(null);
-        confirm.setContentText("Delete equipment " + equipment.getAssetCode() + "?");
-
-        Optional<ButtonType> result = confirm.showAndWait();
-        if (result.isEmpty() || result.get() != ButtonType.OK) {
-            return;
-        }
-
-        try {
-            equipmentService.deleteEquipment(equipment.getAssetCode());
-            loadEquipment();
-            showMessage("Deleted", "Equipment deleted successfully.");
-        } catch (Exception e) {
-            e.printStackTrace();
-            showMessage("Error", e.getMessage());
-        }
+        OperationFeedbackHelper.showConfirmation(
+                "Confirm Delete",
+                "Delete equipment " + equipment.getAssetCode() + "?",
+                "Delete",
+                "Cancel",
+                () -> {
+                    try {
+                        equipmentService.deleteEquipment(equipment.getAssetCode());
+                        loadEquipment();
+                        showMessage("Deleted", "Equipment deleted successfully.");
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                        showMessage("Error", e.getMessage());
+                    }
+                }
+        );
     }
 
     private void retireEquipment(Equipment equipment) {
@@ -391,12 +389,7 @@ public class EquipmentListController implements Initializable {
     ============================== */
 
     private void showMessage(String title, String message) {
-
-        Alert alert = new Alert(AlertType.INFORMATION);
-        alert.setTitle(title);
-        alert.setHeaderText(null);
-        alert.setContentText(message);
-        alert.showAndWait();
+        OperationFeedbackHelper.showInfo(title, message);
     }
 
     private String csvSafe(String value) {

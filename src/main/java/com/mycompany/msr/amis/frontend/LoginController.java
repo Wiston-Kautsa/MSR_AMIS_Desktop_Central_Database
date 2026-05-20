@@ -12,7 +12,6 @@ import javafx.concurrent.Task;
 import javafx.fxml.FXML;
 import javafx.fxml.Initializable;
 import javafx.scene.control.Button;
-import javafx.scene.control.ButtonType;
 import javafx.scene.control.CheckBox;
 import javafx.scene.control.ComboBox;
 import javafx.scene.control.Label;
@@ -36,9 +35,11 @@ public class LoginController implements Initializable {
     @FXML private CheckBox chkRememberLogin;
     @FXML private Label lblLoginStatus;
     @FXML private Label lblDefaultAdmin;
+    @FXML private Button btnLogin;
 
     @FXML private VBox loginPanel;
     @FXML private VBox resetPanel;
+    @FXML private VBox initialPasswordPanel;
     @FXML private TextField txtResetIdentifier;
     @FXML private TextField txtResetCode;
     @FXML private PasswordField txtResetNewPassword;
@@ -47,6 +48,11 @@ public class LoginController implements Initializable {
     @FXML private HBox resetStatusBanner;
     @FXML private Button btnSendResetCode;
     @FXML private Button btnResetPassword;
+    @FXML private PasswordField txtInitialNewPassword;
+    @FXML private PasswordField txtInitialConfirmPassword;
+    @FXML private Label lblInitialPasswordStatus;
+    @FXML private HBox initialPasswordStatusBanner;
+    @FXML private Button btnInitialPasswordChange;
 
     @Override
     public void initialize(URL url, ResourceBundle resourceBundle) {
@@ -99,37 +105,59 @@ public class LoginController implements Initializable {
             showStatus("Enter email and password.");
             return;
         }
-
-        User user;
-        loginInProgress = true;
-        try {
-            user = authService.authenticate(email, password);
-        } catch (SecurityException e) {
-            loginInProgress = false;
-            showStatus(e.getMessage());
-            return;
-        } catch (RuntimeException e) {
-            loginInProgress = false;
-            showStatus(e.getMessage());
+        if (loginInProgress) {
             return;
         }
-        if (user == null) {
+        loginInProgress = true;
+        setLoginFormDisabled(true);
+        showStatus("Authenticating...");
+
+        Task<User> loginTask = new Task<>() {
+            @Override
+            protected User call() {
+                return authService.authenticate(email, password);
+            }
+        };
+        loginTask.setOnSucceeded(event -> completeLogin(email, password, loginTask.getValue()));
+        loginTask.setOnFailed(event -> {
             loginInProgress = false;
+            setLoginFormDisabled(false);
+            Throwable failure = loginTask.getException();
+            showStatus(failure == null || failure.getMessage() == null || failure.getMessage().isBlank()
+                    ? "Login failed. Check your credentials and try again."
+                    : failure.getMessage());
+        });
+
+        Thread loginThread = new Thread(loginTask, "login-authentication");
+        loginThread.setDaemon(true);
+        loginThread.start();
+    }
+
+    private void completeLogin(String email, String password, User user) {
+        loginInProgress = false;
+        setLoginFormDisabled(false);
+        if (user == null) {
             showStatus("Invalid email or password.");
             return;
         }
 
         try {
             Session.setCurrentUser(user);
-            rememberSuccessfulLogin(email, password);
-            mirrorCentralDataAfterLogin(user, password);
             if (authService.isTemporarySetupAccount(user)) {
                 Session.setSetupMode(true);
                 App.showSetupUsersPage();
                 return;
             }
+            if (Session.isPasswordChangeRequired()) {
+                showInitialPasswordPanel();
+                return;
+            }
             Session.setSetupMode(false);
+            rememberSuccessfulLogin(email, password);
             App.showDashboardPage();
+            if (ServiceRegistry.getConfiguration().usesLocalDatabase()) {
+                mirrorCentralDataAfterLogin(user, password);
+            }
         } catch (SecurityException e) {
             loginInProgress = false;
             showStatus(e.getMessage());
@@ -140,12 +168,43 @@ public class LoginController implements Initializable {
         }
     }
 
-    private void mirrorCentralDataAfterLogin(User user, String password) {
-        try {
-            ServiceRegistry.getRemoteMirrorCoordinator().handleRemoteLogin(user, password);
-        } catch (Exception exception) {
-            showStatus("Login succeeded. Local database mirror refresh failed: " + resolveMessage(exception));
+    private void setLoginFormDisabled(boolean disabled) {
+        if (btnLogin != null) {
+            btnLogin.setDisable(disabled);
+            btnLogin.setText(disabled ? "AUTHENTICATING..." : "LOGIN");
         }
+        if (cmbEmail != null) {
+            cmbEmail.setDisable(disabled);
+        }
+        if (txtPassword != null) {
+            txtPassword.setDisable(disabled);
+        }
+        if (txtPasswordVisible != null) {
+            txtPasswordVisible.setDisable(disabled);
+        }
+    }
+
+    private void mirrorCentralDataAfterLogin(User user, String password) {
+        Task<Void> mirrorTask = new Task<>() {
+            @Override
+            protected Void call() throws Exception {
+                ServiceRegistry.getRemoteMirrorCoordinator().handleRemoteLogin(user, password);
+                return null;
+            }
+        };
+        mirrorTask.setOnFailed(event -> {
+            Throwable failure = mirrorTask.getException();
+            String message = failure == null || failure.getMessage() == null || failure.getMessage().isBlank()
+                    ? "Try Sync Center after confirming the API is reachable."
+                    : failure.getMessage();
+            OperationFeedbackHelper.showWarning(
+                    "Mirror Refresh Failed",
+                    "Login succeeded, but the local SQLite mirror could not be refreshed. " + message
+            );
+        });
+        Thread mirrorThread = new Thread(mirrorTask, "post-login-mirror-refresh");
+        mirrorThread.setDaemon(true);
+        mirrorThread.start();
     }
 
     @FXML
@@ -164,6 +223,64 @@ public class LoginController implements Initializable {
         if (chkShowPassword != null) {
             chkShowPassword.setSelected(false);
         }
+    }
+
+    @FXML
+    private void handleInitialPasswordChange() {
+        String newPassword = txtInitialNewPassword == null || txtInitialNewPassword.getText() == null
+                ? ""
+                : txtInitialNewPassword.getText();
+        String confirmPassword = txtInitialConfirmPassword == null || txtInitialConfirmPassword.getText() == null
+                ? ""
+                : txtInitialConfirmPassword.getText();
+        String validationError = validatePasswordChange(newPassword, confirmPassword);
+        if (!validationError.isBlank()) {
+            setInitialPasswordStatus(validationError, "error");
+            return;
+        }
+
+        if (btnInitialPasswordChange != null) {
+            btnInitialPasswordChange.setDisable(true);
+        }
+        setInitialPasswordStatus("Changing password...", "progress");
+        Task<Void> task = new Task<>() {
+            @Override
+            protected Void call() throws Exception {
+                authService.completeInitialPasswordChange(newPassword);
+                return null;
+            }
+        };
+        task.setOnSucceeded(event -> {
+            if (btnInitialPasswordChange != null) {
+                btnInitialPasswordChange.setDisable(false);
+            }
+            setInitialPasswordStatus("Password changed successfully. Opening dashboard...", "success");
+            try {
+                App.showDashboardPage();
+            } catch (IOException exception) {
+                setInitialPasswordStatus("Password changed, but the dashboard could not be opened.", "error");
+            }
+        });
+        task.setOnFailed(event -> {
+            if (btnInitialPasswordChange != null) {
+                btnInitialPasswordChange.setDisable(false);
+            }
+            Throwable failure = task.getException();
+            setInitialPasswordStatus(failure == null || failure.getMessage() == null || failure.getMessage().isBlank()
+                    ? "Password change failed."
+                    : failure.getMessage(), "error");
+        });
+        Thread thread = new Thread(task, "initial-password-change");
+        thread.setDaemon(true);
+        thread.start();
+    }
+
+    @FXML
+    private void handleInitialPasswordSignOut() {
+        Session.clear();
+        clearInitialPasswordFields();
+        showLoginPanel();
+        showStatus("Signed out. Enter your account again to continue.");
     }
 
     @FXML
@@ -241,10 +358,17 @@ public class LoginController implements Initializable {
             setResetStatus("The new password and confirmation do not match.", "error");
             return;
         }
+        String passwordError = validatePasswordStrength(newPassword);
+        if (!passwordError.isBlank()) {
+            setResetStatus(passwordError, "error");
+            return;
+        }
 
         try {
             authService.resetPasswordWithCode(identifier, resetCode, newPassword);
-            ServiceRegistry.getRemoteMirrorCoordinator().updateMirroredPassword(identifier, newPassword);
+            if (ServiceRegistry.getConfiguration().usesLocalDatabase()) {
+                ServiceRegistry.getRemoteMirrorCoordinator().updateMirroredPassword(identifier, newPassword);
+            }
             rememberedLoginStore.remove(identifier);
             refreshRememberedEmailChoices();
             Session.clear();
@@ -253,7 +377,6 @@ public class LoginController implements Initializable {
             clearResetInputFields(true);
             setResetStatus("Password updated successfully. Sign in with the new password.", "success");
             showStatus("Password reset successfully. Sign in with the new password.");
-            showAlert("Saved", "Password reset saved. Sign in with the new password.");
             App.showLoginPage();
         } catch (Exception e) {
             setResetStatus(e.getMessage(), "error");
@@ -392,31 +515,25 @@ public class LoginController implements Initializable {
         if (chkRememberLogin != null && !chkRememberLogin.isSelected()) {
             return;
         }
-        if (!rememberedLoginStore.hasSavedPassword(email, password) && !confirmSaveCredentials(email)) {
-            if (chkRememberLogin != null) {
-                chkRememberLogin.setSelected(false);
-            }
+        if (!rememberedLoginStore.hasSavedPassword(email, password)) {
+            confirmSaveCredentials(email, () -> {
+                rememberedLoginStore.save(email, password);
+                rememberedEmails = rememberedLoginStore.getEmails();
+            });
             return;
         }
         rememberedLoginStore.save(email, password);
         rememberedEmails = rememberedLoginStore.getEmails();
     }
 
-    private boolean confirmSaveCredentials(String email) {
-        javafx.scene.control.Alert alert = new javafx.scene.control.Alert(
-                javafx.scene.control.Alert.AlertType.CONFIRMATION,
-                "Save sign-in credentials for " + email + " on this Windows user account?",
-                ButtonType.YES,
-                ButtonType.NO
+    private void confirmSaveCredentials(String email, Runnable onConfirm) {
+        OperationFeedbackHelper.showConfirmation(
+                "Remember this login?",
+                "Save sign-in credentials for " + email + " on this Windows user account?\n\nOnly choose Save on a private, trusted computer.",
+                "Save",
+                "Do Not Save",
+                onConfirm
         );
-        alert.setTitle("Save Credentials");
-        alert.setHeaderText("Remember this login?");
-        alert.setContentText(
-                "Only choose Yes on a private, trusted computer. Saved credentials allow this app to fill the password for this Windows user."
-        );
-        return alert.showAndWait()
-                .filter(buttonType -> buttonType == ButtonType.YES)
-                .isPresent();
     }
 
     private String getEmailInput() {
@@ -449,6 +566,7 @@ public class LoginController implements Initializable {
     private void switchPanel(String panel) {
         boolean showLogin = "login".equals(panel);
         boolean showReset = "reset".equals(panel);
+        boolean showInitialPassword = "initialPassword".equals(panel);
         if (loginPanel != null) {
             loginPanel.setManaged(showLogin);
             loginPanel.setVisible(showLogin);
@@ -456,6 +574,25 @@ public class LoginController implements Initializable {
         if (resetPanel != null) {
             resetPanel.setManaged(showReset);
             resetPanel.setVisible(showReset);
+        }
+        if (initialPasswordPanel != null) {
+            initialPasswordPanel.setManaged(showInitialPassword);
+            initialPasswordPanel.setVisible(showInitialPassword);
+        }
+    }
+
+    private void showInitialPasswordPanel() {
+        switchPanel("initialPassword");
+        clearInitialPasswordFields();
+        setInitialPasswordStatus("Create a strong password to continue.", "info");
+    }
+
+    private void clearInitialPasswordFields() {
+        if (txtInitialNewPassword != null) {
+            txtInitialNewPassword.clear();
+        }
+        if (txtInitialConfirmPassword != null) {
+            txtInitialConfirmPassword.clear();
         }
     }
 
@@ -516,6 +653,51 @@ public class LoginController implements Initializable {
         }
     }
 
+    private void setInitialPasswordStatus(String message, String tone) {
+        if (lblInitialPasswordStatus != null) {
+            lblInitialPasswordStatus.setText(message == null ? "" : message);
+        }
+        if (initialPasswordStatusBanner != null) {
+            initialPasswordStatusBanner.getStyleClass().removeAll("status-info", "status-success", "status-error", "status-progress");
+            switch (tone == null ? "" : tone) {
+                case "success":
+                    initialPasswordStatusBanner.getStyleClass().add("status-success");
+                    break;
+                case "progress":
+                    initialPasswordStatusBanner.getStyleClass().add("status-progress");
+                    break;
+                case "error":
+                    initialPasswordStatusBanner.getStyleClass().add("status-error");
+                    break;
+                default:
+                    initialPasswordStatusBanner.getStyleClass().add("status-info");
+                    break;
+            }
+        }
+    }
+
+    private String validatePasswordChange(String newPassword, String confirmPassword) {
+        if (newPassword.isBlank() || confirmPassword.isBlank()) {
+            return "Enter and confirm the new password.";
+        }
+        if (!newPassword.equals(confirmPassword)) {
+            return "The new password and confirmation do not match.";
+        }
+        return validatePasswordStrength(newPassword);
+    }
+
+    private String validatePasswordStrength(String password) {
+        if (password == null || password.length() < 8) {
+            return "Password must be at least 8 characters.";
+        }
+        if (!password.chars().anyMatch(Character::isUpperCase)
+                || !password.chars().anyMatch(Character::isLowerCase)
+                || !password.chars().anyMatch(Character::isDigit)) {
+            return "Password must include uppercase, lowercase, and a number.";
+        }
+        return "";
+    }
+
     private String normalized(String value) {
         return value == null ? "" : value.trim();
     }
@@ -524,14 +706,6 @@ public class LoginController implements Initializable {
         return exception == null || exception.getMessage() == null || exception.getMessage().isBlank()
                 ? "Unknown error"
                 : exception.getMessage();
-    }
-
-    private void showAlert(String title, String message) {
-        javafx.scene.control.Alert alert = new javafx.scene.control.Alert(javafx.scene.control.Alert.AlertType.INFORMATION);
-        alert.setTitle(title);
-        alert.setHeaderText(null);
-        alert.setContentText(message);
-        alert.showAndWait();
     }
 
     private String maskEmail(String email) {

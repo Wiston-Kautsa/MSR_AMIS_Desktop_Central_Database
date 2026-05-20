@@ -310,15 +310,15 @@ public class DistributeEquipmentController implements Initializable {
     }
 
     private void showInfo(String msg) {
-        new Alert(Alert.AlertType.INFORMATION, msg).showAndWait();
+        OperationFeedbackHelper.showInfo("Distribution", msg);
     }
 
     private void showWarning(String msg) {
-        new Alert(Alert.AlertType.WARNING, msg).showAndWait();
+        OperationFeedbackHelper.showWarning("Distribution", msg);
     }
 
     private void showError(String msg) {
-        new Alert(Alert.AlertType.ERROR, msg).showAndWait();
+        OperationFeedbackHelper.showError("Distribution", msg);
     }
 
     @FXML

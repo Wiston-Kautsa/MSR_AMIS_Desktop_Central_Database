@@ -44,7 +44,7 @@ public class UserController {
     }
 
     @PutMapping("/{userId}")
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMIN')")
+    @PreAuthorize("hasRole('SUPER_ADMIN')")
     public UserResponse updateUser(Authentication authentication,
                                    @PathVariable Long userId,
                                    @Valid @RequestBody UserRequest request) {
@@ -52,7 +52,7 @@ public class UserController {
     }
 
     @PatchMapping("/{userId}/status")
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMIN')")
+    @PreAuthorize("hasRole('SUPER_ADMIN')")
     public UserResponse updateUserStatus(Authentication authentication,
                                          @PathVariable Long userId,
                                          @Valid @RequestBody UserStatusUpdateRequest request) {

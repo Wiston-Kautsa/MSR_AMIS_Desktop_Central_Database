@@ -43,16 +43,16 @@
                     <children>
                         <VBox spacing="4.0">
                             <children>
-                                <Label text="Users &amp; Access" styleClass="page-title"/>
+                                <Label text="User Management" styleClass="page-title"/>
                                 <Label fx:id="lblPageSubtitle"
-                                       text="Manage user accounts, departments, roles, and account status"
+                                       text="Create accounts, assign roles, freeze blocked accounts, and unfreeze accounts after Super Admin review"
                                        styleClass="page-subtitle"/>
                             </children>
                         </VBox>
                     </children>
                 </HBox>
 
-                <TitledPane fx:id="createUserPane" text="Create New User" expanded="true" animated="false" styleClass="section-pane">
+                <TitledPane fx:id="createUserPane" text="Create User Account" expanded="true" animated="false" styleClass="section-pane">
                     <content>
                         <VBox spacing="18.0" styleClass="content-card">
                             <padding>
@@ -131,11 +131,11 @@
                                                 defaultButton="true"
                                                 onAction="#handleCompleteSetup"
                                                 styleClass="action-button"/>
-                                        <Button text="Add User"
+                                        <Button text="Create User"
                                                 defaultButton="true"
                                                 onAction="#handleAddUser"
                                                 styleClass="action-button"/>
-                                        <Button text="Refresh Users"
+                                        <Button text="Refresh Accounts"
                                                 onAction="#handleRefreshUsers"
                                                 styleClass="secondary-button"/>
                                     </children>
@@ -145,7 +145,7 @@
                     </content>
                 </TitledPane>
 
-                <TitledPane fx:id="userDirectoryPane" text="User Directory" expanded="true" animated="false" styleClass="section-pane" VBox.vgrow="ALWAYS">
+                <TitledPane fx:id="userDirectoryPane" text="User Accounts and Access Control" expanded="true" animated="false" styleClass="section-pane" VBox.vgrow="ALWAYS">
                     <content>
                         <VBox spacing="14.0" styleClass="content-card">
                             <padding>
@@ -153,13 +153,38 @@
                             </padding>
 
                             <children>
-                                <HBox alignment="CENTER_LEFT" spacing="12.0" styleClass="toolbar-row">
+                                <VBox spacing="10.0" styleClass="toolbar-row">
                                     <children>
-                                        <Button text="Refresh"
-                                                onAction="#handleRefreshUsers"
-                                                styleClass="secondary-button"/>
+                                        <Label text="Select an account, then use the buttons to edit, freeze, unfreeze, delete, or refresh."
+                                               wrapText="true"
+                                               maxWidth="1.7976931348623157E308"
+                                               styleClass="page-subtitle"/>
+                                        <HBox alignment="CENTER_LEFT" spacing="12.0">
+                                            <children>
+                                                <Button text="Edit Selected"
+                                                        minWidth="150.0"
+                                                        onAction="#handleEditSelectedUser"
+                                                        styleClass="secondary-button"/>
+                                                <Button text="Freeze Selected"
+                                                        minWidth="165.0"
+                                                        onAction="#handleFreezeSelectedUser"
+                                                        styleClass="secondary-button"/>
+                                                <Button text="Unfreeze Selected"
+                                                        minWidth="180.0"
+                                                        onAction="#handleUnfreezeSelectedUser"
+                                                        styleClass="action-button"/>
+                                                <Button text="Delete Selected"
+                                                        minWidth="165.0"
+                                                        onAction="#handleDeleteSelectedUser"
+                                                        styleClass="danger-button"/>
+                                                <Button text="Refresh"
+                                                        minWidth="125.0"
+                                                        onAction="#handleRefreshUsers"
+                                                        styleClass="secondary-button"/>
+                                            </children>
+                                        </HBox>
                                     </children>
-                                </HBox>
+                                </VBox>
 
                                 <TableView fx:id="tableUsers" VBox.vgrow="ALWAYS">
                                     <columns>

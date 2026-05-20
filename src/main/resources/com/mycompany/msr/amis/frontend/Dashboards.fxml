@@ -217,7 +217,7 @@
                                 <VBox spacing="6">
                                     <children>
                                         <Button fx:id="btnUsers"
-                                                text="Users"
+                                                text="User Management"
                                                 styleClass="sidebar-button"
                                                 onAction="#openUsers"/>
 

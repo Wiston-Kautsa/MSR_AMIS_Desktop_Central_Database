@@ -143,6 +143,9 @@ public final class RemoteMirrorCoordinator {
         if (AUTO_MIRROR_SUPPRESSED.get()) {
             return;
         }
+        if (!configuration.isAutoMirrorAfterMutationEnabled()) {
+            return;
+        }
         synchronizeQuietlyIfOnline();
     }
 

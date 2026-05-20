@@ -230,13 +230,12 @@ public class AssignmentListController implements Initializable {
     private void deleteAssignment(Assignment a) {
         if (a == null) return;
 
-        Alert confirm = new Alert(Alert.AlertType.CONFIRMATION);
-        confirm.setTitle("Confirm Delete");
-        confirm.setHeaderText(null);
-        confirm.setContentText("Delete assignment for " + a.getPerson() + "?");
-
-        confirm.showAndWait().ifPresent(res -> {
-            if (res == ButtonType.OK) {
+        OperationFeedbackHelper.showConfirmation(
+                "Confirm Delete",
+                "Delete assignment for " + a.getPerson() + "?",
+                "Delete",
+                "Cancel",
+                () -> {
                 try {
                     assignmentService.deleteAssignment(a.getId());
                     loadAssignments();
@@ -244,17 +243,15 @@ public class AssignmentListController implements Initializable {
                 } catch (Exception e) {
                     showError("Delete Error", e.getMessage());
                 }
-            }
-        });
+                }
+        );
     }
 
     private void showInfo(String msg) {
-        new Alert(Alert.AlertType.INFORMATION, msg).showAndWait();
+        OperationFeedbackHelper.showInfo("Assignments", msg);
     }
 
     private void showError(String title, String msg) {
-        Alert alert = new Alert(Alert.AlertType.ERROR, msg);
-        alert.setTitle(title);
-        alert.showAndWait();
+        OperationFeedbackHelper.showError(title, msg);
     }
 }

@@ -36,6 +36,7 @@ public class UserManagementService {
 
     public List<UserResponse> listVisibleUsers(String requesterIdentifier) {
         UserAccount requester = getRequester(requesterIdentifier);
+        requireManager(requester);
         return userRepository.findByTemporaryFalseAndRoleInOrderByFullNameAsc(visibleRolesFor(requester)).stream()
                 .map(this::toResponse)
                 .toList();
@@ -224,8 +225,8 @@ public class UserManagementService {
         if (isBootstrapTemporaryAccount(requester)) {
             return;
         }
-        if (requester.getRole() == UserRole.USER) {
-            throw new ApiException(HttpStatus.FORBIDDEN, "Users are not allowed to manage accounts.");
+        if (requester.getRole() != UserRole.SUPER_ADMIN) {
+            throw new ApiException(HttpStatus.FORBIDDEN, "User management is available only to Super Admin.");
         }
     }
 

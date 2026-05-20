@@ -18,17 +18,22 @@ import com.mycompany.msr.amis.api.security.JwtService;
 import java.security.SecureRandom;
 import java.time.OffsetDateTime;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import org.springframework.http.HttpStatus;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.TransactionDefinition;
+import org.springframework.transaction.support.TransactionTemplate;
 
 @Service
 public class AuthFacadeService {
 
     private static final SecureRandom RESET_RANDOM = new SecureRandom();
-    private static final String RESET_TOKEN_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789";
+    private static final int MAX_FAILED_LOGIN_ATTEMPTS = 5;
+    private static final int LOGIN_LOCK_MINUTES = 15;
 
     private final UserRepository userRepository;
     private final JwtService jwtService;
@@ -38,6 +43,8 @@ public class AuthFacadeService {
     private final ActionAuditService actionAuditService;
     private final ReservedEmailConfig reservedEmailConfig;
     private final boolean exposeResetCodeOnEmailFailure;
+    private final TransactionTemplate lockoutTransactionTemplate;
+    private final Map<String, FailedLoginState> failedLogins = new ConcurrentHashMap<>();
 
     public AuthFacadeService(UserRepository userRepository,
                              JwtService jwtService,
@@ -46,6 +53,7 @@ public class AuthFacadeService {
                              JdbcTemplate jdbcTemplate,
                              ActionAuditService actionAuditService,
                              ReservedEmailConfig reservedEmailConfig,
+                             PlatformTransactionManager transactionManager,
                              @org.springframework.beans.factory.annotation.Value("${app.security.password-reset.expose-code-when-email-disabled:true}")
                              boolean exposeResetCodeOnEmailFailure) {
         this.userRepository = userRepository;
@@ -56,14 +64,24 @@ public class AuthFacadeService {
         this.actionAuditService = actionAuditService;
         this.reservedEmailConfig = reservedEmailConfig;
         this.exposeResetCodeOnEmailFailure = exposeResetCodeOnEmailFailure;
+        this.lockoutTransactionTemplate = new TransactionTemplate(transactionManager);
+        this.lockoutTransactionTemplate.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
     }
 
     @Transactional
     public LoginResponse login(LoginRequest request) {
+        String loginIdentifier = normalize(request.identifier()).toLowerCase();
+        boolean throttleExempt = isThrottleExemptIdentifier(loginIdentifier);
+        if (!throttleExempt) {
+            assertLoginNotThrottled(loginIdentifier);
+        }
         UserAccount account = userRepository
                 .findByEmailIgnoreCaseOrUsernameIgnoreCase(request.identifier(), request.identifier())
                 .orElseThrow(() -> {
                     actionAuditService.log(request.identifier(), "LOGIN_FAILED", "AUTH", request.identifier(), "Unknown login identifier.");
+                    if (!throttleExempt) {
+                        recordFailedLogin(loginIdentifier);
+                    }
                     return new ApiException(HttpStatus.UNAUTHORIZED, "Invalid email or password.");
                 });
 
@@ -77,15 +95,23 @@ public class AuthFacadeService {
 
         if (!passwordEncoder.matches(request.password(), account.getPasswordHash())) {
             actionAuditService.log(account.getEmail(), "LOGIN_FAILED", "AUTH", account.getEmail(), "Invalid password.");
+            if (!throttleExempt && !isPrimarySuperAdmin(account) && recordFailedLogin(account)) {
+                throw new ApiException(
+                        HttpStatus.FORBIDDEN,
+                        "This account has been frozen after repeated failed login attempts. Contact the Super Admin to unfreeze it."
+                );
+            }
             throw new ApiException(HttpStatus.UNAUTHORIZED, "Invalid email or password.");
         }
 
         if (account.getStatus() != UserStatus.ACTIVE) {
             actionAuditService.log(account.getEmail(), "LOGIN_FAILED", "AUTH", account.getEmail(), "Inactive account login blocked.");
-            throw new ApiException(HttpStatus.FORBIDDEN, "This account is not active.");
+            throw new ApiException(HttpStatus.FORBIDDEN, "This account is frozen. Contact the Super Admin to unfreeze it.");
         }
 
         account.setLastLoginAt(OffsetDateTime.now());
+        failedLogins.remove(loginIdentifier);
+        failedLogins.remove(normalize(account.getEmail()).toLowerCase());
 
         org.springframework.security.core.userdetails.UserDetails principal =
                 org.springframework.security.core.userdetails.User.withUsername(account.getEmail())
@@ -185,6 +211,7 @@ public class AuthFacadeService {
 
     @Transactional
     public CommonMessageResponse confirmPasswordReset(PasswordResetConfirmRequest request) {
+        assertStrongPassword(request.newPassword());
         UserAccount account = userRepository.findByEmailIgnoreCaseOrUsernameIgnoreCase(request.identifier(), request.identifier())
                 .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "User not found."));
 
@@ -213,6 +240,7 @@ public class AuthFacadeService {
 
     @Transactional
     public CommonMessageResponse changeInitialPassword(String identifier, InitialPasswordChangeRequest request) {
+        assertStrongPassword(request.newPassword());
         UserAccount account = userRepository.findByEmailIgnoreCaseOrUsernameIgnoreCase(identifier, identifier)
                 .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "User not found."));
 
@@ -273,16 +301,13 @@ public class AuthFacadeService {
                 account.getDepartment(),
                 account.getEmail(),
                 account.getStatus().name(),
-                account.isMustChangePassword()
+                account.isMustChangePassword(),
+                account.isTemporary()
         );
     }
 
     private String generateResetCode() {
-        StringBuilder token = new StringBuilder(32);
-        for (int i = 0; i < 32; i++) {
-            token.append(RESET_TOKEN_ALPHABET.charAt(RESET_RANDOM.nextInt(RESET_TOKEN_ALPHABET.length())));
-        }
-        return token.toString();
+        return String.format("%06d", RESET_RANDOM.nextInt(1_000_000));
     }
 
     private boolean isPrimarySuperAdmin(UserAccount account) {
@@ -311,5 +336,88 @@ public class AuthFacadeService {
 
     private String normalize(String value) {
         return value == null ? "" : value.trim();
+    }
+
+    private void assertLoginNotThrottled(String identifier) {
+        FailedLoginState state = failedLogins.get(identifier);
+        if (state == null || state.lockedUntil == null) {
+            return;
+        }
+        if (state.lockedUntil.isAfter(OffsetDateTime.now())) {
+            throw new ApiException(HttpStatus.TOO_MANY_REQUESTS,
+                    "Too many failed login attempts. Try again after " + LOGIN_LOCK_MINUTES + " minutes.");
+        }
+        failedLogins.remove(identifier);
+    }
+
+    private void recordFailedLogin(String identifier) {
+        if (identifier == null || identifier.isBlank()) {
+            return;
+        }
+        failedLogins.compute(identifier, (key, current) -> {
+            FailedLoginState state = current == null ? new FailedLoginState() : current;
+            state.attempts++;
+            if (state.attempts >= MAX_FAILED_LOGIN_ATTEMPTS) {
+                state.lockedUntil = OffsetDateTime.now().plusMinutes(LOGIN_LOCK_MINUTES);
+            }
+            return state;
+        });
+    }
+
+    private boolean recordFailedLogin(UserAccount account) {
+        if (account == null || account.getEmail() == null || account.getEmail().isBlank()) {
+            return false;
+        }
+        String email = normalize(account.getEmail()).toLowerCase();
+        FailedLoginState state = failedLogins.compute(email, (key, current) -> {
+            FailedLoginState next = current == null ? new FailedLoginState() : current;
+            next.attempts++;
+            return next;
+        });
+        if (state.attempts >= MAX_FAILED_LOGIN_ATTEMPTS) {
+            freezeAccountForFailedLogins(account.getId(), email);
+            failedLogins.remove(email);
+            return true;
+        }
+        return false;
+    }
+
+    private void freezeAccountForFailedLogins(Long accountId, String email) {
+        lockoutTransactionTemplate.executeWithoutResult(status -> {
+            userRepository.findById(accountId).ifPresent(user -> {
+                if (isPrimarySuperAdmin(user) || user.getStatus() == UserStatus.FROZEN) {
+                    return;
+                }
+                user.setStatus(UserStatus.FROZEN);
+                actionAuditService.log(
+                        email,
+                        "USER_AUTO_FROZEN",
+                        "AUTH",
+                        email,
+                        "Account frozen after " + MAX_FAILED_LOGIN_ATTEMPTS + " failed login attempts. Super Admin must unfreeze the account."
+                );
+            });
+        });
+    }
+
+    private boolean isThrottleExemptIdentifier(String identifier) {
+        return reservedEmailConfig.isPrimarySuperAdminEmail(identifier);
+    }
+
+    private void assertStrongPassword(String password) {
+        if (password == null || password.length() < 8) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "Password must be at least 8 characters.");
+        }
+        boolean hasUpper = password.chars().anyMatch(Character::isUpperCase);
+        boolean hasLower = password.chars().anyMatch(Character::isLowerCase);
+        boolean hasDigit = password.chars().anyMatch(Character::isDigit);
+        if (!hasUpper || !hasLower || !hasDigit) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "Password must include uppercase, lowercase, and a number.");
+        }
+    }
+
+    private static final class FailedLoginState {
+        private int attempts;
+        private OffsetDateTime lockedUntil;
     }
 }

@@ -5,6 +5,7 @@ import com.mycompany.msr.amis.api.dto.audit.AuditLogRequest;
 import com.mycompany.msr.amis.api.dto.audit.AuditLogResponse;
 import com.mycompany.msr.amis.api.service.AuditHistoryService;
 import java.util.List;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -24,6 +25,7 @@ public class AuditController {
     }
 
     @GetMapping
+    @PreAuthorize("hasRole('SUPER_ADMIN')")
     public List<AuditLogResponse> getAuditLogs(Authentication authentication,
                                                @RequestParam(required = false) String username) {
         return auditHistoryService.getAuditLogs(authentication.getName(), username);

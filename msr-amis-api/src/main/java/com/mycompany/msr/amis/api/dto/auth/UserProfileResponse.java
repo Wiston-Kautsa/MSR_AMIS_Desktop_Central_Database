@@ -8,6 +8,7 @@ public record UserProfileResponse(
         String department,
         String email,
         String status,
-        boolean mustChangePassword
+        boolean mustChangePassword,
+        boolean temporary
 ) {
 }

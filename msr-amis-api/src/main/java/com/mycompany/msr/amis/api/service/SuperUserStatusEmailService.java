@@ -73,7 +73,7 @@ public class SuperUserStatusEmailService {
     }
 
     private boolean isEnabled() {
-        return Boolean.parseBoolean(environment.getProperty("MSR_AMIS_SUPER_USER_STATUS_EMAILS_ENABLED", "true"));
+        return Boolean.parseBoolean(environment.getProperty("MSR_AMIS_SUPER_USER_STATUS_EMAILS_ENABLED", "false"));
     }
 
     private Set<String> activeSuperUserEmails() {

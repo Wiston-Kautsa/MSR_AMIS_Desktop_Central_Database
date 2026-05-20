@@ -20,6 +20,7 @@ import org.mockito.ArgumentCaptor;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.mock.env.MockEnvironment;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.transaction.PlatformTransactionManager;
 
 class AuthFacadeServiceTest {
 
@@ -41,6 +42,7 @@ class AuthFacadeServiceTest {
                 actionAuditService,
                 new ReservedEmailConfig(new MockEnvironment()
                         .withProperty("MSR_AMIS_PRIMARY_SUPER_ADMIN_EMAIL", "primary@example.com")),
+                mock(PlatformTransactionManager.class),
                 false
         );
 
