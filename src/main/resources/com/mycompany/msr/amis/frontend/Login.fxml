@@ -178,9 +178,6 @@
                                                 <Label fx:id="lblLoginStatus"
                                                        wrapText="true"
                                                        styleClass="login-message"/>
-                                                <Label fx:id="lblDefaultAdmin"
-                                                       wrapText="true"
-                                                       styleClass="login-helper"/>
                                             </children>
                                         </VBox>
 

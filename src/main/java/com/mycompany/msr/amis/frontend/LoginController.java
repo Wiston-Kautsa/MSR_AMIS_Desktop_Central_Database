@@ -40,7 +40,6 @@ public class LoginController implements Initializable {
     @FXML private CheckBox chkRememberLogin;
     @FXML private Label lblLoginStatus;
     @FXML private Label lblLoginProgress;
-    @FXML private Label lblDefaultAdmin;
     @FXML private Button btnLogin;
     @FXML private VBox loginProgressPanel;
     @FXML private ProgressBar loginProgressBar;
@@ -79,28 +78,6 @@ public class LoginController implements Initializable {
         }
 
         setupRememberedLogins();
-
-        if (lblDefaultAdmin != null) {
-            if (ServiceRegistry.getConfiguration().usesLocalDatabase()) {
-                if (ServiceRegistry.getConfiguration().isUsingLocalFallback()) {
-                    lblDefaultAdmin.setText(
-                            "Automatic mode: central API is offline, so this session is using the local SQLite database. Offline changes are not pushed back to the Central Server automatically."
-                    );
-                } else {
-                    lblDefaultAdmin.setText(
-                            "Use your assigned account to sign in. If access is not yet configured, contact the system administrator."
-                    );
-                }
-            } else {
-                String prefix = ServiceRegistry.getConfiguration().isAutomaticMode()
-                        ? "Automatic mode: central API is reachable. "
-                        : "";
-                lblDefaultAdmin.setText(
-                        prefix + "Central API: " + ServiceRegistry.getConfiguration().getApiBaseUrl()
-                                + " | Sign in with your assigned account. If access is not yet configured, contact the system administrator."
-                );
-            }
-        }
 
         showLoginPanel();
     }
