@@ -20,6 +20,7 @@ import javafx.scene.control.Button;
 import javafx.scene.control.Label;
 import javafx.scene.control.ProgressBar;
 import javafx.scene.control.Tooltip;
+import javafx.scene.control.TitledPane;
 import javafx.scene.layout.Region;
 import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
@@ -73,6 +74,8 @@ public class DashboardsController implements Initializable {
     @FXML private Button btnSyncCenter;
     @FXML private Button btnLogout;
     @FXML private Button btnGoOnline;
+    @FXML private TitledPane paneDataRecords;
+    @FXML private TitledPane paneAdministration;
     @FXML private PieChart assetStatusPieChart;
     @FXML private ProgressBar progressUtilization;
     @FXML private ProgressBar progressAvailability;
@@ -112,6 +115,7 @@ public class DashboardsController implements Initializable {
             btnSyncCenter.setManaged(allowed);
             btnSyncCenter.setVisible(allowed);
         }
+        updateRoleSectionVisibility();
         applyLoggedInUser();
         if (lblTotalAssets != null) {
             refreshDashboard();
@@ -193,6 +197,26 @@ public class DashboardsController implements Initializable {
     @FXML
     private void openDashboard(ActionEvent event) {
         showDashboardHome();
+    }
+
+    private void updateRoleSectionVisibility() {
+        setPaneAvailability(paneDataRecords, isAvailable(btnBackupSync) || isAvailable(btnAuditLogs) || isAvailable(btnSyncCenter));
+        setPaneAvailability(paneAdministration, isAvailable(btnUsers) || isAvailable(btnDepartments) || isAvailable(btnDataMaintenance));
+    }
+
+    private boolean isAvailable(Node node) {
+        return node != null && node.isManaged() && node.isVisible();
+    }
+
+    private void setPaneAvailability(TitledPane pane, boolean available) {
+        if (pane == null) {
+            return;
+        }
+        pane.setManaged(available);
+        pane.setVisible(available);
+        if (!available) {
+            pane.setExpanded(false);
+        }
     }
 
     public void showDashboardHome() {
@@ -364,7 +388,7 @@ public class DashboardsController implements Initializable {
     @FXML
     private void openAuditLogs() {
         try {
-            AccessControl.requireRole(AccessControl.ROLE_SUPER_ADMIN);
+            AccessControl.requireRole(AccessControl.ROLE_SUPER_ADMIN, AccessControl.ROLE_ADMIN);
             loadPage("AuditLogs.fxml");
         } catch (SecurityException e) {
             OperationFeedbackHelper.showError("Access Denied", e.getMessage());
@@ -374,7 +398,7 @@ public class DashboardsController implements Initializable {
     @FXML
     private void openUsers() {
         try {
-            AccessControl.requireRole(AccessControl.ROLE_SUPER_ADMIN);
+            AccessControl.requireRole(AccessControl.ROLE_SUPER_ADMIN, AccessControl.ROLE_ADMIN);
             loadPage("Users.fxml");
         } catch (SecurityException e) {
             OperationFeedbackHelper.showError("Access Denied", e.getMessage());
@@ -384,7 +408,7 @@ public class DashboardsController implements Initializable {
     @FXML
     private void openDepartments() {
         try {
-            AccessControl.requireRole(AccessControl.ROLE_SUPER_ADMIN);
+            AccessControl.requireRole(AccessControl.ROLE_SUPER_ADMIN, AccessControl.ROLE_ADMIN);
             loadPage("Departments.fxml");
         } catch (SecurityException e) {
             OperationFeedbackHelper.showError("Access Denied", e.getMessage());
@@ -407,7 +431,7 @@ public class DashboardsController implements Initializable {
     private void openSyncCenter() {
         try {
             if (!AccessControl.canAccessSyncCenter()) {
-                throw new SecurityException("Sync Center is available only to Super Admin.");
+                throw new SecurityException("Sync Center is available only to Super Admin and Admin.");
             }
             loadPage("SyncCenter.fxml");
         } catch (SecurityException e) {

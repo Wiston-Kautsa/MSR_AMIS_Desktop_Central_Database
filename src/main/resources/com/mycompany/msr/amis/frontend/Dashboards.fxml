@@ -183,7 +183,8 @@
 
                         <Separator/>
 
-                        <TitledPane text="Data &amp; Records"
+                        <TitledPane fx:id="paneDataRecords"
+                                    text="Data &amp; Records"
                                     expanded="false"
                                     styleClass="sidebar-titled-pane">
                             <content>
@@ -210,7 +211,8 @@
                             </content>
                         </TitledPane>
 
-                        <TitledPane text="Administration"
+                        <TitledPane fx:id="paneAdministration"
+                                    text="Administration"
                                     expanded="false"
                                     styleClass="sidebar-titled-pane">
                             <content>

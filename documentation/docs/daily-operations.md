@@ -209,8 +209,10 @@ Role access:
 | Role | Sync Center access |
 | --- | --- |
 | `SUPER_ADMIN` | Full queue, full audit, push all pending records, requeue rejected records |
-| `ADMIN` | Own queue and own audit only, push own pending records |
+| `ADMIN` | Own queue and own audit only, push own pending records, requeue own rejected records |
 | `USER` | Hidden |
+
+Audit Logs follow the same visibility model: Super Admin can view all audit logs, Admin can view only their own audit logs, and User accounts do not see the Audit Logs button.
 
 Rejected records should not be ignored. An administrator should read the rejection reason and decide whether to recreate the change manually.
 

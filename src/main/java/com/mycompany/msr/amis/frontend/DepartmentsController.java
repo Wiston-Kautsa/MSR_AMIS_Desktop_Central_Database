@@ -36,7 +36,7 @@ public final class DepartmentsController implements Initializable {
 
     @Override
     public void initialize(URL url, ResourceBundle resourceBundle) {
-        AccessControl.requireRole(AccessControl.ROLE_SUPER_ADMIN);
+        AccessControl.requireRole(AccessControl.ROLE_SUPER_ADMIN, AccessControl.ROLE_ADMIN);
         configureTable();
         refreshDepartments();
     }

@@ -67,8 +67,7 @@ jpackage ^
   --module-path "%JAVAFX_MODULE_PATH%" ^
   --add-modules %RUNTIME_MODULES% ^
   --java-options "--add-modules=%RUNTIME_MODULES%" ^
-  --java-options "--enable-native-access=javafx.graphics" ^
-  --win-console
+  --java-options "--enable-native-access=javafx.graphics"
 
 if errorlevel 1 goto :fail
 

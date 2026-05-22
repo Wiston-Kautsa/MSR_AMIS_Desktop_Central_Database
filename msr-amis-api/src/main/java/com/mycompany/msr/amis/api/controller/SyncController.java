@@ -50,13 +50,13 @@ public class SyncController {
     }
 
     @PostMapping("/push")
-    @PreAuthorize("hasRole('SUPER_ADMIN')")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN','ADMIN')")
     public SyncPushResponse push(Authentication authentication, @RequestBody SyncPushRequest request) {
         return syncService.pushNow(authentication.getName(), request);
     }
 
     @PostMapping("/equipment")
-    @PreAuthorize("hasRole('SUPER_ADMIN')")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN','ADMIN')")
     @Transactional
     public ResponseEntity<String> syncEquipment(Authentication authentication,
                                                 @RequestBody EquipmentSyncRequest request) {
@@ -77,27 +77,35 @@ public class SyncController {
     }
 
     @GetMapping("/pull")
-    @PreAuthorize("hasRole('SUPER_ADMIN')")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN','ADMIN')")
     public CommonMessageResponse pull(Authentication authentication,
                                       @RequestParam(required = false) String machineId) {
         return syncService.pullNow(authentication.getName(), machineId);
     }
 
     @GetMapping("/status")
-    @PreAuthorize("hasRole('SUPER_ADMIN')")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN','ADMIN')")
     public SyncStatusResponse status() {
         return syncService.getStatus();
     }
 
     @GetMapping("/queue")
-    @PreAuthorize("hasRole('SUPER_ADMIN')")
-    public List<SyncQueueRecordResponse> queue(@RequestParam(required = false) String entityType,
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN','ADMIN')")
+    public List<SyncQueueRecordResponse> queue(Authentication authentication,
+                                               @RequestParam(required = false) String entityType,
                                                @RequestParam(required = false) String status) {
-        return syncQueueService.getQueueRecords(entityType, status);
+        List<SyncQueueRecordResponse> records = syncQueueService.getQueueRecords(entityType, status);
+        if (isSuperAdmin(authentication)) {
+            return records;
+        }
+        String actor = authentication.getName();
+        return records.stream()
+                .filter(record -> actor != null && actor.equalsIgnoreCase(record.createdBy()))
+                .toList();
     }
 
     @PostMapping("/retry")
-    @PreAuthorize("hasRole('SUPER_ADMIN')")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN','ADMIN')")
     public CommonMessageResponse retry(Authentication authentication, @RequestBody(required = false) SyncRetryRequest request) {
         boolean superAdmin = authentication.getAuthorities().stream()
                 .anyMatch(authority -> "ROLE_SUPER_ADMIN".equals(authority.getAuthority()));
@@ -143,11 +151,19 @@ public class SyncController {
     }
 
     @GetMapping("/audit")
-    @PreAuthorize("hasRole('SUPER_ADMIN')")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN','ADMIN')")
     public List<SyncAuditLogResponse> audit(@RequestParam(required = false) String userId,
                                             @RequestParam(required = false) String machineId,
                                             @RequestParam(required = false) String entityType,
-                                            @RequestParam(required = false) String status) {
-        return syncAuditService.getLogs(userId, machineId, entityType, status);
+                                            @RequestParam(required = false) String status,
+                                            Authentication authentication) {
+        String effectiveUserId = isSuperAdmin(authentication) ? userId : authentication.getName();
+        return syncAuditService.getLogs(effectiveUserId, machineId, entityType, status);
+    }
+
+    private boolean isSuperAdmin(Authentication authentication) {
+        return authentication != null
+                && authentication.getAuthorities().stream()
+                        .anyMatch(authority -> "ROLE_SUPER_ADMIN".equals(authority.getAuthority()));
     }
 }

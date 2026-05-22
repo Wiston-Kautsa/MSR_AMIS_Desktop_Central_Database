@@ -32,7 +32,8 @@ Final architecture:
 - can manage `ADMIN` and `USER`
 - cannot create or manage `SUPER_ADMIN`
 - can use Sync Center only for their own queue and audit records
-- cannot retry rejected sync records
+- can retry their own rejected sync records
+- cannot retry other users' rejected sync records
 
 ### `USER`
 

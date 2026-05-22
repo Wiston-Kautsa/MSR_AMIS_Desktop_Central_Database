@@ -162,12 +162,13 @@ Allowed:
 - access Sync Center
 - process only their own queued sync records
 - view their own sync queue and sync audit records
+- requeue their own rejected sync records
 
 Restricted:
 
 - cannot create or manage Super Admin accounts
 - cannot access Data Maintenance
-- cannot requeue rejected sync records
+- cannot requeue other users' rejected sync records
 - cannot process other users' queued sync work
 
 ### `USER`
@@ -255,7 +256,7 @@ Actions:
 | Push pending queue | All records | Own records only | No |
 | View queue | All records | Own records only | No |
 | View audit | All records | Own records only | No |
-| Requeue rejected records | Yes | No | No |
+| Requeue rejected records | All rejected records | Own rejected records only | No |
 
 Conflict policy:
 
@@ -309,6 +310,16 @@ Current implementation note: the desktop maintenance screen writes through the l
 Audit logs capture key operational events and can be viewed by Admin and Super Admin users.
 
 Centralized audit records are handled by the API in API modes. Local audit fallback exists for `AUTO` and `LOCAL_DATABASE` behavior.
+
+Access:
+
+| Role | Audit Log Scope |
+| --- | --- |
+| `SUPER_ADMIN` | All system audit logs |
+| `ADMIN` | Own audit logs only |
+| `USER` | Hidden |
+
+The sidebar removes unavailable role panels entirely. A role should not see an empty `Data & Records` or `Administration` panel.
 
 ## Data Maintenance
 

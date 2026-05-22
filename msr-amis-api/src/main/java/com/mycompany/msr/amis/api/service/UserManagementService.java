@@ -225,8 +225,8 @@ public class UserManagementService {
         if (isBootstrapTemporaryAccount(requester)) {
             return;
         }
-        if (requester.getRole() != UserRole.SUPER_ADMIN) {
-            throw new ApiException(HttpStatus.FORBIDDEN, "User management is available only to Super Admin.");
+        if (requester.getRole() != UserRole.SUPER_ADMIN && requester.getRole() != UserRole.ADMIN) {
+            throw new ApiException(HttpStatus.FORBIDDEN, "User management is available only to Super Admin and Admin.");
         }
     }
 

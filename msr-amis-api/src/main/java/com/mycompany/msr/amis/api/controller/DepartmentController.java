@@ -32,7 +32,7 @@ public class DepartmentController {
     }
 
     @PostMapping
-    @PreAuthorize("hasRole('SUPER_ADMIN')")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN','ADMIN')")
     public CommonMessageResponse createDepartment(Authentication authentication,
                                                   @Valid @RequestBody DepartmentRequest request) {
         String name = departmentService.createDepartment(authentication.getName(), request.name());
@@ -40,7 +40,7 @@ public class DepartmentController {
     }
 
     @PutMapping("/{name}")
-    @PreAuthorize("hasRole('SUPER_ADMIN')")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN','ADMIN')")
     public CommonMessageResponse updateDepartment(Authentication authentication,
                                                   @PathVariable String name,
                                                   @Valid @RequestBody DepartmentRequest request) {
@@ -49,7 +49,7 @@ public class DepartmentController {
     }
 
     @DeleteMapping("/{name}")
-    @PreAuthorize("hasRole('SUPER_ADMIN')")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN','ADMIN')")
     public CommonMessageResponse deleteDepartment(Authentication authentication, @PathVariable String name) {
         departmentService.deleteDepartment(authentication.getName(), name);
         return new CommonMessageResponse(true, "Department deleted successfully.");

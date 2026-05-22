@@ -44,7 +44,7 @@ public class UserController {
     }
 
     @PutMapping("/{userId}")
-    @PreAuthorize("hasRole('SUPER_ADMIN')")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN','ADMIN')")
     public UserResponse updateUser(Authentication authentication,
                                    @PathVariable Long userId,
                                    @Valid @RequestBody UserRequest request) {
@@ -52,7 +52,7 @@ public class UserController {
     }
 
     @PatchMapping("/{userId}/status")
-    @PreAuthorize("hasRole('SUPER_ADMIN')")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN','ADMIN')")
     public UserResponse updateUserStatus(Authentication authentication,
                                          @PathVariable Long userId,
                                          @Valid @RequestBody UserStatusUpdateRequest request) {
@@ -60,7 +60,7 @@ public class UserController {
     }
 
     @DeleteMapping("/{userId}")
-    @PreAuthorize("hasRole('SUPER_ADMIN')")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN','ADMIN')")
     public CommonMessageResponse deleteUser(Authentication authentication, @PathVariable Long userId) {
         return userManagementService.deleteUser(authentication.getName(), userId);
     }

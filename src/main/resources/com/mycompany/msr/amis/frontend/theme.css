@@ -441,8 +441,8 @@
 
 .login-shell{
     -fx-background-color: transparent;
-    -fx-pref-width: 1.7976931348623157E308;
-    -fx-pref-height: 1.7976931348623157E308;
+    -fx-pref-width: 10000;
+    -fx-pref-height: 10000;
 }
 
 .login-brand-panel{
