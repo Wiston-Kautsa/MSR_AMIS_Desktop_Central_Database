@@ -1,5 +1,6 @@
 $identifier = if ($env:MSR_AMIS_TEST_LOGIN_IDENTIFIER) { $env:MSR_AMIS_TEST_LOGIN_IDENTIFIER } else { $env:MSR_AMIS_SETUP_ADMIN_EMAIL }
 $password = if ($env:MSR_AMIS_TEST_LOGIN_PASSWORD) { $env:MSR_AMIS_TEST_LOGIN_PASSWORD } else { 'admin123' }
+$baseUrl = if ($env:MSR_AMIS_API_BASE_URL) { $env:MSR_AMIS_API_BASE_URL.TrimEnd('/') } else { 'http://143.198.153.43:8090' }
 if ([string]::IsNullOrWhiteSpace($identifier)) {
   throw 'Set MSR_AMIS_TEST_LOGIN_IDENTIFIER or MSR_AMIS_SETUP_ADMIN_EMAIL before running this script.'
 }
@@ -11,7 +12,7 @@ $body = @{
 
 $login = Invoke-RestMethod `
   -Method Post `
-  -Uri "http://localhost:8090/api/auth/login" `
+  -Uri "$baseUrl/api/auth/login" `
   -ContentType "application/json" `
   -Body $body
 
@@ -24,7 +25,7 @@ $login.user | Format-List
 Write-Host "`nUSERS`n" -ForegroundColor Cyan
 (Invoke-RestMethod `
   -Method Get `
-  -Uri "http://localhost:8090/api/users" `
+  -Uri "$baseUrl/api/users" `
   -Headers $headers) |
   Select-Object id, fullName, email, role, status |
   Format-Table -AutoSize
@@ -32,7 +33,7 @@ Write-Host "`nUSERS`n" -ForegroundColor Cyan
 Write-Host "`nEQUIPMENT`n" -ForegroundColor Cyan
 (Invoke-RestMethod `
   -Method Get `
-  -Uri "http://localhost:8090/api/equipment" `
+  -Uri "$baseUrl/api/equipment" `
   -Headers $headers) |
   Select-Object assetCode, name, category, status |
   Format-Table -AutoSize
@@ -40,7 +41,7 @@ Write-Host "`nEQUIPMENT`n" -ForegroundColor Cyan
 Write-Host "`nASSIGNMENTS`n" -ForegroundColor Cyan
 (Invoke-RestMethod `
   -Method Get `
-  -Uri "http://localhost:8090/api/assignments" `
+  -Uri "$baseUrl/api/assignments" `
   -Headers $headers) |
   Select-Object id, person, equipmentType, quantity, distributedCount, status |
   Format-Table -AutoSize
@@ -48,7 +49,7 @@ Write-Host "`nASSIGNMENTS`n" -ForegroundColor Cyan
 Write-Host "`nPENDING RETURNS`n" -ForegroundColor Cyan
 (Invoke-RestMethod `
   -Method Get `
-  -Uri "http://localhost:8090/api/assignments/pending-returns" `
+  -Uri "$baseUrl/api/assignments/pending-returns" `
   -Headers $headers) |
   Select-Object id, person, equipmentType, quantity, distributedCount, status |
   Format-Table -AutoSize
@@ -56,5 +57,5 @@ Write-Host "`nPENDING RETURNS`n" -ForegroundColor Cyan
 Write-Host "`nDASHBOARD`n" -ForegroundColor Cyan
 Invoke-RestMethod `
   -Method Get `
-  -Uri "http://localhost:8090/api/dashboard/summary" `
+  -Uri "$baseUrl/api/dashboard/summary" `
   -Headers $headers | Format-List
