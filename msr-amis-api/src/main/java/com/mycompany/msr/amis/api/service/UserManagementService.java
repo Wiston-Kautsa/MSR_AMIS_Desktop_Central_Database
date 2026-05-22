@@ -171,7 +171,7 @@ public class UserManagementService {
     @Transactional
     public CommonMessageResponse deleteUser(String requesterIdentifier, Long userId) {
         UserAccount requester = getRequester(requesterIdentifier);
-        requireManager(requester);
+        requireSuperAdmin(requester);
 
         UserAccount target = userRepository.findById(userId)
                 .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "User not found."));
@@ -227,6 +227,12 @@ public class UserManagementService {
         }
         if (requester.getRole() != UserRole.SUPER_ADMIN && requester.getRole() != UserRole.ADMIN) {
             throw new ApiException(HttpStatus.FORBIDDEN, "User management is available only to Super Admin and Admin.");
+        }
+    }
+
+    private void requireSuperAdmin(UserAccount requester) {
+        if (requester.getRole() != UserRole.SUPER_ADMIN) {
+            throw new ApiException(HttpStatus.FORBIDDEN, "Only Super Admin can delete user accounts.");
         }
     }
 

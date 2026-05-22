@@ -336,7 +336,7 @@ Maintenance appears in:
 
 Tables support right-click actions where available:
 
-- Users: edit, delete, freeze, unfreeze, refresh
+- Users: edit, freeze, unfreeze, refresh. Delete is visible and allowed only for Super Admin.
 - Equipment: edit, delete, retire, restore, refresh
 - Assignments: edit, delete, freeze, unfreeze, retire, restore, refresh
 

@@ -54,6 +54,7 @@ public class UsersController implements Initializable {
     @FXML private TitledPane userDirectoryPane;
     @FXML private javafx.scene.control.Button btnBackToLogin;
     @FXML private javafx.scene.control.Button btnCompleteSetup;
+    @FXML private javafx.scene.control.Button btnDeleteSelected;
 
     @FXML private TableView<User> tableUsers;
 
@@ -77,6 +78,7 @@ public class UsersController implements Initializable {
         loadDepartments();
         configurePasswordToggle();
         configureSetupMode();
+        configureDeleteAvailability();
 
         TableNumbering.install(colNo);
         colId.setCellValueFactory(new PropertyValueFactory<>("id"));
@@ -171,7 +173,9 @@ public class UsersController implements Initializable {
             refresh.setOnAction(e -> refreshUsers());
 
             menu.getItems().add(edit);
-            menu.getItems().add(delete);
+            if (AccessControl.canDeleteUsers()) {
+                menu.getItems().add(delete);
+            }
             menu.getItems().addAll(freeze, unfreeze, refresh);
 
             row.contextMenuProperty().bind(
@@ -303,6 +307,10 @@ public class UsersController implements Initializable {
 
     @FXML
     private void handleDeleteSelectedUser(ActionEvent event) {
+        if (!AccessControl.canDeleteUsers()) {
+            showAlert("Access Denied", "Only Super Admin can delete user accounts. Admin can freeze users instead.");
+            return;
+        }
         deleteUser(selectedUser());
     }
 
@@ -414,6 +422,10 @@ public class UsersController implements Initializable {
     private void deleteUser(User selected) {
         if (selected == null) {
             showAlert("Error", "Select a user first.");
+            return;
+        }
+        if (!AccessControl.canDeleteUsers()) {
+            showAlert("Access Denied", "Only Super Admin can delete user accounts. Admin can freeze users instead.");
             return;
         }
 
@@ -579,6 +591,15 @@ public class UsersController implements Initializable {
             txtPasswordVisible.setManaged(isSelected);
             txtPasswordVisible.setVisible(isSelected);
         });
+    }
+
+    private void configureDeleteAvailability() {
+        if (btnDeleteSelected == null) {
+            return;
+        }
+        boolean canDeleteUsers = AccessControl.canDeleteUsers();
+        btnDeleteSelected.setManaged(canDeleteUsers);
+        btnDeleteSelected.setVisible(canDeleteUsers);
     }
 
     private String currentPasswordInput() {

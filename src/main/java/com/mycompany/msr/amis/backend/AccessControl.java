@@ -43,6 +43,10 @@ public final class AccessControl {
         return Session.isSetupMode() || Session.hasRole(ROLE_SUPER_ADMIN, ROLE_ADMIN);
     }
 
+    public static boolean canDeleteUsers() {
+        return Session.hasRole(ROLE_SUPER_ADMIN);
+    }
+
     public static boolean canManageDepartments() {
         return Session.hasRole(ROLE_SUPER_ADMIN, ROLE_ADMIN);
     }
@@ -98,6 +102,10 @@ public final class AccessControl {
             return !ROLE_SUPER_ADMIN.equalsIgnoreCase(target.getRole());
         }
         return Session.hasRole(ROLE_USER) && ROLE_USER.equalsIgnoreCase(target.getRole());
+    }
+
+    public static boolean canDeleteTarget(User target) {
+        return canDeleteUsers() && target != null;
     }
 
     public static boolean isProtectedSuperAdmin(User user) {

@@ -137,6 +137,7 @@ Super Admin has full system authority.
 Allowed:
 
 - manage Super Admin, Admin, and User accounts
+- delete user accounts
 - manage departments
 - view audit logs
 - access Data Maintenance
@@ -157,6 +158,7 @@ Admin has controlled operational authority.
 Allowed:
 
 - manage Admin and User accounts
+- freeze and unfreeze Admin and User accounts
 - manage departments
 - view audit logs
 - access Sync Center
@@ -167,6 +169,7 @@ Allowed:
 Restricted:
 
 - cannot create or manage Super Admin accounts
+- cannot delete user accounts; freeze the account instead
 - cannot access Data Maintenance
 - cannot requeue other users' rejected sync records
 - cannot process other users' queued sync work

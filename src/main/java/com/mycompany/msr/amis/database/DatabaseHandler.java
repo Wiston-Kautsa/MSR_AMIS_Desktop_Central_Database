@@ -1634,8 +1634,8 @@ public class DatabaseHandler {
     public static void deleteUser(int id) throws Exception {
         AccessControl.requireRole(AccessControl.ROLE_SUPER_ADMIN);
         User target = getUserById(id);
-        if (!AccessControl.canManageTarget(target)) {
-            throw new SecurityException("You are not allowed to delete this user.");
+        if (!AccessControl.canDeleteTarget(target)) {
+            throw new SecurityException("Only Super Admin can delete user accounts.");
         }
         if (target != null
                 && AccessControl.ROLE_SUPER_ADMIN.equalsIgnoreCase(target.getRole())
@@ -1666,7 +1666,7 @@ public class DatabaseHandler {
     }
 
     public static boolean updateUser(int id, String name, String password, String role, String department, String email) throws Exception {
-        AccessControl.requireRole(AccessControl.ROLE_SUPER_ADMIN);
+        AccessControl.requireRole(AccessControl.ROLE_SUPER_ADMIN, AccessControl.ROLE_ADMIN);
         User target = getUserById(id);
         if (!AccessControl.canManageTarget(target)) {
             throw new SecurityException("You are not allowed to edit this user.");
@@ -1733,7 +1733,7 @@ public class DatabaseHandler {
     }
 
     public static boolean updateUserStatus(int id, String status) throws Exception {
-        AccessControl.requireRole(AccessControl.ROLE_SUPER_ADMIN);
+        AccessControl.requireRole(AccessControl.ROLE_SUPER_ADMIN, AccessControl.ROLE_ADMIN);
         User target = getUserById(id);
         if (!AccessControl.canManageTarget(target)) {
             throw new SecurityException("You are not allowed to change this user's status.");

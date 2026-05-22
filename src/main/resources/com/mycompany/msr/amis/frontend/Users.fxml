@@ -155,7 +155,7 @@
                             <children>
                                 <VBox spacing="10.0" styleClass="toolbar-row">
                                     <children>
-                                        <Label text="Select an account, then use the buttons to edit, freeze, unfreeze, delete, or refresh."
+                                        <Label text="Select an account, then use the available buttons to edit, freeze, unfreeze, delete, or refresh."
                                                wrapText="true"
                                                maxWidth="1.7976931348623157E308"
                                                styleClass="page-subtitle"/>
@@ -173,7 +173,8 @@
                                                         minWidth="180.0"
                                                         onAction="#handleUnfreezeSelectedUser"
                                                         styleClass="action-button"/>
-                                                <Button text="Delete Selected"
+                                                <Button fx:id="btnDeleteSelected"
+                                                        text="Delete Selected"
                                                         minWidth="165.0"
                                                         onAction="#handleDeleteSelectedUser"
                                                         styleClass="danger-button"/>

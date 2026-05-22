@@ -60,7 +60,7 @@ public class UserController {
     }
 
     @DeleteMapping("/{userId}")
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN','ADMIN')")
+    @PreAuthorize("hasRole('SUPER_ADMIN')")
     public CommonMessageResponse deleteUser(Authentication authentication, @PathVariable Long userId) {
         return userManagementService.deleteUser(authentication.getName(), userId);
     }

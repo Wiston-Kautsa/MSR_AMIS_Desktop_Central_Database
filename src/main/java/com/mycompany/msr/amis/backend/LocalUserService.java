@@ -103,8 +103,8 @@ public final class LocalUserService implements UserService {
     @Override
     public void deleteUser(int id) throws Exception {
         User existing = DatabaseHandler.getUserById(id);
-        if (!AccessControl.canManageTarget(existing)) {
-            throw new SecurityException("You do not have permission to delete this user.");
+        if (!AccessControl.canDeleteTarget(existing)) {
+            throw new SecurityException("Only Super Admin can delete user accounts.");
         }
         if (remoteMirrorCoordinator.hasRemoteSession()) {
             remoteMirrorCoordinator.getRemoteUserService().deleteUser(id);
