@@ -173,7 +173,7 @@ At the time of this document:
 - the desktop includes Maintenance Tracking and Maintenance Report
 - Asset History includes maintenance events as part of the asset timeline
 - PostgreSQL includes `maintenance_log` schema support
-- the May 17, 2026 desktop installer includes updated bulk enrolment templates, complete table column headers, equipment metadata columns, maintenance tracking/reporting, Asset History maintenance events, role-based Sync Center access, and Department Management
+- the May 22, 2026 desktop installer points clients to `http://143.198.153.43:8090` and includes updated bulk enrolment templates, complete table column headers, equipment metadata columns, maintenance tracking/reporting, Asset History maintenance events, role-based Sync Center access, and Department Management
 
 ## Conclusion
 

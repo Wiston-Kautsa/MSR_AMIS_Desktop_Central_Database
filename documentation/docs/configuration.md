@@ -28,10 +28,10 @@ Example:
 
 ```env
 MSR_AMIS_DATA_MODE=REMOTE_API
-MSR_AMIS_API_BASE_URL=http://SERVER_IP_OR_NAME:8090
+MSR_AMIS_API_BASE_URL=http://143.198.153.43:8090
 
 APP_MODE=REMOTE_API
-API_BASE_URL=http://SERVER_IP_OR_NAME:8090
+API_BASE_URL=http://143.198.153.43:8090
 ```
 
 Use `localhost` only when the API is running on the same computer as the desktop app. Client machines should point to the server IP address or DNS name.
@@ -39,8 +39,8 @@ Use `localhost` only when the API is running on the same computer as the desktop
 If users see `API not reachable`, first confirm that client `.env` files do not point to `localhost` unless the API is installed on that same client computer. Normal MIS clients should use:
 
 ```env
-MSR_AMIS_API_BASE_URL=http://SERVER_IP_OR_NAME:8090
-API_BASE_URL=http://SERVER_IP_OR_NAME:8090
+MSR_AMIS_API_BASE_URL=http://143.198.153.43:8090
+API_BASE_URL=http://143.198.153.43:8090
 ```
 
 For the full recovery checklist, see [Troubleshooting](troubleshooting.md).

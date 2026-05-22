@@ -3,13 +3,42 @@
 This is the recommended server deployment for MSR-AMIS.
 
 ```text
-Desktop client PCs -> API container on server :8090 -> PostgreSQL container
+Desktop client PCs -> http://143.198.153.43:8090 -> API container -> PostgreSQL container
 ```
 
 The server clones the project from GitHub. Docker then builds and runs the API
 and PostgreSQL. Desktop users receive only the desktop installer and their login
 details. They must not receive `docker.env`, database credentials, or server
 source access unless they are part of the deployment team.
+
+## Deployment Reference
+
+| Property | Value |
+| --- | --- |
+| Deployment shape | Desktop client PCs -> MSR-AMIS API on server port `8090` -> PostgreSQL on Docker network port `5432` |
+| Current API URL | `http://143.198.153.43:8090` |
+| Primary platform | Linux server, Ubuntu or Debian |
+| Optional platform | Windows Server or Windows development machine using Docker Desktop |
+| Security rule | `docker.env` stays on the server only. Desktop users receive only the installer, API URL, username, and password. |
+
+Important: keep one server configuration and one desktop configuration.
+Do not mix database, JWT, SMTP, or reserved-account variables into a desktop
+`.env` file. Desktop PCs need only the API URL and remote-mode settings.
+
+Architecture:
+
+```text
+Desktop Client PCs
+Installed MSR-AMIS desktop application
+HTTP -> http://143.198.153.43:8090
+
+MSR-AMIS API Container
+Published port 8090 | Spring Boot
+JDBC -> jdbc:postgresql://msr-amis-db:5432/msr_amis
+
+PostgreSQL Container
+Internal port 5432 | msr-amis-db service name
+```
 
 Repository:
 
@@ -176,7 +205,7 @@ sudo ufw status
 From a client PC, test:
 
 ```powershell
-Invoke-RestMethod http://SERVER_IP_OR_NAME:8090/actuator/health
+Invoke-RestMethod http://143.198.153.43:8090/actuator/health
 ```
 
 The response should show `UP`.
@@ -201,14 +230,14 @@ On each desktop client, the installed `.env` must point to the server API:
 
 ```env
 MSR_AMIS_DATA_MODE=REMOTE_API
-MSR_AMIS_API_BASE_URL=http://SERVER_IP_OR_NAME:8090
+MSR_AMIS_API_BASE_URL=http://143.198.153.43:8090
 MSR_AMIS_AUTO_MIRROR_AFTER_MUTATION=false
 
 APP_MODE=REMOTE_API
-API_BASE_URL=http://SERVER_IP_OR_NAME:8090
+API_BASE_URL=http://143.198.153.43:8090
 ```
 
-Use the actual server IP address or DNS name.
+Use the current server IP address or DNS name.
 
 Do not use `localhost` on client PCs unless the API is running on that same PC.
 
@@ -217,7 +246,7 @@ Do not use `localhost` on client PCs unless the API is running on that same PC.
 On the development machine, set the server API URL before packaging:
 
 ```powershell
-$env:MSR_AMIS_PACKAGE_API_BASE_URL="http://SERVER_IP_OR_NAME:8090"
+$env:MSR_AMIS_PACKAGE_API_BASE_URL="http://143.198.153.43:8090"
 .\scripts\build-desktop.cmd
 ```
 
@@ -238,6 +267,19 @@ docker compose --env-file ./docker.env up -d --build
 docker compose --env-file ./docker.env ps
 curl http://localhost:8090/actuator/health
 ```
+
+After the server update is healthy, rebuild the MSI and EXE on the development
+machine if desktop code or packaged configuration changed:
+
+```powershell
+$env:MSR_AMIS_PACKAGE_API_BASE_URL="http://143.198.153.43:8090"
+.\scripts\build-desktop.cmd
+```
+
+Distribute the refreshed files from `dist`:
+
+- `dist\MSR AMIS-1.0.0.msi`
+- `dist\MSR AMIS-1.0.0.exe`
 
 ## Step 11 - Stop Or Restart The System
 

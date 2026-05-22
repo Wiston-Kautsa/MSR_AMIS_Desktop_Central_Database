@@ -6,7 +6,7 @@ administrator has deliberately chosen to run PostgreSQL as a normal database
 service and the API as a Java process.
 
 ```text
-Desktop client PCs -> API on server :8090 -> PostgreSQL on server :5432
+Desktop client PCs -> http://143.198.153.43:8090 -> API on server -> PostgreSQL on server :5432
 ```
 
 ## 1. Install Server Requirements
@@ -114,7 +114,7 @@ Expected:
 From a client PC:
 
 ```powershell
-Invoke-RestMethod http://SERVER_IP_OR_NAME:8090/actuator/health
+Invoke-RestMethod http://143.198.153.43:8090/actuator/health
 ```
 
 If the client PC cannot reach the API, allow inbound TCP `8090` in the server
@@ -126,11 +126,11 @@ Client `.env` files must point to the server, not `localhost`:
 
 ```env
 MSR_AMIS_DATA_MODE=REMOTE_API
-MSR_AMIS_API_BASE_URL=http://SERVER_IP_OR_NAME:8090
+MSR_AMIS_API_BASE_URL=http://143.198.153.43:8090
 MSR_AMIS_AUTO_MIRROR_AFTER_MUTATION=false
 
 APP_MODE=REMOTE_API
-API_BASE_URL=http://SERVER_IP_OR_NAME:8090
+API_BASE_URL=http://143.198.153.43:8090
 ```
 
 ## 8. Build Desktop Installer For This Server
@@ -138,7 +138,7 @@ API_BASE_URL=http://SERVER_IP_OR_NAME:8090
 Before packaging the desktop installer:
 
 ```powershell
-$env:MSR_AMIS_PACKAGE_API_BASE_URL="http://SERVER_IP_OR_NAME:8090"
+$env:MSR_AMIS_PACKAGE_API_BASE_URL="http://143.198.153.43:8090"
 .\scripts\build-desktop.cmd
 ```
 

@@ -389,7 +389,7 @@ Generated outputs:
 - `dist\MSR AMIS-1.0.0.msi`
 - `dist\MSR AMIS-1.0.0.exe`
 
-Current rebuilt desktop installers: May 17, 2026.
+Current rebuilt desktop installers: May 22, 2026. The packaged client API URL is `http://143.198.153.43:8090`.
 
 The current build includes:
 

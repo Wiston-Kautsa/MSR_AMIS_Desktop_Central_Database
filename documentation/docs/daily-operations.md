@@ -138,7 +138,7 @@ For production, run the packaged API as a Windows service or scheduled startup t
 From a desktop client, test the server address, not `localhost`:
 
 ```powershell
-Invoke-RestMethod http://SERVER_IP_OR_NAME:8090/actuator/health
+Invoke-RestMethod http://143.198.153.43:8090/actuator/health
 ```
 
 If the server health check works locally but fails from the client, check the network connection, server IP/name, and Windows Firewall.
@@ -149,17 +149,17 @@ Client computers must point to the API server:
 
 ```env
 MSR_AMIS_DATA_MODE=REMOTE_API
-MSR_AMIS_API_BASE_URL=http://SERVER_IP_OR_NAME:8090
+MSR_AMIS_API_BASE_URL=http://143.198.153.43:8090
 
 APP_MODE=REMOTE_API
-API_BASE_URL=http://SERVER_IP_OR_NAME:8090
+API_BASE_URL=http://143.198.153.43:8090
 ```
 
 Use `localhost` only when the desktop app and API are running on the same computer. If a normal client uses `localhost`, it will look for an API on that client machine and show API not reachable.
 
 ### 6. Check the firewall
 
-Allow inbound access to API port `8090` on the server. If the server can reach `localhost:8090` but clients cannot reach `SERVER_IP_OR_NAME:8090`, firewall or network routing is the likely cause.
+Allow inbound access to API port `8090` on the server. If the server can reach `localhost:8090` but clients cannot reach `143.198.153.43:8090`, firewall or network routing is the likely cause.
 
 ### 7. Use Sync Center after recovery
 
@@ -367,10 +367,10 @@ Each client should use:
 
 ```env
 MSR_AMIS_DATA_MODE=REMOTE_API
-MSR_AMIS_API_BASE_URL=http://SERVER_IP_OR_NAME:8090
+MSR_AMIS_API_BASE_URL=http://143.198.153.43:8090
 
 APP_MODE=REMOTE_API
-API_BASE_URL=http://SERVER_IP_OR_NAME:8090
+API_BASE_URL=http://143.198.153.43:8090
 ```
 
 Use `AUTO` only where offline work is approved and Sync Center recovery is part of normal operations. Use `localhost` only if the API runs on that same computer.
@@ -404,6 +404,6 @@ dist\MSR AMIS-1.0.0.msi
 dist\MSR AMIS-1.0.0.exe
 ```
 
-The current rebuilt installers were generated on May 17, 2026. This build includes the updated bulk enrolment templates, complete table column header display, equipment metadata columns, maintenance tracking/reporting, Asset History with maintenance events, Department Management, role-based Sync Center access, and active queue cleanup after successful push.
+The current rebuilt installers were generated on May 22, 2026. This build points clients to `http://143.198.153.43:8090` and includes the updated bulk enrolment templates, complete table column header display, equipment metadata columns, maintenance tracking/reporting, Asset History with maintenance events, Department Management, role-based Sync Center access, and active queue cleanup after successful push.
 
 Clients must install the updated MSI/EXE before they receive desktop fixes.

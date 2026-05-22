@@ -53,10 +53,10 @@ Current production-oriented `.env` shape:
 
 ```env
 MSR_AMIS_DATA_MODE=REMOTE_API
-MSR_AMIS_API_BASE_URL=http://SERVER_IP_OR_NAME:8090
+MSR_AMIS_API_BASE_URL=http://143.198.153.43:8090
 
 APP_MODE=REMOTE_API
-API_BASE_URL=http://SERVER_IP_OR_NAME:8090
+API_BASE_URL=http://143.198.153.43:8090
 
 MSR_AMIS_API_PORT=8090
 MSR_AMIS_DB_URL=jdbc:postgresql://localhost:5432/msr_amis
@@ -93,19 +93,19 @@ MSR_AMIS_OPERATION_EMAIL_RECIPIENTS=msramis@nlgfc.gov.mw
 
 Use `localhost` only when the desktop and API run on the same computer. Client machines must point to the API server address.
 
-For installed desktop clients, use [desktop-client.env.example](desktop-client.env.example). Rename it to `.env` in the installed `MSR AMIS` folder and replace `SERVER_IP_OR_NAME` with the computer or server running the API. The packaged desktop now checks for `.env` in the launch folder, the packaged `app` folder, and the installed application folder.
+For installed desktop clients, use [desktop-client.env.example](desktop-client.env.example). Rename it to `.env` in the installed `MSR AMIS` folder and point it to the current API server, `http://143.198.153.43:8090`. The packaged desktop now checks for `.env` in the launch folder, the packaged `app` folder, and the installed application folder.
 
 The installer also places an editable `.env` file in the installed `MSR AMIS` folder. If the API server IP changes, edit that file and restart the desktop application:
 
 ```env
-MSR_AMIS_API_BASE_URL=http://NEW_SERVER_IP:8090
-API_BASE_URL=http://NEW_SERVER_IP:8090
+MSR_AMIS_API_BASE_URL=http://143.198.153.43:8090
+API_BASE_URL=http://143.198.153.43:8090
 ```
 
 To build an installer that already contains the client API URL, set `MSR_AMIS_PACKAGE_API_BASE_URL` before running the package script:
 
 ```powershell
-$env:MSR_AMIS_PACKAGE_API_BASE_URL="http://SERVER_IP_OR_NAME:8090"
+$env:MSR_AMIS_PACKAGE_API_BASE_URL="http://143.198.153.43:8090"
 .\scripts\build-desktop.cmd
 ```
 
@@ -124,10 +124,10 @@ Invoke-RestMethod http://localhost:8090/actuator/health
 Client computers must test the server address, not `localhost`:
 
 ```powershell
-Invoke-RestMethod http://SERVER_IP_OR_NAME:8090/actuator/health
+Invoke-RestMethod http://143.198.153.43:8090/actuator/health
 ```
 
-Normal client `.env` files must use `http://SERVER_IP_OR_NAME:8090`. See [Troubleshooting](documentation/docs/troubleshooting.md) for the full checklist covering API startup, PostgreSQL, firewall, client configuration, and Sync Center recovery.
+Normal client `.env` files must use `http://143.198.153.43:8090`. See [Troubleshooting](documentation/docs/troubleshooting.md) for the full checklist covering API startup, PostgreSQL, firewall, client configuration, and Sync Center recovery.
 
 ## Server Hosting For Testers
 
@@ -147,12 +147,12 @@ docker compose --env-file ./docker.env ps
 curl http://localhost:8090/actuator/health
 ```
 
-The desktop client is installed on user machines, then its `.env` API URL is set to the server address, for example `http://SERVER_IP_OR_NAME:8090`.
+The desktop client is installed on user machines, then its `.env` API URL is set to the current server address, `http://143.198.153.43:8090`.
 
 Build a tester desktop installer that points to the hosted API:
 
 ```powershell
-$env:MSR_AMIS_PACKAGE_API_BASE_URL="http://SERVER_IP_OR_NAME:8090"
+$env:MSR_AMIS_PACKAGE_API_BASE_URL="http://143.198.153.43:8090"
 .\scripts\build-desktop.cmd
 ```
 
@@ -179,7 +179,7 @@ Generated files:
 - `dist\MSR AMIS-1.0.0.msi`
 - `dist\MSR AMIS-1.0.0.exe`
 
-Current package build: May 17, 2026. This desktop package includes the updated bulk enrolment templates, full table column headers, equipment operational metadata, maintenance tracking/reporting, Asset History with maintenance events, role-based Sync Center access, active queue cleanup after successful push, and Department Management.
+Current package build: May 22, 2026. This desktop package points clients to `http://143.198.153.43:8090` and includes the updated bulk enrolment templates, full table column headers, equipment operational metadata, maintenance tracking/reporting, Asset History with maintenance events, role-based Sync Center access, active queue cleanup after successful push, and Department Management.
 
 ## Development
 
