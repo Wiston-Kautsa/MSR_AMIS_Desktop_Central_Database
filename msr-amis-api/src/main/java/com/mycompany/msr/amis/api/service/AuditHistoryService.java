@@ -158,7 +158,7 @@ public class AuditHistoryService {
             params.add(effectiveUsername);
         }
         if (!includeSuperAdminLogs) {
-            conditions.add("(actor_user.role IS NULL OR UPPER(actor_user.role) <> 'SUPER_ADMIN')");
+            conditions.add("UPPER(actor_user.role) IN ('ADMIN', 'USER')");
         }
         if (!conditions.isEmpty()) {
             sql += "WHERE " + String.join(" AND ", conditions) + " ";

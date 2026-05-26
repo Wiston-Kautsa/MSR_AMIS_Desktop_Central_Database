@@ -104,9 +104,9 @@ public final class AuditService {
         }
         if (!Session.hasRole(AccessControl.ROLE_SUPER_ADMIN)) {
             sql += hasFilter ? "AND " : "WHERE ";
-            sql += "NOT EXISTS (" +
+            sql += "EXISTS (" +
                     "SELECT 1 FROM users actor_user " +
-                    "WHERE UPPER(actor_user.role) = 'SUPER_ADMIN' " +
+                    "WHERE UPPER(actor_user.role) IN ('ADMIN', 'USER') " +
                     "AND (" +
                     "LOWER(actor_user.email) = LOWER(COALESCE(NULLIF(TRIM(log.username), ''), NULLIF(TRIM(log.performed_by), ''), '')) " +
                     "OR LOWER(actor_user.username) = LOWER(COALESCE(NULLIF(TRIM(log.username), ''), NULLIF(TRIM(log.performed_by), ''), ''))" +
