@@ -68,6 +68,11 @@ public class UsersController implements Initializable {
 
     private final UserService userService = ServiceRegistry.getUserService();
     private ObservableList<User> data;
+    private static String nextDirectoryRoleFilter;
+
+    public static void showDirectoryRole(String role) {
+        nextDirectoryRoleFilter = role == null ? null : role.trim().toUpperCase();
+    }
 
     @Override
     public void initialize(URL url, ResourceBundle rb) {
@@ -189,7 +194,13 @@ public class UsersController implements Initializable {
     }
 
     private void loadUsers() {
-        data = javafx.collections.FXCollections.observableArrayList(userService.getUsers());
+        data = javafx.collections.FXCollections.observableArrayList();
+        String roleFilter = currentDirectoryRoleFilter();
+        for (User user : userService.getUsers()) {
+            if (roleFilter == null || roleFilter.equalsIgnoreCase(user.getRole())) {
+                data.add(user);
+            }
+        }
         tableUsers.setItems(null);
         tableUsers.setItems(data);
     }
@@ -216,6 +227,8 @@ public class UsersController implements Initializable {
                 ? (isBootstrapAdminSetup()
                     ? (cmbRole.getValue() != null ? cmbRole.getValue() : AccessControl.ROLE_USER)
                     : AccessControl.ROLE_ADMIN)
+                : currentDirectoryRoleFilter() != null
+                ? currentDirectoryRoleFilter()
                 : (cmbRole.getValue() != null ? cmbRole.getValue() : AccessControl.ROLE_USER);
         String department = comboText(cmbDepartment);
 
@@ -560,6 +573,10 @@ public class UsersController implements Initializable {
                 comboBox.getItems().add(AccessControl.ROLE_ADMIN);
                 comboBox.setValue(AccessControl.ROLE_ADMIN);
             }
+        } else if (currentDirectoryRoleFilter() != null) {
+            comboBox.getItems().add(currentDirectoryRoleFilter());
+            comboBox.setValue(currentDirectoryRoleFilter());
+            comboBox.setDisable(true);
         } else if (Session.hasRole(AccessControl.ROLE_SUPER_ADMIN)) {
             comboBox.getItems().addAll(
                     AccessControl.ROLE_SUPER_ADMIN,
@@ -574,6 +591,20 @@ public class UsersController implements Initializable {
         } else {
             comboBox.getItems().add(AccessControl.ROLE_USER);
         }
+    }
+
+    private String currentDirectoryRoleFilter() {
+        if (Session.isSetupMode()) {
+            return null;
+        }
+        String role = nextDirectoryRoleFilter;
+        if (AccessControl.ROLE_ADMIN.equalsIgnoreCase(role)) {
+            return AccessControl.ROLE_ADMIN;
+        }
+        if (AccessControl.ROLE_USER.equalsIgnoreCase(role)) {
+            return AccessControl.ROLE_USER;
+        }
+        return AccessControl.ROLE_USER;
     }
 
     private void configurePasswordToggle() {

@@ -68,6 +68,7 @@ public class DashboardsController implements Initializable {
     @FXML private Label lblAvailabilityRate;
     @FXML private Button btnBackupSync;
     @FXML private Button btnAuditLogs;
+    @FXML private Button btnAdmins;
     @FXML private Button btnUsers;
     @FXML private Button btnDepartments;
     @FXML private Button btnDataMaintenance;
@@ -87,6 +88,10 @@ public class DashboardsController implements Initializable {
     public void initialize(URL url, ResourceBundle rb) {
         if (contentArea != null && !contentArea.getChildren().isEmpty()) {
             dashboardHome = contentArea.getChildren().get(0);
+        }
+        if (btnAdmins != null) {
+            btnAdmins.setManaged(AccessControl.canManageUsers());
+            btnAdmins.setVisible(AccessControl.canManageUsers());
         }
         if (btnUsers != null) {
             btnUsers.setManaged(AccessControl.canManageUsers());
@@ -201,7 +206,7 @@ public class DashboardsController implements Initializable {
 
     private void updateRoleSectionVisibility() {
         setPaneAvailability(paneDataRecords, isAvailable(btnBackupSync) || isAvailable(btnAuditLogs) || isAvailable(btnSyncCenter));
-        setPaneAvailability(paneAdministration, isAvailable(btnUsers) || isAvailable(btnDepartments) || isAvailable(btnDataMaintenance));
+        setPaneAvailability(paneAdministration, isAvailable(btnAdmins) || isAvailable(btnUsers) || isAvailable(btnDepartments) || isAvailable(btnDataMaintenance));
     }
 
     private boolean isAvailable(Node node) {
@@ -396,9 +401,21 @@ public class DashboardsController implements Initializable {
     }
 
     @FXML
+    private void openAdmins() {
+        try {
+            AccessControl.requireRole(AccessControl.ROLE_SUPER_ADMIN, AccessControl.ROLE_ADMIN);
+            UsersController.showDirectoryRole(AccessControl.ROLE_ADMIN);
+            loadPage("Users.fxml");
+        } catch (SecurityException e) {
+            OperationFeedbackHelper.showError("Access Denied", e.getMessage());
+        }
+    }
+
+    @FXML
     private void openUsers() {
         try {
             AccessControl.requireRole(AccessControl.ROLE_SUPER_ADMIN, AccessControl.ROLE_ADMIN);
+            UsersController.showDirectoryRole(AccessControl.ROLE_USER);
             loadPage("Users.fxml");
         } catch (SecurityException e) {
             OperationFeedbackHelper.showError("Access Denied", e.getMessage());
