@@ -43,6 +43,10 @@ public class ConfiguredAccountEmailPolicyService {
             if (!LEGACY_SEED_EMAILS.contains(email) || reservedEmailConfig.isConfiguredAccountEmail(email)) {
                 continue;
             }
+            if (user.getRole() == UserRole.SUPER_ADMIN) {
+                user.setTemporary(false);
+                continue;
+            }
             user.setStatus(UserStatus.FROZEN);
             user.setTemporary(true);
             user.setMustChangePassword(false);
