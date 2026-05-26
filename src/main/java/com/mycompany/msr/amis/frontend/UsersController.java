@@ -612,7 +612,7 @@ public class UsersController implements Initializable {
             return null;
         }
         if (Session.hasRole(AccessControl.ROLE_ADMIN)) {
-            return AccessControl.ROLE_ADMIN;
+            return null;
         }
         if (Session.hasRole(AccessControl.ROLE_USER)) {
             return AccessControl.ROLE_USER;
