@@ -148,14 +148,14 @@ public final class ApiUserService implements UserService {
     }
 
     private boolean shouldUseLocalUserManagementFallback(Exception exception) {
-        if (AccessControl.canManageUsers()
+        if (AccessControl.canViewUserManagement()
                 && exception instanceof ApiClientException
                 && (((ApiClientException) exception).getStatusCode() == 401
                 || ((ApiClientException) exception).getStatusCode() == 403)) {
             return true;
         }
         String message = resolveMessage(exception).toLowerCase();
-        return AccessControl.canManageUsers()
+        return AccessControl.canViewUserManagement()
                 && message.contains("user management")
                 && message.contains("only to super admin");
     }
