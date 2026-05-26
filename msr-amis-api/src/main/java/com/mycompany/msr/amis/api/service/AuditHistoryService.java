@@ -9,6 +9,7 @@ import com.mycompany.msr.amis.api.dto.audit.AuditLogResponse;
 import com.mycompany.msr.amis.api.exception.ApiException;
 import java.sql.Timestamp;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
 import java.util.List;
 import com.mycompany.msr.amis.api.domain.UserAccount;
 import org.springframework.http.HttpStatus;
@@ -138,25 +139,35 @@ public class AuditHistoryService {
         }
         recordAuditLogView(requester);
         String effectiveUsername = normalize(username);
+        boolean includeSuperAdminLogs = "SUPER_ADMIN".equalsIgnoreCase(requesterRole);
 
         String sql =
-                "SELECT id, " +
-                        "COALESCE(NULLIF(TRIM(username), ''), NULLIF(TRIM(performed_by), ''), 'unknown_user') AS log_username, " +
-                        "action, " +
-                        "COALESCE(NULLIF(TRIM(module_name), ''), NULLIF(TRIM(entity), ''), '') AS log_module_name, " +
-                        "details, action_time " +
-                        "FROM audit_log ";
+                "SELECT log.id, " +
+                        "COALESCE(NULLIF(TRIM(log.username), ''), NULLIF(TRIM(log.performed_by), ''), 'unknown_user') AS log_username, " +
+                        "log.action, " +
+                        "COALESCE(NULLIF(TRIM(log.module_name), ''), NULLIF(TRIM(log.entity), ''), '') AS log_module_name, " +
+                        "log.details, log.action_time " +
+                        "FROM audit_log log " +
+                        "LEFT JOIN users actor_user ON " +
+                        "LOWER(actor_user.email) = LOWER(COALESCE(NULLIF(TRIM(log.username), ''), NULLIF(TRIM(log.performed_by), ''), '')) " +
+                        "OR LOWER(actor_user.username) = LOWER(COALESCE(NULLIF(TRIM(log.username), ''), NULLIF(TRIM(log.performed_by), ''), '')) ";
+        List<Object> params = new ArrayList<>();
+        List<String> conditions = new ArrayList<>();
         if (!effectiveUsername.isBlank()) {
-            sql += "WHERE LOWER(COALESCE(NULLIF(TRIM(username), ''), NULLIF(TRIM(performed_by), ''), '')) = LOWER(?) ";
-            return jdbcTemplate.query(sql + "ORDER BY action_time DESC, id DESC",
-                    (rs, rowNum) -> mapAuditLog(rs.getInt("id"), rs.getString("log_username"), rs.getString("action"),
-                            rs.getString("log_module_name"), rs.getString("details"), rs.getTimestamp("action_time")),
-                    effectiveUsername);
+            conditions.add("LOWER(COALESCE(NULLIF(TRIM(log.username), ''), NULLIF(TRIM(log.performed_by), ''), '')) = LOWER(?)");
+            params.add(effectiveUsername);
+        }
+        if (!includeSuperAdminLogs) {
+            conditions.add("(actor_user.role IS NULL OR UPPER(actor_user.role) <> 'SUPER_ADMIN')");
+        }
+        if (!conditions.isEmpty()) {
+            sql += "WHERE " + String.join(" AND ", conditions) + " ";
         }
 
-        return jdbcTemplate.query(sql + "ORDER BY action_time DESC, id DESC",
+        return jdbcTemplate.query(sql + "ORDER BY log.action_time DESC, log.id DESC",
                 (rs, rowNum) -> mapAuditLog(rs.getInt("id"), rs.getString("log_username"), rs.getString("action"),
-                        rs.getString("log_module_name"), rs.getString("details"), rs.getTimestamp("action_time")));
+                        rs.getString("log_module_name"), rs.getString("details"), rs.getTimestamp("action_time")),
+                params.toArray());
     }
 
     private AuditLogResponse mapAuditLog(int id, String username, String action, String moduleName, String details, Timestamp actionTime) {

@@ -59,7 +59,7 @@ public final class AuditService {
                     ));
                 }
             }
-            return logs.isEmpty() ? getLogsLocal(username) : logs;
+            return logs;
         } catch (Exception e) {
             e.printStackTrace();
             return getLogsLocal(username);
@@ -90,18 +90,30 @@ public final class AuditService {
     private static ObservableList<AuditLog> getLogsLocal(String username) {
         ObservableList<AuditLog> logs = FXCollections.observableArrayList();
         String sql =
-                "SELECT id, " +
-                "COALESCE(NULLIF(TRIM(username), ''), NULLIF(TRIM(performed_by), ''), 'unknown_user') AS log_username, " +
-                "action, " +
-                "COALESCE(NULLIF(TRIM(module_name), ''), NULLIF(TRIM(entity), ''), '') AS log_module_name, " +
-                "details, action_time " +
-                "FROM audit_log ";
+                "SELECT log.id, " +
+                "COALESCE(NULLIF(TRIM(log.username), ''), NULLIF(TRIM(log.performed_by), ''), 'unknown_user') AS log_username, " +
+                "log.action, " +
+                "COALESCE(NULLIF(TRIM(log.module_name), ''), NULLIF(TRIM(log.entity), ''), '') AS log_module_name, " +
+                "log.details, log.action_time " +
+                "FROM audit_log log ";
 
+        boolean hasFilter = false;
         if (username != null && !username.isBlank()) {
-            sql += "WHERE LOWER(COALESCE(NULLIF(TRIM(username), ''), NULLIF(TRIM(performed_by), ''), '')) = LOWER(?) ";
+            sql += "WHERE LOWER(COALESCE(NULLIF(TRIM(log.username), ''), NULLIF(TRIM(log.performed_by), ''), '')) = LOWER(?) ";
+            hasFilter = true;
+        }
+        if (!Session.hasRole(AccessControl.ROLE_SUPER_ADMIN)) {
+            sql += hasFilter ? "AND " : "WHERE ";
+            sql += "NOT EXISTS (" +
+                    "SELECT 1 FROM users actor_user " +
+                    "WHERE UPPER(actor_user.role) = 'SUPER_ADMIN' " +
+                    "AND (" +
+                    "LOWER(actor_user.email) = LOWER(COALESCE(NULLIF(TRIM(log.username), ''), NULLIF(TRIM(log.performed_by), ''), '')) " +
+                    "OR LOWER(actor_user.username) = LOWER(COALESCE(NULLIF(TRIM(log.username), ''), NULLIF(TRIM(log.performed_by), ''), ''))" +
+                    ")) ";
         }
 
-        sql += "ORDER BY action_time DESC, id DESC";
+        sql += "ORDER BY log.action_time DESC, log.id DESC";
 
         try (Connection conn = DatabaseHandler.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
