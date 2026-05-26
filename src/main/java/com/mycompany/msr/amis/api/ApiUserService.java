@@ -1,5 +1,6 @@
 package com.mycompany.msr.amis;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
@@ -21,10 +22,10 @@ public final class ApiUserService implements UserService {
             List<User> remoteUsers = Arrays.stream(users == null ? new UserPayload[0] : users)
                     .map(UserPayload::toUser)
                     .collect(Collectors.toList());
-            return remoteUsers.isEmpty() ? fallbackUsers() : remoteUsers;
+            return withCurrentSessionUser(remoteUsers.isEmpty() ? fallbackUsers() : remoteUsers);
         } catch (Exception exception) {
             if (shouldUseLocalUserManagementFallback(exception)) {
-                return fallbackUsers();
+                return withCurrentSessionUser(fallbackUsers());
             }
             throw new IllegalStateException(resolveMessage(exception), exception);
         }
@@ -162,6 +163,21 @@ public final class ApiUserService implements UserService {
 
     private List<User> fallbackUsers() {
         return DatabaseHandler.getUsers();
+    }
+
+    private List<User> withCurrentSessionUser(List<User> users) {
+        User currentUser = Session.getCurrentUser();
+        if (currentUser == null || currentUser.getEmail() == null || currentUser.getEmail().isBlank()) {
+            return users;
+        }
+        boolean alreadyPresent = users.stream()
+                .anyMatch(user -> user.getEmail() != null && user.getEmail().equalsIgnoreCase(currentUser.getEmail()));
+        if (alreadyPresent) {
+            return users;
+        }
+        List<User> merged = new ArrayList<>(users);
+        merged.add(currentUser);
+        return merged;
     }
 
     private Map<String, Object> userPayload(User user) {
