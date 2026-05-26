@@ -37,7 +37,7 @@ public class UserManagementService {
     public List<UserResponse> listVisibleUsers(String requesterIdentifier) {
         UserAccount requester = getRequester(requesterIdentifier);
         requireManager(requester);
-        return userRepository.findByTemporaryFalseAndRoleInOrderByFullNameAsc(visibleRolesFor(requester)).stream()
+        return userRepository.findByRoleInOrderByFullNameAsc(visibleRolesFor(requester)).stream()
                 .map(this::toResponse)
                 .toList();
     }

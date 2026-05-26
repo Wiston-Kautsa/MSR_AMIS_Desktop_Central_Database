@@ -1146,7 +1146,7 @@ public class DatabaseHandler {
 
         ObservableList<User> list = FXCollections.observableArrayList();
 
-        String sql = "SELECT * FROM users WHERE COALESCE(temporary, 0) = 0";
+        String sql = "SELECT * FROM users WHERE 1=1";
         if (Session.isSetupMode()) {
             sql += " AND UPPER(role) IN ('ADMIN', 'USER')";
         } else if (Session.hasRole(AccessControl.ROLE_USER)) {

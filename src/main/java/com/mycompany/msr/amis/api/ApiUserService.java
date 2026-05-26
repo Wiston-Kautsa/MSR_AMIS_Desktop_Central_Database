@@ -161,12 +161,7 @@ public final class ApiUserService implements UserService {
     }
 
     private List<User> fallbackUsers() {
-        List<User> localUsers = DatabaseHandler.getUsers();
-        if (!localUsers.isEmpty()) {
-            return localUsers;
-        }
-        User currentUser = Session.getCurrentUser();
-        return currentUser == null ? List.of() : List.of(currentUser);
+        return DatabaseHandler.getUsers();
     }
 
     private Map<String, Object> userPayload(User user) {

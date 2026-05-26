@@ -136,6 +136,7 @@ public class AuditHistoryService {
         if (!"SUPER_ADMIN".equalsIgnoreCase(requesterRole) && !"ADMIN".equalsIgnoreCase(requesterRole)) {
             throw new ApiException(HttpStatus.FORBIDDEN, "Access denied.");
         }
+        recordAuditLogView(requester);
         String effectiveUsername = normalize(username);
 
         String sql =
@@ -166,6 +167,26 @@ public class AuditHistoryService {
                 moduleName,
                 details,
                 actionTime == null ? "" : actionTime.toLocalDateTime().format(DATE_TIME_FORMATTER)
+        );
+    }
+
+    private void recordAuditLogView(UserAccount requester) {
+        String actor = normalize(requester == null ? "" : requester.getEmail());
+        if (actor.isBlank() && requester != null) {
+            actor = normalize(requester.getUsername());
+        }
+        if (actor.isBlank()) {
+            actor = "unknown_user";
+        }
+        jdbcTemplate.update(
+                "INSERT INTO audit_log(action, entity, performed_by, username, module_name, details, action_time) " +
+                        "VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)",
+                "VIEW_AUDIT_LOGS",
+                "AUDIT",
+                actor,
+                actor,
+                "AUDIT",
+                "Audit logs viewed."
         );
     }
 
