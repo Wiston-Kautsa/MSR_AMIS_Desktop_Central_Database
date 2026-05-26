@@ -32,6 +32,7 @@ public class UserController {
     }
 
     @GetMapping
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN','ADMIN')")
     public List<UserResponse> listUsers(Authentication authentication) {
         return userManagementService.listVisibleUsers(authentication.getName());
     }

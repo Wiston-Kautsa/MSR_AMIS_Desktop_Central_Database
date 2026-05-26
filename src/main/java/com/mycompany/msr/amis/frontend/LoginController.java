@@ -18,6 +18,7 @@ import javafx.scene.control.Button;
 import javafx.scene.control.CheckBox;
 import javafx.scene.control.ComboBox;
 import javafx.scene.control.Label;
+import javafx.scene.control.ListCell;
 import javafx.scene.control.PasswordField;
 import javafx.scene.control.ProgressBar;
 import javafx.scene.control.TextField;
@@ -466,15 +467,34 @@ public class LoginController implements Initializable {
             return;
         }
         cmbEmail.setEditable(true);
+        cmbEmail.setCellFactory(listView -> {
+            ListCell<String> cell = new ListCell<>() {
+                @Override
+                protected void updateItem(String email, boolean empty) {
+                    super.updateItem(email, empty);
+                    setText(empty || email == null ? null : email);
+                }
+            };
+            cell.setOnMousePressed(event -> {
+                if (!cell.isEmpty()) {
+                    event.consume();
+                    applyRememberedEmailSelection(cell.getItem());
+                }
+            });
+            return cell;
+        });
         refreshRememberedEmailChoices();
 
         cmbEmail.getSelectionModel().selectedItemProperty().addListener(
-                (obs, oldValue, newValue) -> fillRememberedPasswordFromSelection(newValue)
+                (obs, oldValue, newValue) -> applyRememberedEmailSelection(newValue)
         );
-        cmbEmail.setOnAction(event -> applyRememberedEmailSelection(currentEmailEditorText()));
+        cmbEmail.setOnAction(event -> applyRememberedEmailSelection(currentEmailComboValue()));
         cmbEmail.setOnHidden(event -> applyRememberedEmailSelection(currentEmailEditorText()));
         cmbEmail.getEditor().textProperty().addListener((obs, oldValue, newValue) -> {
             if (loginInProgress) {
+                return;
+            }
+            if (applyingRememberedSelection) {
                 return;
             }
             if (newValue != null && !newValue.equals(oldValue)) {
@@ -548,8 +568,11 @@ public class LoginController implements Initializable {
 
         applyingRememberedSelection = true;
         try {
+            cmbEmail.setValue(normalizedEmail);
+            cmbEmail.getSelectionModel().select(normalizedEmail);
             if (cmbEmail.getEditor() != null) {
                 cmbEmail.getEditor().setText(normalizedEmail);
+                cmbEmail.getEditor().positionCaret(normalizedEmail.length());
             }
             fillRememberedPasswordFromSelection(normalizedEmail);
             cmbEmail.hide();
@@ -571,6 +594,20 @@ public class LoginController implements Initializable {
             return "";
         }
         return normalized(currentEmailEditorText()).toLowerCase();
+    }
+
+    private String currentEmailComboValue() {
+        if (cmbEmail == null) {
+            return "";
+        }
+        String editorText = normalized(currentEmailEditorText()).toLowerCase();
+        String value = normalized(cmbEmail.getValue()).toLowerCase();
+        if (!value.isBlank()
+                && rememberedEmails.contains(value)
+                && (editorText.isBlank() || value.equals(editorText) || value.contains(editorText))) {
+            return value;
+        }
+        return editorText;
     }
 
     private String currentEmailEditorText() {

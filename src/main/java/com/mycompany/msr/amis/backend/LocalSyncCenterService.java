@@ -43,10 +43,17 @@ public final class LocalSyncCenterService implements SyncCenterService {
                     break;
             }
         }
-        boolean onlineReady = remoteMirrorCoordinator.hasRemoteSession();
-        String message = onlineReady
-                ? "Central session is available. Local changes will be pushed to the Central Server, then fresh central data will be pulled back to the desktop."
-                : "Central session is not available. Local changes will stay queued until the app is online.";
+        boolean apiReachable = remoteMirrorCoordinator.isApiConfiguredAndReachable();
+        boolean hasToken = Session.getAuthToken() != null && !Session.getAuthToken().isBlank();
+        boolean onlineReady = apiReachable && hasToken;
+        String message;
+        if (onlineReady) {
+            message = "Central session is available. Local changes will be pushed to the Central Server, then fresh central data will be pulled back to the desktop.";
+        } else if (apiReachable) {
+            message = "Central API is reachable, but this desktop session is not authenticated. Sign in again before syncing.";
+        } else {
+            message = "Central API is not reachable. Local changes will stay queued until the app is online.";
+        }
         return new SyncCenterSummary(pending, applied, rejected, failed, onlineReady, message);
     }
 

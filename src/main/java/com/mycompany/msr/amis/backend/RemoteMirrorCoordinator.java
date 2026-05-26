@@ -62,7 +62,18 @@ public final class RemoteMirrorCoordinator {
         return isMirrorConfigured()
                 && Session.getAuthToken() != null
                 && !Session.getAuthToken().isBlank()
-                && isApiReachable();
+                && probeApiReachability();
+    }
+
+    public boolean isApiSessionReachable() {
+        return isMirrorConfigured()
+                && Session.getAuthToken() != null
+                && !Session.getAuthToken().isBlank()
+                && probeApiReachability();
+    }
+
+    public boolean isApiConfiguredAndReachable() {
+        return isMirrorConfigured() && probeApiReachability();
     }
 
     public ApiAuthService getRemoteAuthService() {
@@ -220,9 +231,13 @@ public final class RemoteMirrorCoordinator {
         if (now - lastProbeAt < PROBE_CACHE_TTL_MS) {
             return lastProbeResult;
         }
+        return probeApiReachability();
+    }
+
+    private boolean probeApiReachability() {
         boolean reachable = isReachable("/actuator/health") || isReachable("/");
         lastProbeResult = reachable;
-        lastProbeAt = now;
+        lastProbeAt = System.currentTimeMillis();
         return reachable;
     }
 

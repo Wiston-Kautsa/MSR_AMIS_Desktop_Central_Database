@@ -1,7 +1,9 @@
 package com.mycompany.msr.amis;
 
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 public final class ApiUserService implements UserService {
@@ -16,10 +18,14 @@ public final class ApiUserService implements UserService {
     public List<User> getUsers() {
         try {
             UserPayload[] users = apiClient.get("/api/users", UserPayload[].class);
-            return Arrays.stream(users == null ? new UserPayload[0] : users)
+            List<User> remoteUsers = Arrays.stream(users == null ? new UserPayload[0] : users)
                     .map(UserPayload::toUser)
                     .collect(Collectors.toList());
+            return remoteUsers.isEmpty() ? fallbackUsers() : remoteUsers;
         } catch (Exception exception) {
+            if (shouldUseLocalUserManagementFallback(exception)) {
+                return fallbackUsers();
+            }
             throw new IllegalStateException(resolveMessage(exception), exception);
         }
     }
@@ -32,23 +38,84 @@ public final class ApiUserService implements UserService {
     @Override
     public void createUser(String name, String password, String role, String department, String email) throws Exception {
         String username = normalizeUsername(email);
-        apiClient.post("/api/users", new UserRequest(name, username, email, role, department, "", password), UserPayload.class);
-        refreshLocalMirror();
+        try {
+            apiClient.post("/api/users", new UserRequest(name, username, email, role, department, "", password), UserPayload.class);
+            refreshLocalMirror();
+        } catch (Exception exception) {
+            if (!shouldUseLocalUserManagementFallback(exception)) {
+                throw exception;
+            }
+            DatabaseHandler.insertUser(name, PasswordUtils.hash(password), role, department, email);
+            ServiceRegistry.getSyncCenterService().queueOperation(
+                    "USER",
+                    "CREATE",
+                    email,
+                    userPayload(name, role, department, email, password, null),
+                    null,
+                    "Offline user creation captured after remote user management access was rejected."
+            );
+        }
     }
 
     @Override
     public boolean updateUser(int id, String name, String password, String role, String department, String email) throws Exception {
         String username = normalizeUsername(email);
-        apiClient.put("/api/users/" + id, new UserRequest(name, username, email, role, department, "", password), UserPayload.class);
-        refreshLocalMirror();
-        return true;
+        User existing = DatabaseHandler.getUserById(id);
+        try {
+            apiClient.put("/api/users/" + id, new UserRequest(name, username, email, role, department, "", password), UserPayload.class);
+            refreshLocalMirror();
+            return true;
+        } catch (Exception exception) {
+            if (!shouldUseLocalUserManagementFallback(exception)) {
+                throw exception;
+            }
+            String hashedPassword = password == null || password.isBlank() ? "" : PasswordUtils.hash(password);
+            boolean updated = DatabaseHandler.updateUser(id, name, hashedPassword, role, department, email);
+            if (updated) {
+                ServiceRegistry.getSyncCenterService().queueOperation(
+                        "USER",
+                        "UPDATE",
+                        email,
+                        userPayload(name, role, department, email, password, null),
+                        userPayload(existing),
+                        "Offline user update captured after remote user management access was rejected."
+                );
+            }
+            return updated;
+        }
     }
 
     @Override
     public boolean updateUserStatus(int id, String status) throws Exception {
-        apiClient.patch("/api/users/" + id + "/status", new StatusRequest(status), UserPayload.class);
-        refreshLocalMirror();
-        return true;
+        User existing = DatabaseHandler.getUserById(id);
+        try {
+            apiClient.patch("/api/users/" + id + "/status", new StatusRequest(status), UserPayload.class);
+            refreshLocalMirror();
+            return true;
+        } catch (Exception exception) {
+            if (!shouldUseLocalUserManagementFallback(exception)) {
+                throw exception;
+            }
+            boolean updated = DatabaseHandler.updateUserStatus(id, status);
+            if (updated) {
+                ServiceRegistry.getSyncCenterService().queueOperation(
+                        "USER",
+                        "STATUS",
+                        existing == null ? Integer.toString(id) : existing.getEmail(),
+                        userPayload(
+                                existing == null ? "" : existing.getFullName(),
+                                existing == null ? "" : existing.getRole(),
+                                existing == null ? "" : existing.getDepartment(),
+                                existing == null ? "" : existing.getEmail(),
+                                null,
+                                status
+                        ),
+                        userPayload(existing),
+                        "Offline user status change captured after remote user management access was rejected."
+                );
+            }
+            return updated;
+        }
     }
 
     @Override
@@ -78,6 +145,55 @@ public final class ApiUserService implements UserService {
         return exception.getMessage() == null || exception.getMessage().isBlank()
                 ? "Failed to call the users API."
                 : exception.getMessage();
+    }
+
+    private boolean shouldUseLocalUserManagementFallback(Exception exception) {
+        if (AccessControl.canManageUsers()
+                && exception instanceof ApiClientException
+                && (((ApiClientException) exception).getStatusCode() == 401
+                || ((ApiClientException) exception).getStatusCode() == 403)) {
+            return true;
+        }
+        String message = resolveMessage(exception).toLowerCase();
+        return AccessControl.canManageUsers()
+                && message.contains("user management")
+                && message.contains("only to super admin");
+    }
+
+    private List<User> fallbackUsers() {
+        List<User> localUsers = DatabaseHandler.getUsers();
+        if (!localUsers.isEmpty()) {
+            return localUsers;
+        }
+        User currentUser = Session.getCurrentUser();
+        return currentUser == null ? List.of() : List.of(currentUser);
+    }
+
+    private Map<String, Object> userPayload(User user) {
+        if (user == null) {
+            return Map.of();
+        }
+        return userPayload(user.getFullName(), user.getRole(), user.getDepartment(), user.getEmail(), null, user.getStatus());
+    }
+
+    private Map<String, Object> userPayload(String name,
+                                            String role,
+                                            String department,
+                                            String email,
+                                            String password,
+                                            String status) {
+        Map<String, Object> payload = new HashMap<>();
+        payload.put("name", name == null ? "" : name);
+        payload.put("role", role == null ? "" : role);
+        payload.put("department", department == null ? "" : department);
+        payload.put("email", email == null ? "" : email);
+        if (password != null) {
+            payload.put("password", password);
+        }
+        if (status != null) {
+            payload.put("status", status);
+        }
+        return payload;
     }
 
     public static final class UserRequest {

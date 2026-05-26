@@ -64,11 +64,16 @@ public final class Session {
     }
 
     private static String normalizeRole(String role) {
-        return role == null
-                ? ""
-                : role.trim()
-                        .replace('-', '_')
-                        .replace(' ', '_')
-                        .toUpperCase();
+        if (role == null) {
+            return "";
+        }
+
+        String normalized = role.trim()
+                .replace('-', '_')
+                .replace(' ', '_')
+                .toUpperCase();
+        return normalized.startsWith("ROLE_")
+                ? normalized.substring("ROLE_".length())
+                : normalized;
     }
 }

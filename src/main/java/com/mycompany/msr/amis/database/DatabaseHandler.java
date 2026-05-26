@@ -1149,8 +1149,6 @@ public class DatabaseHandler {
         String sql = "SELECT * FROM users WHERE COALESCE(temporary, 0) = 0";
         if (Session.isSetupMode()) {
             sql += " AND UPPER(role) IN ('ADMIN', 'USER')";
-        } else if (Session.hasRole(AccessControl.ROLE_ADMIN) && !Session.hasRole(AccessControl.ROLE_SUPER_ADMIN)) {
-            sql += " AND UPPER(role) IN ('ADMIN', 'USER')";
         } else if (Session.hasRole(AccessControl.ROLE_USER)) {
             sql += " AND UPPER(role) = 'USER'";
         }
@@ -1390,7 +1388,7 @@ public class DatabaseHandler {
     public static void insertUser(String name, String password,
                                   String role, String department, String email) throws Exception {
         if (!Session.isSetupMode()) {
-            AccessControl.requireRole(AccessControl.ROLE_SUPER_ADMIN);
+            AccessControl.requireRole(AccessControl.ROLE_SUPER_ADMIN, AccessControl.ROLE_ADMIN);
         }
         if (AccessControl.isPrimarySuperAdminEmail(email)) {
             throw new SecurityException("This email is reserved for the primary Super Admin account.");

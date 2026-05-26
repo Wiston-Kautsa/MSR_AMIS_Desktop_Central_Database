@@ -59,10 +59,10 @@ public final class AuditService {
                     ));
                 }
             }
-            return logs;
+            return logs.isEmpty() ? getLogsLocal(username) : logs;
         } catch (Exception e) {
             e.printStackTrace();
-            return FXCollections.observableArrayList();
+            return getLogsLocal(username);
         }
     }
 

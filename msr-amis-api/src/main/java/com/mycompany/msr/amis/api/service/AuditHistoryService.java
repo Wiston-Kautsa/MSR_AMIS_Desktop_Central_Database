@@ -133,17 +133,20 @@ public class AuditHistoryService {
     public List<AuditLogResponse> getAuditLogs(String requesterIdentifier, String username) {
         UserAccount requester = userManagementService.getUser(requesterIdentifier);
         String requesterRole = requester.getRole().name();
-        String effectiveUsername = normalize(username);
-        if (!"SUPER_ADMIN".equalsIgnoreCase(requesterRole)) {
-            effectiveUsername = requesterIdentifier;
+        if (!"SUPER_ADMIN".equalsIgnoreCase(requesterRole) && !"ADMIN".equalsIgnoreCase(requesterRole)) {
+            throw new ApiException(HttpStatus.FORBIDDEN, "Access denied.");
         }
+        String effectiveUsername = normalize(username);
 
         String sql =
-                "SELECT id, COALESCE(NULLIF(TRIM(performed_by), ''), 'unknown_user') AS log_username, action, " +
-                        "COALESCE(NULLIF(TRIM(entity), ''), '') AS log_module_name, details, action_time " +
+                "SELECT id, " +
+                        "COALESCE(NULLIF(TRIM(username), ''), NULLIF(TRIM(performed_by), ''), 'unknown_user') AS log_username, " +
+                        "action, " +
+                        "COALESCE(NULLIF(TRIM(module_name), ''), NULLIF(TRIM(entity), ''), '') AS log_module_name, " +
+                        "details, action_time " +
                         "FROM audit_log ";
         if (!effectiveUsername.isBlank()) {
-            sql += "WHERE LOWER(COALESCE(NULLIF(TRIM(performed_by), ''), '')) = LOWER(?) ";
+            sql += "WHERE LOWER(COALESCE(NULLIF(TRIM(username), ''), NULLIF(TRIM(performed_by), ''), '')) = LOWER(?) ";
             return jdbcTemplate.query(sql + "ORDER BY action_time DESC, id DESC",
                     (rs, rowNum) -> mapAuditLog(rs.getInt("id"), rs.getString("log_username"), rs.getString("action"),
                             rs.getString("log_module_name"), rs.getString("details"), rs.getTimestamp("action_time")),

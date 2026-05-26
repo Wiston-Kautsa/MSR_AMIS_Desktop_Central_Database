@@ -103,24 +103,14 @@ public class AuditLogsController implements Initializable {
     }
 
     private void configureScope() {
-        if (Session.hasRole(AccessControl.ROLE_SUPER_ADMIN)) {
-            lblAuditScope.setText("Showing all system audit logs.");
-            cmbUsername.setDisable(false);
-            cmbUsername.setManaged(true);
-            cmbUsername.setVisible(true);
-        } else {
-            String actor = currentUsername();
-            lblAuditScope.setText("Showing audit logs for " + actor + " only.");
-            cmbUsername.setDisable(true);
-            cmbUsername.setManaged(false);
-            cmbUsername.setVisible(false);
-        }
+        lblAuditScope.setText("Showing all system audit logs.");
+        cmbUsername.setDisable(false);
+        cmbUsername.setManaged(true);
+        cmbUsername.setVisible(true);
     }
 
     private void loadFilters() {
-        ObservableList<AuditLog> source = Session.hasRole(AccessControl.ROLE_SUPER_ADMIN)
-                ? AuditService.getAllLogs()
-                : AuditService.getLogsByUsername(currentUsername());
+        ObservableList<AuditLog> source = AuditService.getAllLogs();
 
         Set<String> actions = new LinkedHashSet<>();
         Set<String> usernames = new LinkedHashSet<>();
@@ -134,18 +124,14 @@ public class AuditLogsController implements Initializable {
         }
 
         cmbAction.getItems().setAll(actions);
-        if (Session.hasRole(AccessControl.ROLE_SUPER_ADMIN)) {
-            cmbUsername.getItems().setAll(usernames);
-        }
+        cmbUsername.getItems().setAll(usernames);
     }
 
     private void loadLogs() {
-        ObservableList<AuditLog> logs = Session.hasRole(AccessControl.ROLE_SUPER_ADMIN)
-                ? AuditService.getAllLogs()
-                : AuditService.getLogsByUsername(currentUsername());
+        ObservableList<AuditLog> logs = AuditService.getAllLogs();
 
         String selectedAction = cmbAction.getValue();
-        String selectedUsername = Session.hasRole(AccessControl.ROLE_SUPER_ADMIN) ? cmbUsername.getValue() : currentUsername();
+        String selectedUsername = cmbUsername.getValue();
 
         ObservableList<AuditLog> filtered = logs.filtered(log ->
                 matches(log.getAction(), selectedAction) &&
