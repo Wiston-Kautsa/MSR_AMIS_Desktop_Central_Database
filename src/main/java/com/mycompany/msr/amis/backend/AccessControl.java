@@ -43,6 +43,10 @@ public final class AccessControl {
         return Session.isSetupMode() || Session.hasRole(ROLE_SUPER_ADMIN, ROLE_ADMIN);
     }
 
+    public static boolean canViewUserManagement() {
+        return Session.isSetupMode() || Session.hasRole(ROLE_SUPER_ADMIN, ROLE_ADMIN, ROLE_USER);
+    }
+
     public static boolean canDeleteUsers() {
         return Session.hasRole(ROLE_SUPER_ADMIN);
     }

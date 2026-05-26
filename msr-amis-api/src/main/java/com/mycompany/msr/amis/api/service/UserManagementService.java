@@ -36,7 +36,7 @@ public class UserManagementService {
 
     public List<UserResponse> listVisibleUsers(String requesterIdentifier) {
         UserAccount requester = getRequester(requesterIdentifier);
-        requireManager(requester);
+        requireUserDirectoryAccess(requester);
         return userRepository.findByRoleInOrderByFullNameAsc(visibleRolesFor(requester)).stream()
                 .map(this::toResponse)
                 .toList();
@@ -216,9 +216,20 @@ public class UserManagementService {
             return List.of(UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.USER);
         }
         if (requester.getRole() == UserRole.ADMIN) {
-            return List.of(UserRole.ADMIN, UserRole.USER);
+            return List.of(UserRole.ADMIN);
         }
         return List.of(UserRole.USER);
+    }
+
+    private void requireUserDirectoryAccess(UserAccount requester) {
+        if (isBootstrapTemporaryAccount(requester)) {
+            return;
+        }
+        if (requester.getRole() != UserRole.SUPER_ADMIN
+                && requester.getRole() != UserRole.ADMIN
+                && requester.getRole() != UserRole.USER) {
+            throw new ApiException(HttpStatus.FORBIDDEN, "User management is available only to signed-in users.");
+        }
     }
 
     private void requireManager(UserAccount requester) {

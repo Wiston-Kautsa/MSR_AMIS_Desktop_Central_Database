@@ -54,6 +54,9 @@ public class UsersController implements Initializable {
     @FXML private TitledPane userDirectoryPane;
     @FXML private javafx.scene.control.Button btnBackToLogin;
     @FXML private javafx.scene.control.Button btnCompleteSetup;
+    @FXML private javafx.scene.control.Button btnEditSelected;
+    @FXML private javafx.scene.control.Button btnFreezeSelected;
+    @FXML private javafx.scene.control.Button btnUnfreezeSelected;
     @FXML private javafx.scene.control.Button btnDeleteSelected;
 
     @FXML private TableView<User> tableUsers;
@@ -68,21 +71,17 @@ public class UsersController implements Initializable {
 
     private final UserService userService = ServiceRegistry.getUserService();
     private ObservableList<User> data;
-    private static String nextDirectoryRoleFilter;
-
-    public static void showDirectoryRole(String role) {
-        nextDirectoryRoleFilter = role == null ? null : role.trim().toUpperCase();
-    }
 
     @Override
     public void initialize(URL url, ResourceBundle rb) {
         if (!Session.isSetupMode()) {
-            AccessControl.requireRole(AccessControl.ROLE_SUPER_ADMIN, AccessControl.ROLE_ADMIN);
+            AccessControl.requireRole(AccessControl.ROLE_SUPER_ADMIN, AccessControl.ROLE_ADMIN, AccessControl.ROLE_USER);
         }
         configureRoleChoices(cmbRole);
         loadDepartments();
         configurePasswordToggle();
         configureSetupMode();
+        configureManagementAvailability();
         configureDeleteAvailability();
 
         TableNumbering.install(colNo);
@@ -93,7 +92,7 @@ public class UsersController implements Initializable {
         colEmail.setCellValueFactory(new PropertyValueFactory<>("email"));
         colStatus.setCellValueFactory(new PropertyValueFactory<>("status"));
 
-        if (!Session.isSetupMode()) {
+        if (!Session.isSetupMode() && AccessControl.canManageUsers()) {
             setupUsersTableMenu();
             loadUsers();
         } else {
@@ -305,16 +304,28 @@ public class UsersController implements Initializable {
 
     @FXML
     private void handleEditSelectedUser(ActionEvent event) {
+        if (!AccessControl.canManageUsers()) {
+            showAlert("Access Denied", "Only Super Admin and Admin can edit user accounts.");
+            return;
+        }
         editUser(selectedUser());
     }
 
     @FXML
     private void handleFreezeSelectedUser(ActionEvent event) {
+        if (!AccessControl.canManageUsers()) {
+            showAlert("Access Denied", "Only Super Admin and Admin can freeze user accounts.");
+            return;
+        }
         updateUserStatus(selectedUser(), AccessControl.STATUS_FROZEN);
     }
 
     @FXML
     private void handleUnfreezeSelectedUser(ActionEvent event) {
+        if (!AccessControl.canManageUsers()) {
+            showAlert("Access Denied", "Only Super Admin and Admin can unfreeze user accounts.");
+            return;
+        }
         updateUserStatus(selectedUser(), AccessControl.STATUS_ACTIVE);
     }
 
@@ -597,14 +608,41 @@ public class UsersController implements Initializable {
         if (Session.isSetupMode()) {
             return null;
         }
-        String role = nextDirectoryRoleFilter;
-        if (AccessControl.ROLE_ADMIN.equalsIgnoreCase(role)) {
+        if (Session.hasRole(AccessControl.ROLE_SUPER_ADMIN)) {
+            return null;
+        }
+        if (Session.hasRole(AccessControl.ROLE_ADMIN)) {
             return AccessControl.ROLE_ADMIN;
         }
-        if (AccessControl.ROLE_USER.equalsIgnoreCase(role)) {
+        if (Session.hasRole(AccessControl.ROLE_USER)) {
             return AccessControl.ROLE_USER;
         }
         return AccessControl.ROLE_USER;
+    }
+
+    private void configureManagementAvailability() {
+        if (Session.isSetupMode() || AccessControl.canManageUsers()) {
+            return;
+        }
+        if (createUserPane != null) {
+            createUserPane.setManaged(false);
+            createUserPane.setVisible(false);
+        }
+        if (userDirectoryPane != null) {
+            userDirectoryPane.setText("User Directory");
+        }
+        hideManagementButton(btnEditSelected);
+        hideManagementButton(btnFreezeSelected);
+        hideManagementButton(btnUnfreezeSelected);
+        hideManagementButton(btnDeleteSelected);
+    }
+
+    private void hideManagementButton(javafx.scene.control.Button button) {
+        if (button == null) {
+            return;
+        }
+        button.setManaged(false);
+        button.setVisible(false);
     }
 
     private void configurePasswordToggle() {

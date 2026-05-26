@@ -218,13 +218,8 @@
                             <content>
                                 <VBox spacing="6">
                                     <children>
-                                        <Button fx:id="btnAdmins"
-                                                text="Admin Accounts"
-                                                styleClass="sidebar-button"
-                                                onAction="#openAdmins"/>
-
                                         <Button fx:id="btnUsers"
-                                                text="User Accounts"
+                                                text="User Management"
                                                 styleClass="sidebar-button"
                                                 onAction="#openUsers"/>
 

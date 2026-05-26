@@ -161,15 +161,18 @@
                                                styleClass="page-subtitle"/>
                                         <HBox alignment="CENTER_LEFT" spacing="12.0">
                                             <children>
-                                                <Button text="Edit Selected"
+                                                <Button fx:id="btnEditSelected"
+                                                        text="Edit Selected"
                                                         minWidth="150.0"
                                                         onAction="#handleEditSelectedUser"
                                                         styleClass="secondary-button"/>
-                                                <Button text="Freeze Selected"
+                                                <Button fx:id="btnFreezeSelected"
+                                                        text="Freeze Selected"
                                                         minWidth="165.0"
                                                         onAction="#handleFreezeSelectedUser"
                                                         styleClass="secondary-button"/>
-                                                <Button text="Unfreeze Selected"
+                                                <Button fx:id="btnUnfreezeSelected"
+                                                        text="Unfreeze Selected"
                                                         minWidth="180.0"
                                                         onAction="#handleUnfreezeSelectedUser"
                                                         styleClass="action-button"/>

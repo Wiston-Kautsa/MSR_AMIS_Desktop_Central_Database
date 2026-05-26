@@ -1150,7 +1150,7 @@ public class DatabaseHandler {
         if (Session.isSetupMode()) {
             sql += " AND UPPER(role) IN ('ADMIN', 'USER')";
         } else if (Session.hasRole(AccessControl.ROLE_ADMIN) && !Session.hasRole(AccessControl.ROLE_SUPER_ADMIN)) {
-            sql += " AND UPPER(role) IN ('ADMIN', 'USER')";
+            sql += " AND UPPER(role) = 'ADMIN'";
         } else if (Session.hasRole(AccessControl.ROLE_USER)) {
             sql += " AND UPPER(role) = 'USER'";
         }
