@@ -1149,6 +1149,8 @@ public class DatabaseHandler {
         String sql = "SELECT * FROM users WHERE 1=1";
         if (Session.isSetupMode()) {
             sql += " AND UPPER(role) IN ('ADMIN', 'USER')";
+        } else if (Session.hasRole(AccessControl.ROLE_ADMIN) && !Session.hasRole(AccessControl.ROLE_SUPER_ADMIN)) {
+            sql += " AND UPPER(role) IN ('ADMIN', 'USER')";
         } else if (Session.hasRole(AccessControl.ROLE_USER)) {
             sql += " AND UPPER(role) = 'USER'";
         }

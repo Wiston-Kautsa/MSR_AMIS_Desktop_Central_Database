@@ -216,7 +216,7 @@ public class UserManagementService {
             return List.of(UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.USER);
         }
         if (requester.getRole() == UserRole.ADMIN) {
-            return List.of(UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.USER);
+            return List.of(UserRole.ADMIN, UserRole.USER);
         }
         return List.of(UserRole.USER);
     }
