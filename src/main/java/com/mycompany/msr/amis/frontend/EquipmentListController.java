@@ -1,7 +1,5 @@
 package com.mycompany.msr.amis;
 
-import java.io.File;
-import java.io.FileWriter;
 import java.net.URL;
 import java.util.ResourceBundle;
 import java.util.Optional;
@@ -84,7 +82,7 @@ public class EquipmentListController implements Initializable {
     @Override
     public void initialize(URL url, ResourceBundle rb) {
 
-        equipmentTable.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
+        equipmentTable.setColumnResizePolicy(TableView.UNCONSTRAINED_RESIZE_POLICY);
 
         TableNumbering.install(colNo);
         colAssetCode.setCellValueFactory(new PropertyValueFactory<>("assetCode"));
@@ -102,7 +100,8 @@ public class EquipmentListController implements Initializable {
         colDate.setCellValueFactory(new PropertyValueFactory<>("entryDate"));
 
         equipmentService = ServiceRegistry.getEquipmentService();
-        loadEquipment();
+        equipmentTable.setItems(equipmentList);
+        loadEquipmentAsync(false);
         enableRowMenu();
     }
 
@@ -122,8 +121,33 @@ public class EquipmentListController implements Initializable {
         }
     }
 
-    private String resolveMessage(Exception exception) {
-        String message = exception.getMessage();
+    private void loadEquipmentAsync(boolean showRefreshMessage) {
+        equipmentTable.setDisable(true);
+        UiBackgroundLoader.run(
+                "equipment-list-loader",
+                () -> FXCollections.observableArrayList(equipmentService.getAllEquipment()),
+                loaded -> {
+                    equipmentList.setAll(loaded);
+                    equipmentTable.setItems(equipmentList);
+                    equipmentTable.setDisable(false);
+                    if (showRefreshMessage) {
+                        OperationFeedbackHelper.showInfo(
+                                "Equipment Refreshed",
+                                "The equipment list was reloaded successfully."
+                        );
+                    }
+                },
+                error -> {
+                    equipmentList.clear();
+                    equipmentTable.setItems(equipmentList);
+                    equipmentTable.setDisable(false);
+                    showMessage("Load Failed", "Failed to load equipment.\n\n" + resolveMessage(error));
+                }
+        );
+    }
+
+    private String resolveMessage(Throwable exception) {
+        String message = exception == null ? "" : exception.getMessage();
         if (message == null || message.isBlank()) {
             return "The equipment list could not be loaded.";
         }
@@ -207,62 +231,9 @@ public class EquipmentListController implements Initializable {
         equipmentTable.setItems(filtered);
     }
 
-    @FXML
-    private void exportEquipmentList(ActionEvent event) {
-
-        ObservableList<Equipment> itemsToExport = equipmentTable.getItems();
-
-        if (itemsToExport == null || itemsToExport.isEmpty()) {
-            showMessage("No Data", "There is no equipment to export.");
-            return;
-        }
-
-        File file = FileLocationHelper.fileInDownloads("equipment_list.csv");
-        OperationFeedbackHelper.showInfo(
-                "Export Starting",
-                "Preparing equipment list export.\n\nRows to export: " + itemsToExport.size()
-        );
-
-        try (FileWriter writer = new FileWriter(file)) {
-            writer.append("System Serial No.,IMEI/Serial Number,Equipment Name,Category,Condition,Source,Purchase Cost,Location,Warranty Expiry,Supplier,Status,Entry Date\n");
-
-            for (Equipment equipment : itemsToExport) {
-                writer.append(csvSafe(equipment.getAssetCode())).append(",")
-                        .append(csvSafe(equipment.getSerialNumber())).append(",")
-                        .append(csvSafe(equipment.getName())).append(",")
-                        .append(csvSafe(equipment.getCategory())).append(",")
-                        .append(csvSafe(equipment.getCondition())).append(",")
-                        .append(csvSafe(equipment.getSource())).append(",")
-                        .append(csvSafe(CurrencyFormatHelper.formatLocalCurrency(equipment.getPurchaseCost()))).append(",")
-                        .append(csvSafe(equipment.getLocation())).append(",")
-                        .append(csvSafe(equipment.getWarrantyExpiry())).append(",")
-                        .append(csvSafe(equipment.getSupplier())).append(",")
-                        .append(csvSafe(equipment.getStatus())).append(",")
-                        .append(csvSafe(equipment.getEntryDate())).append("\n");
-            }
-
-            OperationFeedbackHelper.showInfo(
-                    "Export Complete",
-                    "Equipment list exported successfully to:\n" + file.getAbsolutePath()
-            );
-
-        } catch (Exception e) {
-            e.printStackTrace();
-            OperationFeedbackHelper.showError(
-                    "Export Failed",
-                    "Failed to export the equipment list."
-            );
-        }
-    }
-
     private void refreshEquipmentList() {
         txtSearch.clear();
-        loadEquipment();
-
-        OperationFeedbackHelper.showInfo(
-                "Equipment Refreshed",
-                "The equipment list was reloaded successfully."
-        );
+        loadEquipmentAsync(true);
     }
 
     /* =============================
@@ -390,15 +361,5 @@ public class EquipmentListController implements Initializable {
 
     private void showMessage(String title, String message) {
         OperationFeedbackHelper.showInfo(title, message);
-    }
-
-    private String csvSafe(String value) {
-        if (value == null) {
-            return "";
-        }
-        if (value.contains(",") || value.contains("\"") || value.contains("\n")) {
-            return "\"" + value.replace("\"", "\"\"") + "\"";
-        }
-        return value;
     }
 }

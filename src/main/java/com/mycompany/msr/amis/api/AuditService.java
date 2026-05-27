@@ -32,19 +32,25 @@ public final class AuditService {
         return getLogs(null);
     }
 
+    public static ObservableList<AuditLog> getRecentLogs(int limit) {
+        return getLogs(null, limit);
+    }
+
     public static ObservableList<AuditLog> getLogsByUsername(String username) {
         return getLogs(normalizeUsername(username));
     }
 
     private static ObservableList<AuditLog> getLogs(String username) {
+        return getLogs(username, 0);
+    }
+
+    private static ObservableList<AuditLog> getLogs(String username, int limit) {
         if (ServiceRegistry.getConfiguration().usesLocalDatabase()) {
-            return getLogsLocal(username);
+            return getLogsLocal(username, limit);
         }
 
         try {
-            String path = username == null || username.isBlank()
-                    ? "/api/audit-logs"
-                    : "/api/audit-logs?username=" + java.net.URLEncoder.encode(username, java.nio.charset.StandardCharsets.UTF_8);
+            String path = buildAuditLogsPath(username, limit);
             AuditLogPayload[] payloads = API_CLIENT.get(path, AuditLogPayload[].class);
             ObservableList<AuditLog> logs = FXCollections.observableArrayList();
             if (payloads != null) {
@@ -62,7 +68,7 @@ public final class AuditService {
             return logs;
         } catch (Exception e) {
             e.printStackTrace();
-            return getLogsLocal(username);
+            return getLogsLocal(username, limit);
         }
     }
 
@@ -88,6 +94,10 @@ public final class AuditService {
     }
 
     private static ObservableList<AuditLog> getLogsLocal(String username) {
+        return getLogsLocal(username, 0);
+    }
+
+    private static ObservableList<AuditLog> getLogsLocal(String username, int limit) {
         ObservableList<AuditLog> logs = FXCollections.observableArrayList();
         String sql =
                 "SELECT log.id, " +
@@ -114,11 +124,19 @@ public final class AuditService {
         }
 
         sql += "ORDER BY log.action_time DESC, log.id DESC";
+        int normalizedLimit = normalizeLimit(limit);
+        if (normalizedLimit > 0) {
+            sql += " LIMIT ?";
+        }
 
         try (Connection conn = DatabaseHandler.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
+            int parameterIndex = 1;
             if (username != null && !username.isBlank()) {
-                ps.setString(1, username);
+                ps.setString(parameterIndex++, username);
+            }
+            if (normalizedLimit > 0) {
+                ps.setInt(parameterIndex, normalizedLimit);
             }
             try (ResultSet rs = ps.executeQuery()) {
                 while (rs.next()) {
@@ -137,6 +155,29 @@ public final class AuditService {
         }
 
         return logs;
+    }
+
+    private static String buildAuditLogsPath(String username, int limit) {
+        StringBuilder path = new StringBuilder("/api/audit-logs");
+        String separator = "?";
+        if (username != null && !username.isBlank()) {
+            path.append(separator)
+                    .append("username=")
+                    .append(java.net.URLEncoder.encode(username, java.nio.charset.StandardCharsets.UTF_8));
+            separator = "&";
+        }
+        int normalizedLimit = normalizeLimit(limit);
+        if (normalizedLimit > 0) {
+            path.append(separator).append("limit=").append(normalizedLimit);
+        }
+        return path.toString();
+    }
+
+    private static int normalizeLimit(int limit) {
+        if (limit <= 0) {
+            return 0;
+        }
+        return Math.min(limit, 5000);
     }
 
     private static String normalizeUsername(String username) {

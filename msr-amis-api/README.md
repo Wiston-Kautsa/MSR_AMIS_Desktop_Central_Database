@@ -57,7 +57,7 @@ MSR_AMIS_API_PORT=8090
 MSR_AMIS_DB_URL=jdbc:postgresql://localhost:5432/msr_amis
 MSR_AMIS_DB_USERNAME=msr_amis_user
 MSR_AMIS_DB_PASSWORD=your_password
-MSR_AMIS_JWT_SECRET=your_base64_secret
+MSR_AMIS_JWT_SECRET=replace_with_generated_base64_secret
 MSR_AMIS_JWT_EXPIRATION_SECONDS=28800
 MSR_AMIS_EXPOSE_RESET_CODE_ON_EMAIL_FAILURE=false
 MSR_AMIS_SUPER_USER_STATUS_EMAILS_ENABLED=true
@@ -146,13 +146,16 @@ The sync implementation is documented in [Sync Backend Contract](../documentatio
 
 Current sync API status:
 
-- `POST /api/sync/push` is active for `EQUIPMENT` records.
+- `POST /api/sync/push` is active for `EQUIPMENT`, `ASSIGNMENT`, `DISTRIBUTION`, `RETURN`, `USER`, and `DEPARTMENT` records.
 - Supported equipment operations are `CREATE`, `UPDATE`, `UPSERT`, `DELETE`, and `STATUS`.
+- Supported assignment and user operations are `CREATE`, `UPDATE`, `STATUS`, and `DELETE`.
+- Supported department operations are `CREATE`, `UPDATE`, and `DELETE`.
+- Distribution and return records are applied through batch operation payloads.
 - Push responses include a `results[]` array with one result per queue item.
 - `GET /api/sync/queue`, `GET /api/sync/status`, `GET /api/sync/audit`, `GET /api/sync/conflicts`, and `POST /api/sync/retry` are available.
 - Super Admin sync maintenance endpoints are available for clearing completed logs, clearing the queue, resetting sync state, and force-releasing locks.
 - `GET /api/sync/pull` currently acknowledges and audits pull requests but does not yet return full central entity snapshots.
-- Generic central push handlers for assignment, distribution, return, user, department, and audit log records remain future work.
+- Audit-log generic push records are not part of the current central apply path.
 
 ## Role and Access Policy
 

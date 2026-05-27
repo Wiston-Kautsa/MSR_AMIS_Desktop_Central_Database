@@ -52,8 +52,8 @@ public class AssignmentReportController implements Initializable {
         colDate.setCellValueFactory(new PropertyValueFactory<>("date"));
 
         setupContextMenu();
-        loadData();
-        loadFilters();
+        tableAssignments.setItems(data);
+        loadDataAsync(false);
     }
 
     private void loadData() {
@@ -64,6 +64,31 @@ public class AssignmentReportController implements Initializable {
             showAlert("Error", "Failed to load data:\n" + e.getMessage());
         }
         tableAssignments.setItems(data);
+    }
+
+    private void loadDataAsync(boolean showRefreshMessage) {
+        tableAssignments.setDisable(true);
+        UiBackgroundLoader.run(
+                "assignment-report-loader",
+                reportService::getAssignmentReport,
+                records -> {
+                    allAssignments = records == null ? List.of() : records;
+                    data.setAll(allAssignments);
+                    tableAssignments.setItems(data);
+                    loadFilters();
+                    tableAssignments.setDisable(false);
+                    if (showRefreshMessage) {
+                        showAlert("Refresh", "Assignment report refreshed successfully.");
+                    }
+                },
+                error -> {
+                    allAssignments = List.of();
+                    data.clear();
+                    tableAssignments.setItems(data);
+                    tableAssignments.setDisable(false);
+                    showAlert("Error", "Failed to load data:\n" + safeMessage(error));
+                }
+        );
     }
 
     private void loadFilters() {
@@ -110,9 +135,7 @@ public class AssignmentReportController implements Initializable {
         cmbStatus.setValue(null);
         dpFrom.setValue(null);
         dpTo.setValue(null);
-        loadData();
-        loadFilters();
-        showAlert("Refresh", "Assignment report refreshed successfully.");
+        loadDataAsync(true);
     }
 
     @FXML
@@ -167,5 +190,11 @@ public class AssignmentReportController implements Initializable {
         } else {
             OperationFeedbackHelper.showInfo(title, message);
         }
+    }
+
+    private String safeMessage(Throwable throwable) {
+        return throwable == null || throwable.getMessage() == null || throwable.getMessage().isBlank()
+                ? "The assignment report could not be loaded."
+                : throwable.getMessage();
     }
 }

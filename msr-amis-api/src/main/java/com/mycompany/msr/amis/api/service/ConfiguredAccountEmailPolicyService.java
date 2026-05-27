@@ -15,7 +15,6 @@ import org.springframework.transaction.annotation.Transactional;
 public class ConfiguredAccountEmailPolicyService {
 
     private static final Set<String> LEGACY_SEED_EMAILS = Set.of(
-            "wkautsa@gmail.com",
             "admin@msr.local",
             "user@msr.local"
     );

@@ -120,9 +120,12 @@
     -fx-background-color: transparent;
     -fx-text-fill: white;
     -fx-font-size: 14px;
-    -fx-pref-width: 200;
+    -fx-min-width: 270;
+    -fx-pref-width: 270;
     -fx-padding: 10;
     -fx-alignment: CENTER_LEFT;
+    -fx-wrap-text: true;
+    -fx-text-overrun: clip;
 }
 
 .sidebar-button:hover{
@@ -135,9 +138,12 @@
 .submenu-button{
     -fx-background-color: transparent;
     -fx-text-fill: white;
-    -fx-pref-width: 200;
-    -fx-padding: 6 0 6 20;
+    -fx-min-width: 270;
+    -fx-pref-width: 270;
+    -fx-padding: 8 10 8 20;
     -fx-alignment: CENTER_LEFT;
+    -fx-wrap-text: true;
+    -fx-text-overrun: clip;
 }
 
 .submenu-button:hover{
@@ -361,7 +367,7 @@
     -fx-text-fill: #243b53;
     -fx-font-size: 14px;
     -fx-font-weight: bold;
-    -fx-wrap-text: true;
+    -fx-wrap-text: false;
     -fx-text-overrun: clip;
     -fx-alignment: center-left;
 }

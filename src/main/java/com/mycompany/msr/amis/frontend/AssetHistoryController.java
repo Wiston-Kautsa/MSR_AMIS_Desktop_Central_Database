@@ -3,6 +3,8 @@ package com.mycompany.msr.amis;
 import java.io.File;
 import java.io.FileWriter;
 import java.net.URL;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.ResourceBundle;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
@@ -124,6 +126,33 @@ public class AssetHistoryController implements Initializable {
             e.printStackTrace();
             OperationFeedbackHelper.showError("Export Failed", "Asset history export failed:\n" + e.getMessage());
         }
+    }
+
+    @FXML
+    private void handleExportPdf(ActionEvent event) {
+        if (currentAssetCode.isBlank() || data.isEmpty()) {
+            showAlert("No Data", "Search for an asset with history before exporting.");
+            return;
+        }
+
+        ReportExportHelper.exportPdf(
+                "asset_history_" + currentAssetCode,
+                "Asset History - " + currentAssetCode,
+                new ArrayList<>(data),
+                columns()
+        );
+    }
+
+    private List<ReportExportHelper.Column<AssetHistoryRecord>> columns() {
+        return List.of(
+                new ReportExportHelper.Column<>("Asset Code", record -> currentAssetCode),
+                new ReportExportHelper.Column<>("Activity Date", AssetHistoryRecord::getActivityDate),
+                new ReportExportHelper.Column<>("Event Type", AssetHistoryRecord::getEventType),
+                new ReportExportHelper.Column<>("Actor", AssetHistoryRecord::getActor),
+                new ReportExportHelper.Column<>("Affected Person", AssetHistoryRecord::getAffectedPerson),
+                new ReportExportHelper.Column<>("Details", AssetHistoryRecord::getDetails),
+                new ReportExportHelper.Column<>("Status", AssetHistoryRecord::getStatus)
+        );
     }
 
     private void applySummary(AssetHistorySummary summary) {

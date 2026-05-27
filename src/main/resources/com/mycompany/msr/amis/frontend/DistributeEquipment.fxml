@@ -153,16 +153,29 @@
                                 <HBox spacing="10">
 
                                     <Button text="Download Template"
+                                            fx:id="btnDownloadTemplate"
                                             onAction="#downloadTemplate"/>
 
                                     <Button text="Choose File"
+                                            fx:id="btnChooseExcelFile"
                                             onAction="#chooseExcelFile"/>
 
                                     <Button text="Upload"
+                                            fx:id="btnUploadExcel"
                                             onAction="#uploadExcel"
                                             style="-fx-background-color:#2ecc71; -fx-text-fill:white;"/>
 
                                 </HBox>
+
+                                <VBox spacing="6">
+                                    <ProgressBar fx:id="progressBulkUpload"
+                                                 maxWidth="Infinity"
+                                                 prefHeight="16"
+                                                 progress="0"/>
+                                    <Label fx:id="lblBulkUploadProgress"
+                                           text="No upload running"
+                                           style="-fx-text-fill: #4b5563;"/>
+                                </VBox>
 
                             </VBox>
 

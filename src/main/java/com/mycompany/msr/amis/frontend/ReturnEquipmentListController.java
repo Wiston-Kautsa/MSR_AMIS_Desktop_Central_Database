@@ -55,8 +55,8 @@ public class ReturnEquipmentListController implements Initializable {
         colDate.setCellValueFactory(new PropertyValueFactory<>("returnDate"));
 
         setupContextMenu();
-        loadData();
-        loadPeople();
+        tableReturns.setItems(data);
+        loadDataAsync(false);
     }
 
     private void loadPeople() {
@@ -76,6 +76,31 @@ public class ReturnEquipmentListController implements Initializable {
             showAlert("Error", "Failed to load data:\n" + e.getMessage());
         }
         tableReturns.setItems(data);
+    }
+
+    private void loadDataAsync(boolean showRefreshMessage) {
+        tableReturns.setDisable(true);
+        UiBackgroundLoader.run(
+                "return-list-loader",
+                reportService::getReturnReport,
+                records -> {
+                    allReturns = records == null ? List.of() : records;
+                    data.setAll(allReturns);
+                    tableReturns.setItems(data);
+                    loadPeople();
+                    tableReturns.setDisable(false);
+                    if (showRefreshMessage) {
+                        showAlert("Refresh", "Return equipment list refreshed successfully.");
+                    }
+                },
+                error -> {
+                    allReturns = List.of();
+                    data.clear();
+                    tableReturns.setItems(data);
+                    tableReturns.setDisable(false);
+                    showAlert("Error", "Failed to load data:\n" + safeMessage(error));
+                }
+        );
     }
 
     @FXML
@@ -99,9 +124,7 @@ public class ReturnEquipmentListController implements Initializable {
     private void handleRefresh() {
         cmbPerson.setValue(null);
         cmbCondition.setValue(null);
-        loadData();
-        loadPeople();
-        showAlert("Refresh", "Return equipment list refreshed successfully.");
+        loadDataAsync(true);
     }
 
     @FXML
@@ -186,5 +209,11 @@ public class ReturnEquipmentListController implements Initializable {
         } else {
             OperationFeedbackHelper.showInfo(title, message);
         }
+    }
+
+    private String safeMessage(Throwable throwable) {
+        return throwable == null || throwable.getMessage() == null || throwable.getMessage().isBlank()
+                ? "The return list could not be loaded."
+                : throwable.getMessage();
     }
 }

@@ -1,6 +1,6 @@
 $identifier = if ($env:MSR_AMIS_TEST_LOGIN_IDENTIFIER) { $env:MSR_AMIS_TEST_LOGIN_IDENTIFIER } else { $env:MSR_AMIS_SETUP_ADMIN_EMAIL }
 $password = if ($env:MSR_AMIS_TEST_LOGIN_PASSWORD) { $env:MSR_AMIS_TEST_LOGIN_PASSWORD } else { 'admin123' }
-$baseUrl = if ($env:MSR_AMIS_API_BASE_URL) { $env:MSR_AMIS_API_BASE_URL.TrimEnd('/') } else { 'http://143.198.153.43:8090' }
+$baseUrl = if ($env:MSR_AMIS_API_BASE_URL) { $env:MSR_AMIS_API_BASE_URL.TrimEnd('/') } else { 'http://YOUR_SERVER_HOST:8090' }
 if ([string]::IsNullOrWhiteSpace($identifier)) {
   throw 'Set MSR_AMIS_TEST_LOGIN_IDENTIFIER or MSR_AMIS_SETUP_ADMIN_EMAIL before running this script.'
 }

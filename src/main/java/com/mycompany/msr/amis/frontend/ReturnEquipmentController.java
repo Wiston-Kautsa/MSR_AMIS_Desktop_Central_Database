@@ -3,6 +3,7 @@ package com.mycompany.msr.amis;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
+import javafx.concurrent.Task;
 import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
 import javafx.fxml.Initializable;
@@ -10,6 +11,7 @@ import javafx.scene.control.Alert;
 import javafx.scene.control.Button;
 import javafx.scene.control.ComboBox;
 import javafx.scene.control.Label;
+import javafx.scene.control.ProgressBar;
 import javafx.scene.control.TableColumn;
 import javafx.scene.control.TableView;
 import javafx.scene.control.TextArea;
@@ -116,6 +118,8 @@ public class ReturnEquipmentController implements Initializable {
     @FXML private Button btnApplyOutstandingReason;
     @FXML private VBox manualEntryPane;
     @FXML private VBox bulkImportPane;
+    @FXML private ProgressBar progressBulkUpload;
+    @FXML private Label lblBulkUploadProgress;
 
     private final ObservableList<Return> returnHistoryList = FXCollections.observableArrayList();
     private final ObservableList<OutstandingAssetRow> outstandingAssetRows = FXCollections.observableArrayList();
@@ -133,6 +137,16 @@ public class ReturnEquipmentController implements Initializable {
     private final DistributionService distributionService = ServiceRegistry.getDistributionService();
     private final ReturnService returnService = ServiceRegistry.getReturnService();
 
+    private static final class ReturnSetupData {
+        private final List<Assignment> assignments;
+        private final List<Return> returns;
+
+        private ReturnSetupData(List<Assignment> assignments, List<Return> returns) {
+            this.assignments = assignments == null ? List.of() : assignments;
+            this.returns = returns == null ? List.of() : returns;
+        }
+    }
+
     @Override
     public void initialize(URL url, ResourceBundle rb) {
         cmbCondition.setPromptText("Select actual return condition");
@@ -140,15 +154,32 @@ public class ReturnEquipmentController implements Initializable {
 
         setupTable();
         setupOutstandingAssetsTable();
-        loadAssignmentsPendingReturn();
-        loadReturnHistory();
+        loadInitialDataAsync();
         clearAssignmentDetails();
         setAssignmentDependentState(false);
+        resetBulkUploadProgress();
         updateSaveState();
 
         txtReturnedBy.setEditable(true);
         cmbAssignments.setOnAction(e -> populateAssignmentDetails());
         txtAssetCode.textProperty().addListener((obs, oldValue, newValue) -> populateReturnedByForAsset(newValue));
+    }
+
+    private void loadInitialDataAsync() {
+        tableReturns.setDisable(true);
+        UiBackgroundLoader.run(
+                "return-equipment-loader",
+                () -> new ReturnSetupData(assignmentService.getAssignmentsPendingReturn(), returnService.getReturns()),
+                loaded -> {
+                    applyAssignmentsPendingReturn(loaded.assignments);
+                    returnHistoryList.setAll(loaded.returns);
+                    tableReturns.setDisable(false);
+                },
+                error -> {
+                    tableReturns.setDisable(false);
+                    showError("Return screen failed to load: " + safeMessage(error));
+                }
+        );
     }
 
     private void setupTable() {
@@ -185,6 +216,17 @@ public class ReturnEquipmentController implements Initializable {
         assignmentMap.clear();
 
         List<Assignment> assignments = assignmentService.getAssignmentsPendingReturn();
+        applyAssignmentsPendingReturn(assignments);
+    }
+
+    private void applyAssignmentsPendingReturn(List<Assignment> assignments) {
+        if (cmbAssignments == null) {
+            return;
+        }
+
+        cmbAssignments.getItems().clear();
+        assignmentMap.clear();
+
         for (Assignment assignment : assignments) {
             if (AccessControl.STATUS_FROZEN.equalsIgnoreCase(assignment.getStatus())
                     || AccessControl.STATUS_RETIRED.equalsIgnoreCase(assignment.getStatus())) {
@@ -248,6 +290,12 @@ public class ReturnEquipmentController implements Initializable {
     private void loadReturnHistory() {
         returnHistoryList.clear();
         returnHistoryList.setAll(returnService.getReturns());
+    }
+
+    private String safeMessage(Throwable throwable) {
+        return throwable == null || throwable.getMessage() == null || throwable.getMessage().isBlank()
+                ? "Unexpected error."
+                : throwable.getMessage();
     }
 
     @FXML
@@ -333,6 +381,7 @@ public class ReturnEquipmentController implements Initializable {
         if (lblFileName != null) {
             lblFileName.setText("No file selected");
         }
+        resetBulkUploadProgress();
         if (txtOutstandingReason != null) {
             txtOutstandingReason.clear();
         }
@@ -367,79 +416,143 @@ public class ReturnEquipmentController implements Initializable {
             return;
         }
 
+        List<BulkReturnUploadRow> uploadRows;
         try (Workbook workbook = new XSSFWorkbook(new FileInputStream(selectedFile))) {
             Sheet sheet = workbook.getSheetAt(0);
-            List<StagedReturnItem> uploadedItems = new ArrayList<>();
-            Set<String> uploadedResolvedAssets = new LinkedHashSet<>();
-            Set<String> uploadedEnteredIdentifiers = new LinkedHashSet<>();
-            List<String> acceptedAssetCodes = new ArrayList<>();
-            List<String> rejectedAlreadyReturned = new ArrayList<>();
-            List<String> rejectedOther = new ArrayList<>();
+            uploadRows = readBulkReturnRows(sheet);
+        } catch (Exception e) {
+            e.printStackTrace();
+            resetBulkUploadProgress();
+            showError("Bulk upload failed: " + e.getMessage());
+            return;
+        }
 
-            // Row 1 is reserved for the bulk file headers; return entries start on row 2.
-            for (int rowIndex = BULK_DATA_START_ROW_INDEX; rowIndex <= sheet.getLastRowNum(); rowIndex++) {
-                Row row = sheet.getRow(rowIndex);
-                if (row == null) {
-                    continue;
-                }
+        if (uploadRows.isEmpty()) {
+            resetBulkUploadProgress();
+            showWarning("No return equipment rows were found in the selected file.");
+            return;
+        }
 
-                String identifier = getCellValue(row, 0);
-                String returnedBy = getCellValue(row, 1);
-                String phone = getCellValue(row, 2);
-                String nid = getCellValue(row, 3);
-                String condition = getCellValue(row, 4);
-                String remarks = getCellValue(row, 5);
+        runBulkReturnUploadTask(uploadRows);
+    }
 
-                if (identifier.isBlank() && returnedBy.isBlank() && phone.isBlank() && nid.isBlank()
-                        && condition.isBlank() && remarks.isBlank()) {
-                    continue;
-                }
-                if (isHeaderLikeRow(identifier, returnedBy, phone, nid, condition, remarks)) {
-                    continue;
-                }
-                if (isSampleRow(identifier, returnedBy, phone, nid, condition, remarks)) {
-                    continue;
-                }
+    private List<BulkReturnUploadRow> readBulkReturnRows(Sheet sheet) {
+        List<BulkReturnUploadRow> rows = new ArrayList<>();
 
-                try {
-                    StagedReturnItem item = buildDraft(
-                            identifier,
-                            returnedBy,
-                            phone,
-                            nid,
-                            condition,
-                            remarks,
-                            uploadedResolvedAssets,
-                            uploadedEnteredIdentifiers
-                    );
-                    uploadedItems.add(item);
-                    uploadedResolvedAssets.add(item.originalAssetCode);
-                    uploadedEnteredIdentifiers.add(item.enteredIdentifier);
-                    acceptedAssetCodes.add(item.originalAssetCode);
-                } catch (ReturnEntryRejectedException e) {
-                    if (e.reason == RejectionReason.ALREADY_RETURNED_UNDER_ASSIGNMENT) {
-                        rejectedAlreadyReturned.add(identifier.trim());
-                    } else {
-                        rejectedOther.add(identifier.trim() + " - " + e.getMessage());
-                    }
-                } catch (Exception e) {
-                    rejectedOther.add(identifier.trim() + " - " + e.getMessage());
-                }
+        // Row 1 is reserved for the bulk file headers; return entries start on row 2.
+        for (int rowIndex = BULK_DATA_START_ROW_INDEX; rowIndex <= sheet.getLastRowNum(); rowIndex++) {
+            Row row = sheet.getRow(rowIndex);
+            if (row == null) {
+                continue;
             }
 
-            if (uploadedItems.isEmpty()) {
-                showWarning(buildReturnStatisticsMessage(acceptedAssetCodes, rejectedAlreadyReturned, rejectedOther));
+            String identifier = getCellValue(row, 0);
+            String returnedBy = getCellValue(row, 1);
+            String phone = getCellValue(row, 2);
+            String nid = getCellValue(row, 3);
+            String condition = getCellValue(row, 4);
+            String remarks = getCellValue(row, 5);
+
+            if (identifier.isBlank() && returnedBy.isBlank() && phone.isBlank() && nid.isBlank()
+                    && condition.isBlank() && remarks.isBlank()) {
+                continue;
+            }
+            if (isHeaderLikeRow(identifier, returnedBy, phone, nid, condition, remarks)) {
+                continue;
+            }
+            if (isSampleRow(identifier, returnedBy, phone, nid, condition, remarks)) {
+                continue;
+            }
+
+            rows.add(new BulkReturnUploadRow(identifier, returnedBy, phone, nid, condition, remarks));
+        }
+
+        return rows;
+    }
+
+    private void runBulkReturnUploadTask(List<BulkReturnUploadRow> uploadRows) {
+        Task<BulkReturnUploadResult> task = new Task<>() {
+            @Override
+            protected BulkReturnUploadResult call() {
+                BulkReturnUploadResult result = new BulkReturnUploadResult();
+                int total = uploadRows.size();
+                updateProgress(0, total);
+                updateMessage("Processing return equipment 0 of " + total);
+
+                for (int index = 0; index < total; index++) {
+                    BulkReturnUploadRow row = uploadRows.get(index);
+                    try {
+                        StagedReturnItem item = buildDraft(
+                                row.identifier,
+                                row.returnedBy,
+                                row.phone,
+                                row.nid,
+                                row.condition,
+                                row.remarks,
+                                result.uploadedResolvedAssets,
+                                result.uploadedEnteredIdentifiers
+                        );
+                        result.uploadedItems.add(item);
+                        result.uploadedResolvedAssets.add(item.originalAssetCode);
+                        result.uploadedEnteredIdentifiers.add(item.enteredIdentifier);
+                        result.acceptedAssetCodes.add(item.originalAssetCode);
+                    } catch (ReturnEntryRejectedException e) {
+                        if (e.reason == RejectionReason.ALREADY_RETURNED_UNDER_ASSIGNMENT) {
+                            result.rejectedAlreadyReturned.add(row.identifier.trim());
+                        } else {
+                            result.rejectedOther.add(row.identifier.trim() + " - " + e.getMessage());
+                        }
+                    } catch (Exception e) {
+                        result.rejectedOther.add(row.identifier.trim() + " - " + e.getMessage());
+                    }
+
+                    int processed = index + 1;
+                    updateProgress(processed, total);
+                    updateMessage("Processing return equipment " + processed + " of " + total);
+                }
+
+                return result;
+            }
+        };
+
+        setBulkUploadRunning(true);
+        if (progressBulkUpload != null) {
+            progressBulkUpload.progressProperty().bind(task.progressProperty());
+        }
+        if (lblBulkUploadProgress != null) {
+            lblBulkUploadProgress.textProperty().bind(task.messageProperty());
+        }
+
+        task.setOnSucceeded(event -> {
+            unbindBulkUploadProgress();
+            BulkReturnUploadResult result = task.getValue();
+            if (progressBulkUpload != null) {
+                progressBulkUpload.setProgress(1);
+            }
+            if (lblBulkUploadProgress != null) {
+                lblBulkUploadProgress.setText(
+                        "Completed " + uploadRows.size() + " return equipment row(s)."
+                );
+            }
+            setBulkUploadRunning(false);
+
+            if (result.uploadedItems.isEmpty()) {
+                showWarning(buildReturnStatisticsMessage(
+                        result.acceptedAssetCodes,
+                        result.rejectedAlreadyReturned,
+                        result.rejectedOther
+                ));
                 return;
             }
 
             stagedReturnItems.clear();
-            stagedReturnItems.addAll(uploadedItems);
+            stagedReturnItems.addAll(result.uploadedItems);
             stagedResolvedAssetCodes.clear();
-            stagedResolvedAssetCodes.addAll(uploadedResolvedAssets);
+            stagedResolvedAssetCodes.addAll(result.uploadedResolvedAssets);
             pendingReturnStatisticsMessage = buildReturnStatisticsMessage(
-                    acceptedAssetCodes,
-                    rejectedAlreadyReturned,
-                    rejectedOther
+                    result.acceptedAssetCodes,
+                    result.rejectedAlreadyReturned,
+                    result.rejectedOther
             );
             refreshOutstandingReasonRows();
             updateSaveState();
@@ -450,11 +563,24 @@ public class ReturnEquipmentController implements Initializable {
             }
 
             saveReturns(false);
+        });
 
-        } catch (Exception e) {
-            e.printStackTrace();
-            showError("Bulk upload failed: " + e.getMessage());
-        }
+        task.setOnFailed(event -> {
+            unbindBulkUploadProgress();
+            if (progressBulkUpload != null) {
+                progressBulkUpload.setProgress(0);
+            }
+            if (lblBulkUploadProgress != null) {
+                lblBulkUploadProgress.setText("Upload failed");
+            }
+            setBulkUploadRunning(false);
+            Throwable error = task.getException();
+            showError("Bulk upload failed: " + (error == null ? "" : error.getMessage()));
+        });
+
+        Thread worker = new Thread(task, "return-bulk-upload");
+        worker.setDaemon(true);
+        worker.start();
     }
 
     @FXML
@@ -549,6 +675,7 @@ public class ReturnEquipmentController implements Initializable {
         selectedFile = chooser.showOpenDialog(null);
         if (selectedFile != null && lblFileName != null) {
             lblFileName.setText(selectedFile.getName());
+            resetBulkUploadProgress();
             updateSaveState();
             OperationFeedbackHelper.showInfo(
                     "File Selected",
@@ -559,6 +686,7 @@ public class ReturnEquipmentController implements Initializable {
             if (lblFileName != null) {
                 lblFileName.setText("No file selected");
             }
+            resetBulkUploadProgress();
             OperationFeedbackHelper.showWarning(
                     "No File Selected",
                     "No Excel file was selected for return upload."
@@ -918,19 +1046,19 @@ public class ReturnEquipmentController implements Initializable {
             btnSaveReturns.setDisable(!assignmentSelected || stagedReturnItems.isEmpty());
         }
         if (btnAddReturn != null) {
-            btnAddReturn.setDisable(!assignmentSelected || requiredReturnQty == 0 || stagedReturnItems.size() >= requiredReturnQty);
+            btnAddReturn.setDisable(assignmentSelected && requiredReturnQty > 0 && stagedReturnItems.size() >= requiredReturnQty);
         }
         if (btnClear != null) {
-            btnClear.setDisable(!assignmentSelected && stagedReturnItems.isEmpty());
+            btnClear.setDisable(false);
         }
         if (btnDownloadTemplate != null) {
-            btnDownloadTemplate.setDisable(!assignmentSelected);
+            btnDownloadTemplate.setDisable(false);
         }
         if (btnChooseFile != null) {
-            btnChooseFile.setDisable(!assignmentSelected);
+            btnChooseFile.setDisable(false);
         }
         if (btnUpload != null) {
-            btnUpload.setDisable(!assignmentSelected || selectedFile == null);
+            btnUpload.setDisable(false);
         }
         if (lblReturnProgress != null) {
             lblReturnProgress.setText("Entered Returns: " + stagedReturnItems.size() + " / " + requiredReturnQty);
@@ -939,16 +1067,58 @@ public class ReturnEquipmentController implements Initializable {
 
     private void setAssignmentDependentState(boolean enabled) {
         if (manualEntryPane != null) {
-            manualEntryPane.setDisable(!enabled);
+            manualEntryPane.setDisable(false);
         }
         if (bulkImportPane != null) {
-            bulkImportPane.setDisable(!enabled);
+            bulkImportPane.setDisable(false);
         }
         if (!enabled) {
             selectedFile = null;
             if (lblFileName != null) {
                 lblFileName.setText("No file selected");
             }
+            resetBulkUploadProgress();
+        }
+    }
+
+    private void setBulkUploadRunning(boolean running) {
+        if (btnDownloadTemplate != null) {
+            btnDownloadTemplate.setDisable(running);
+        }
+        if (btnChooseFile != null) {
+            btnChooseFile.setDisable(running);
+        }
+        if (btnUpload != null) {
+            btnUpload.setDisable(running);
+        }
+        if (btnAddReturn != null) {
+            btnAddReturn.setDisable(running);
+        }
+        if (btnSaveReturns != null) {
+            btnSaveReturns.setDisable(running || selectedAssignment == null || stagedReturnItems.isEmpty());
+        }
+        if (btnClear != null) {
+            btnClear.setDisable(running);
+        }
+    }
+
+    private void resetBulkUploadProgress() {
+        unbindBulkUploadProgress();
+        if (progressBulkUpload != null) {
+            progressBulkUpload.setProgress(0);
+        }
+        if (lblBulkUploadProgress != null) {
+            lblBulkUploadProgress.setText("No upload running");
+        }
+        setBulkUploadRunning(false);
+    }
+
+    private void unbindBulkUploadProgress() {
+        if (progressBulkUpload != null) {
+            progressBulkUpload.progressProperty().unbind();
+        }
+        if (lblBulkUploadProgress != null) {
+            lblBulkUploadProgress.textProperty().unbind();
         }
     }
 
@@ -1054,6 +1224,40 @@ public class ReturnEquipmentController implements Initializable {
                 && BULK_TEMPLATE_SAMPLE[3].equalsIgnoreCase(nid)
                 && BULK_TEMPLATE_SAMPLE[4].equalsIgnoreCase(condition)
                 && BULK_TEMPLATE_SAMPLE[5].equalsIgnoreCase(remarks);
+    }
+
+    private static final class BulkReturnUploadRow {
+        private final String identifier;
+        private final String returnedBy;
+        private final String phone;
+        private final String nid;
+        private final String condition;
+        private final String remarks;
+
+        private BulkReturnUploadRow(
+                String identifier,
+                String returnedBy,
+                String phone,
+                String nid,
+                String condition,
+                String remarks
+        ) {
+            this.identifier = identifier;
+            this.returnedBy = returnedBy;
+            this.phone = phone;
+            this.nid = nid;
+            this.condition = condition;
+            this.remarks = remarks;
+        }
+    }
+
+    private static final class BulkReturnUploadResult {
+        private final List<StagedReturnItem> uploadedItems = new ArrayList<>();
+        private final Set<String> uploadedResolvedAssets = new LinkedHashSet<>();
+        private final Set<String> uploadedEnteredIdentifiers = new LinkedHashSet<>();
+        private final List<String> acceptedAssetCodes = new ArrayList<>();
+        private final List<String> rejectedAlreadyReturned = new ArrayList<>();
+        private final List<String> rejectedOther = new ArrayList<>();
     }
 
     private static final class StagedReturnItem {

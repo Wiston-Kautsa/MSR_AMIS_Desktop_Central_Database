@@ -5,7 +5,7 @@
 Recommended production deployment:
 
 ```text
-Desktop Client -> http://143.198.153.43:8090 -> API Server -> PostgreSQL Server :5432
+Desktop Client -> http://YOUR_SERVER_HOST:8090 -> API Server -> PostgreSQL Server :5432
 ```
 
 The desktop must call the API. It must not connect directly to PostgreSQL over
@@ -121,7 +121,7 @@ Do not expose PostgreSQL port `5432` to desktop clients.
 From a client PC, test:
 
 ```bash
-curl http://143.198.153.43:8090/actuator/health
+curl http://YOUR_SERVER_HOST:8090/actuator/health
 ```
 
 ## 6. Confirm Primary Super Admin
@@ -144,16 +144,16 @@ Each desktop client `.env` must point to the server:
 
 ```env
 MSR_AMIS_DATA_MODE=REMOTE_API
-MSR_AMIS_API_BASE_URL=http://143.198.153.43:8090
+MSR_AMIS_API_BASE_URL=http://YOUR_SERVER_HOST:8090
 APP_MODE=REMOTE_API
-API_BASE_URL=http://143.198.153.43:8090
+API_BASE_URL=http://YOUR_SERVER_HOST:8090
 ```
 
 Example:
 
 ```env
-MSR_AMIS_API_BASE_URL=http://143.198.153.43:8090
-API_BASE_URL=http://143.198.153.43:8090
+MSR_AMIS_API_BASE_URL=http://YOUR_SERVER_HOST:8090
+API_BASE_URL=http://YOUR_SERVER_HOST:8090
 ```
 
 Do not use `localhost` on client machines unless the API is installed on that
@@ -191,7 +191,7 @@ official backup process for centralized deployment.
 If a client shows `API not reachable`:
 
 1. Check `http://localhost:8090/actuator/health` on the server.
-2. Check `http://143.198.153.43:8090/actuator/health` from the client PC.
+2. Check `http://YOUR_SERVER_HOST:8090/actuator/health` from the client PC.
 3. Confirm the client `.env` uses the server address, not `localhost`.
 4. Confirm the server firewall allows inbound TCP `8090`.
 5. Check logs:

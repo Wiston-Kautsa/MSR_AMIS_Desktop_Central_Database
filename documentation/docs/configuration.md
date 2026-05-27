@@ -28,10 +28,10 @@ Example:
 
 ```env
 MSR_AMIS_DATA_MODE=REMOTE_API
-MSR_AMIS_API_BASE_URL=http://143.198.153.43:8090
+MSR_AMIS_API_BASE_URL=http://YOUR_SERVER_HOST:8090
 
 APP_MODE=REMOTE_API
-API_BASE_URL=http://143.198.153.43:8090
+API_BASE_URL=http://YOUR_SERVER_HOST:8090
 ```
 
 Use `localhost` only when the API is running on the same computer as the desktop app. Client machines should point to the server IP address or DNS name.
@@ -39,8 +39,8 @@ Use `localhost` only when the API is running on the same computer as the desktop
 If users see `API not reachable`, first confirm that client `.env` files do not point to `localhost` unless the API is installed on that same client computer. Normal MIS clients should use:
 
 ```env
-MSR_AMIS_API_BASE_URL=http://143.198.153.43:8090
-API_BASE_URL=http://143.198.153.43:8090
+MSR_AMIS_API_BASE_URL=http://YOUR_SERVER_HOST:8090
+API_BASE_URL=http://YOUR_SERVER_HOST:8090
 ```
 
 For the full recovery checklist, see [Troubleshooting](troubleshooting.md).
@@ -76,6 +76,8 @@ The Spring Boot API reads:
 
 The API imports the root `.env` file as the first configuration source when it exists, so `.env` values override matching OS environment variables and Java system properties.
 
+`MSR_AMIS_DB_USERNAME`, `MSR_AMIS_DB_PASSWORD`, and `MSR_AMIS_JWT_SECRET` are required. The API should fail startup if they are missing. Do not use `postgres` as the production application database user; create a dedicated user such as `msr_amis_user`.
+
 Example:
 
 ```env
@@ -83,7 +85,7 @@ MSR_AMIS_DB_URL=jdbc:postgresql://localhost:5432/msr_amis
 MSR_AMIS_DB_USERNAME=msr_amis_user
 MSR_AMIS_DB_PASSWORD=strong_password_here
 MSR_AMIS_API_PORT=8090
-MSR_AMIS_JWT_SECRET=your_base64_secret
+MSR_AMIS_JWT_SECRET=replace_with_generated_base64_secret
 MSR_AMIS_JWT_EXPIRATION_SECONDS=28800
 MSR_AMIS_PRIMARY_SUPER_ADMIN_EMAIL=msramis@nlgfc.gov.mw
 MSR_AMIS_SETUP_ADMIN_EMAIL=setup-admin@example.com
@@ -205,6 +207,8 @@ Users can type plain numbers in the desktop fields. The app formats valid numeri
 - use `.env` on deployments where these project values must override machine-level environment variables
 - do not commit real secrets into the repository
 - keep `.env` local; it is ignored by git
+- generate a unique `MSR_AMIS_JWT_SECRET` for every deployment
+- keep PostgreSQL credentials on the API/server side only
 - configure desktop clients with the server API URL, not `localhost`, unless the API is installed locally
 - use `REMOTE_API` for the safest centralized rollout
 - use `AUTO` only where users are allowed to continue during network outages and administrators will review Sync Center results

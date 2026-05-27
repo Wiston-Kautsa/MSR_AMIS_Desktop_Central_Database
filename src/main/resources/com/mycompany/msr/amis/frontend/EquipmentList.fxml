@@ -11,7 +11,6 @@
 <?import javafx.scene.layout.AnchorPane?>
 <?import javafx.scene.layout.HBox?>
 <?import javafx.scene.layout.Priority?>
-<?import javafx.scene.layout.Region?>
 <?import javafx.scene.layout.VBox?>
 
 <AnchorPane prefHeight="700.0" prefWidth="980.0"
@@ -38,7 +37,7 @@
                 <VBox spacing="4.0">
                     <children>
                         <Label text="Equipment List" styleClass="page-title"/>
-                        <Label text="Browse, search, export, and manage all equipment records"
+                        <Label text="Browse, search, and manage all equipment records"
                                styleClass="page-subtitle"/>
                     </children>
                 </VBox>
@@ -67,11 +66,6 @@
                                                 onAction="#searchEquipment"
                                                 styleClass="secondary-button"/>
 
-                                        <Region HBox.hgrow="ALWAYS"/>
-
-                                        <Button text="Export"
-                                                onAction="#exportEquipmentList"
-                                                styleClass="action-button"/>
                                     </children>
                                 </HBox>
 

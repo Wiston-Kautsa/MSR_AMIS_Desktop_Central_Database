@@ -138,7 +138,7 @@ For production, run the packaged API as a Windows service or scheduled startup t
 From a desktop client, test the server address, not `localhost`:
 
 ```powershell
-Invoke-RestMethod http://143.198.153.43:8090/actuator/health
+Invoke-RestMethod http://YOUR_SERVER_HOST:8090/actuator/health
 ```
 
 If the server health check works locally but fails from the client, check the network connection, server IP/name, and Windows Firewall.
@@ -149,17 +149,17 @@ Client computers must point to the API server:
 
 ```env
 MSR_AMIS_DATA_MODE=REMOTE_API
-MSR_AMIS_API_BASE_URL=http://143.198.153.43:8090
+MSR_AMIS_API_BASE_URL=http://YOUR_SERVER_HOST:8090
 
 APP_MODE=REMOTE_API
-API_BASE_URL=http://143.198.153.43:8090
+API_BASE_URL=http://YOUR_SERVER_HOST:8090
 ```
 
 Use `localhost` only when the desktop app and API are running on the same computer. If a normal client uses `localhost`, it will look for an API on that client machine and show API not reachable.
 
 ### 6. Check the firewall
 
-Allow inbound access to API port `8090` on the server. If the server can reach `localhost:8090` but clients cannot reach `143.198.153.43:8090`, firewall or network routing is the likely cause.
+Allow inbound access to API port `8090` on the server. If the server can reach `localhost:8090` but clients cannot reach `YOUR_SERVER_HOST:8090`, firewall or network routing is the likely cause.
 
 ### 7. Use Sync Center after recovery
 
@@ -198,21 +198,21 @@ Sync behavior:
 
 Current implementation note:
 
-- equipment queue push is implemented for create, update, upsert, delete, and status changes
-- the API returns a result for each pushed equipment queue item
-- the desktop marks each local equipment queue row as applied or failed based on the API result
+- `/api/sync/push` supports equipment, assignment, distribution, return, user, and department queue records
+- the API returns a result for each pushed queue item
+- the desktop marks each local queue row as applied or failed based on the API result
 - pull currently acknowledges the request and updates sync audit/status; full central snapshot payload is still pending
-- non-equipment generic push handlers are not complete yet, so assignment/distribution/return/user/department offline queue replay still requires the older desktop service path or future backend handlers
+- conflict review is visible, but `Keep Local`, `Keep Central`, and `Merge` are not enabled for automatic field-level overwrite/merge yet
 
 Role access:
 
 | Role | Sync Center access |
 | --- | --- |
 | `SUPER_ADMIN` | Full queue, full audit, push all pending records, requeue rejected records |
-| `ADMIN` | Own queue and own audit only, push own pending records, requeue own rejected records |
+| `ADMIN` | Admin/User actor queue and audit records, push scoped pending records, requeue scoped rejected records |
 | `USER` | Hidden |
 
-Audit Logs follow the same visibility model: Super Admin can view all audit logs, Admin can view only their own audit logs, and User accounts do not see the Audit Logs button.
+Audit Logs follow the same security model: Super Admin can view all audit logs, Admin can view Admin/User activity while Super Admin activity is hidden, and User accounts do not see the Audit Logs button.
 
 Rejected records should not be ignored. An administrator should read the rejection reason and decide whether to recreate the change manually.
 
@@ -332,6 +332,32 @@ Maintenance appears in:
 - Maintenance Report
 - Asset History for the asset code
 
+## Bulk Entry Progress
+
+Bulk equipment operations show row-count progress while records are being processed.
+
+Current bulk progress screens:
+
+- Add Equipment bulk import
+- Distribute Equipment bulk import
+- Return Equipment bulk import
+
+The progress text counts processed equipment rows against the total selected/imported rows.
+
+## Reports And List Screens
+
+CSV/PDF export actions are available in report screens only:
+
+- Inventory Report
+- Assignment Report
+- Distribution Report
+- Asset History
+- Return Report
+- Outstanding Report
+- Maintenance Report
+
+Listing screens such as Equipment List, Assignment List, Distribution List, and Return Equipment List are for viewing and operational actions. Export/PDF buttons should not be restored there.
+
 ## Right-Click Actions
 
 Tables support right-click actions where available:
@@ -369,10 +395,10 @@ Each client should use:
 
 ```env
 MSR_AMIS_DATA_MODE=REMOTE_API
-MSR_AMIS_API_BASE_URL=http://143.198.153.43:8090
+MSR_AMIS_API_BASE_URL=http://YOUR_SERVER_HOST:8090
 
 APP_MODE=REMOTE_API
-API_BASE_URL=http://143.198.153.43:8090
+API_BASE_URL=http://YOUR_SERVER_HOST:8090
 ```
 
 Use `AUTO` only where offline work is approved and Sync Center recovery is part of normal operations. Use `localhost` only if the API runs on that same computer.
@@ -391,11 +417,12 @@ Example PostgreSQL backup command on the server:
 pg_dump -U postgres -d msr_amis -f msr_amis_backup.sql
 ```
 
-## Installer Update
+## Desktop Package Update
 
 After code changes, rebuild the desktop package:
 
 ```powershell
+$env:MSR_AMIS_PACKAGE_API_BASE_URL="http://YOUR_SERVER_HOST:8090"
 .\scripts\build-desktop.cmd
 ```
 
@@ -406,6 +433,6 @@ dist\MSR AMIS-1.0.0.msi
 dist\MSR AMIS-1.0.0.exe
 ```
 
-The current rebuilt installers were generated on May 22, 2026. This build points clients to `http://143.198.153.43:8090` and includes the updated bulk enrolment templates, complete table column header display, equipment metadata columns, maintenance tracking/reporting, Asset History with maintenance events, Department Management, role-based Sync Center access, and active queue cleanup after successful push.
+The package script requires `MSR_AMIS_PACKAGE_API_BASE_URL`. Set it every time so the package contains the intended server URL and does not reuse an old address.
 
 Clients must install the updated MSI/EXE before they receive desktop fixes.

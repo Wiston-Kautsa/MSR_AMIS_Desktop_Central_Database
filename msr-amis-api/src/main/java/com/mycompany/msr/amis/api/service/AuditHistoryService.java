@@ -132,6 +132,10 @@ public class AuditHistoryService {
     }
 
     public List<AuditLogResponse> getAuditLogs(String requesterIdentifier, String username) {
+        return getAuditLogs(requesterIdentifier, username, null);
+    }
+
+    public List<AuditLogResponse> getAuditLogs(String requesterIdentifier, String username, Integer limit) {
         UserAccount requester = userManagementService.getUser(requesterIdentifier);
         String requesterRole = requester.getRole().name();
         if (!"SUPER_ADMIN".equalsIgnoreCase(requesterRole) && !"ADMIN".equalsIgnoreCase(requesterRole)) {
@@ -164,7 +168,14 @@ public class AuditHistoryService {
             sql += "WHERE " + String.join(" AND ", conditions) + " ";
         }
 
-        return jdbcTemplate.query(sql + "ORDER BY log.action_time DESC, log.id DESC",
+        sql += "ORDER BY log.action_time DESC, log.id DESC ";
+        int normalizedLimit = normalizeLimit(limit);
+        if (normalizedLimit > 0) {
+            sql += "LIMIT ? ";
+            params.add(normalizedLimit);
+        }
+
+        return jdbcTemplate.query(sql,
                 (rs, rowNum) -> mapAuditLog(rs.getInt("id"), rs.getString("log_username"), rs.getString("action"),
                         rs.getString("log_module_name"), rs.getString("details"), rs.getTimestamp("action_time")),
                 params.toArray());
@@ -203,5 +214,12 @@ public class AuditHistoryService {
 
     private String normalize(String value) {
         return value == null ? "" : value.trim();
+    }
+
+    private int normalizeLimit(Integer limit) {
+        if (limit == null || limit <= 0) {
+            return 0;
+        }
+        return Math.min(limit, 5000);
     }
 }

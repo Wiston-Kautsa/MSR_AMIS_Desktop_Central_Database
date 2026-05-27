@@ -71,8 +71,8 @@ public class OutstandingReportController implements Initializable {
         });
 
         setupContextMenu();
-        loadData();
-        loadPeople();
+        tableOutstanding.setItems(data);
+        loadDataAsync(false);
     }
 
     private void loadPeople() {
@@ -91,6 +91,31 @@ public class OutstandingReportController implements Initializable {
         }
 
         tableOutstanding.setItems(data);
+    }
+
+    private void loadDataAsync(boolean showRefreshMessage) {
+        tableOutstanding.setDisable(true);
+        UiBackgroundLoader.run(
+                "outstanding-report-loader",
+                reportService::getOutstandingReport,
+                records -> {
+                    allOutstanding = records == null ? List.of() : records;
+                    data.setAll(allOutstanding);
+                    tableOutstanding.setItems(data);
+                    loadPeople();
+                    tableOutstanding.setDisable(false);
+                    if (showRefreshMessage) {
+                        showAlert("Refresh", "Outstanding data refreshed.");
+                    }
+                },
+                error -> {
+                    allOutstanding = List.of();
+                    data.clear();
+                    tableOutstanding.setItems(data);
+                    tableOutstanding.setDisable(false);
+                    showAlert("Error", "Failed to load data:\n" + safeMessage(error));
+                }
+        );
     }
 
     @FXML
@@ -120,9 +145,7 @@ public class OutstandingReportController implements Initializable {
         dpFrom.setValue(null);
         dpTo.setValue(null);
         chkOverdueOnly.setSelected(false);
-        loadData();
-        loadPeople();
-        showAlert("Refresh", "Outstanding data refreshed.");
+        loadDataAsync(true);
     }
 
     @FXML
@@ -178,5 +201,11 @@ public class OutstandingReportController implements Initializable {
 
     private boolean matchesContains(String value, String filter) {
         return filter == null || filter.isBlank() || (value != null && value.toLowerCase().contains(filter.toLowerCase()));
+    }
+
+    private String safeMessage(Throwable throwable) {
+        return throwable == null || throwable.getMessage() == null || throwable.getMessage().isBlank()
+                ? "The outstanding report could not be loaded."
+                : throwable.getMessage();
     }
 }

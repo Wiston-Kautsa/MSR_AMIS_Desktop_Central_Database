@@ -6,6 +6,5 @@ SET status = 'FROZEN',
     reset_requested_at = NULL
 WHERE LOWER(email) IN (
     LOWER('admin@msr.local'),
-    LOWER('user@msr.local'),
-    LOWER('wkautsa@gmail.com')
+    LOWER('user@msr.local')
 );

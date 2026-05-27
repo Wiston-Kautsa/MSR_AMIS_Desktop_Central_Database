@@ -62,8 +62,8 @@ public class InventoryReportController implements Initializable {
         colDate.setCellValueFactory(new PropertyValueFactory<>("entryDate"));
 
         setupContextMenu();
-        loadData();
-        loadCategories();
+        tableInventory.setItems(data);
+        loadDataAsync(false);
     }
 
     private void loadData() {
@@ -74,6 +74,31 @@ public class InventoryReportController implements Initializable {
             showAlert("Error", "Failed to load data:\n" + e.getMessage());
         }
         tableInventory.setItems(data);
+    }
+
+    private void loadDataAsync(boolean showRefreshMessage) {
+        tableInventory.setDisable(true);
+        UiBackgroundLoader.run(
+                "inventory-report-loader",
+                reportService::getInventoryReport,
+                records -> {
+                    allInventory = records == null ? List.of() : records;
+                    data.setAll(allInventory);
+                    tableInventory.setItems(data);
+                    loadCategories();
+                    tableInventory.setDisable(false);
+                    if (showRefreshMessage) {
+                        showAlert("Refresh", "Inventory report refreshed successfully.");
+                    }
+                },
+                error -> {
+                    allInventory = List.of();
+                    data.clear();
+                    tableInventory.setItems(data);
+                    tableInventory.setDisable(false);
+                    showAlert("Error", "Failed to load data:\n" + safeMessage(error));
+                }
+        );
     }
 
     private void loadCategories() {
@@ -111,9 +136,7 @@ public class InventoryReportController implements Initializable {
         cmbStatus.setValue(null);
         dpFrom.setValue(null);
         dpTo.setValue(null);
-        loadData();
-        loadCategories();
-        showAlert("Refresh", "Inventory report refreshed successfully.");
+        loadDataAsync(true);
     }
 
     @FXML
@@ -173,5 +196,11 @@ public class InventoryReportController implements Initializable {
         } else {
             OperationFeedbackHelper.showInfo(title, message);
         }
+    }
+
+    private String safeMessage(Throwable throwable) {
+        return throwable == null || throwable.getMessage() == null || throwable.getMessage().isBlank()
+                ? "The inventory report could not be loaded."
+                : throwable.getMessage();
     }
 }

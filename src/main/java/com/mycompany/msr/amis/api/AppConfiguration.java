@@ -16,7 +16,7 @@ import java.util.Set;
 
 public final class AppConfiguration {
 
-    private static final String DEFAULT_API_BASE_URL = "http://143.198.153.43:8090";
+    private static final String DEFAULT_API_BASE_URL = "http://localhost:8090";
     private static final String DATA_MODE_PROPERTY = "msr.amis.data.mode";
     private static final String DATA_MODE_ENV = "MSR_AMIS_DATA_MODE";
     private static final String DATA_MODE_ENV_ALIAS = "APP_MODE";

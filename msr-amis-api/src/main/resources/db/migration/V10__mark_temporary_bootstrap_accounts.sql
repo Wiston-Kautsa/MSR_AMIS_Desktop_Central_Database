@@ -5,14 +5,12 @@ UPDATE users
 SET temporary = TRUE
 WHERE LOWER(email) IN (
     LOWER('admin@msr.local'),
-    LOWER('user@msr.local'),
-    LOWER('wkautsa@gmail.com')
+    LOWER('user@msr.local')
 );
 
 UPDATE users
 SET temporary = FALSE
 WHERE LOWER(email) NOT IN (
     LOWER('admin@msr.local'),
-    LOWER('user@msr.local'),
-    LOWER('wkautsa@gmail.com')
+    LOWER('user@msr.local')
 );

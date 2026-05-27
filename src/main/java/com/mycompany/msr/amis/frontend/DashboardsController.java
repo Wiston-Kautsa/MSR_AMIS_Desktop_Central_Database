@@ -163,6 +163,7 @@ public class DashboardsController implements Initializable {
             }
 
             contentArea.getChildren().add(root);
+            TableReadabilityHelper.applyTo(root);
         } catch (Exception e) {
             e.printStackTrace();
             OperationFeedbackHelper.showError(
@@ -362,6 +363,7 @@ public class DashboardsController implements Initializable {
     @FXML private void openMaintenance() { loadPage("Maintenance.fxml"); }
     @FXML private void openCreateAssignment() { loadPage("CreateAssignment.fxml"); }
     @FXML private void openDistributeEquipment() { loadPage("DistributeEquipment.fxml"); }
+    @FXML private void openDistributionList() { loadPage("DistributionList.fxml"); }
     @FXML private void openAssignmentList() { loadPage("AssignmentList.fxml"); }
     @FXML private void openReturnEquipment() { loadPage("ReturnEquipment.fxml"); }
     @FXML private void openInventoryReport() { loadPage("InventoryReport.fxml"); }

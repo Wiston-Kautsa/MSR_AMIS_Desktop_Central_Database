@@ -44,13 +44,9 @@
 
             <Button text="Filter"
                     onAction="#handleFilter"/>
-
             <Region HBox.hgrow="ALWAYS"/>
-
-            <!-- EXPORT BUTTON -->
             <Button text="Export"
                     onAction="#handleExport"/>
-
             <Button text="PDF"
                     onAction="#handleExportPdf"/>
 

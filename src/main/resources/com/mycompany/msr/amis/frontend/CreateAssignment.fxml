@@ -115,20 +115,8 @@
                             <VBox spacing="10.0">
                                 <children>
 
-                                    <HBox alignment="CENTER_RIGHT">
-                                        <children>
-                                            <Button text="Export List"
-                                                    onAction="#exportAssignments"
-                                                    styleClass="btn-secondary"/>
-                                        </children>
-                                    </HBox>
-
                                     <TableView fx:id="tableAssignments"
                                                prefHeight="350.0">
-
-                                        <columnResizePolicy>
-                                            <TableView fx:constant="CONSTRAINED_RESIZE_POLICY"/>
-                                        </columnResizePolicy>
 
                                         <columns>
 

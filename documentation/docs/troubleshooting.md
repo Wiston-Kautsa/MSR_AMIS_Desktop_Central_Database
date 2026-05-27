@@ -51,10 +51,10 @@ For production, run the packaged API as a Windows service or scheduled startup t
 Run this from a desktop client:
 
 ```powershell
-Invoke-RestMethod http://143.198.153.43:8090/actuator/health
+Invoke-RestMethod http://YOUR_SERVER_HOST:8090/actuator/health
 ```
 
-If the server can reach `localhost:8090` but the client cannot reach `143.198.153.43:8090`, check the server IP/name, network connection, and firewall.
+If the server can reach `localhost:8090` but the client cannot reach `YOUR_SERVER_HOST:8090`, check the server IP/name, network connection, and firewall.
 
 ### 5. Check client `.env`
 
@@ -62,10 +62,10 @@ Normal MIS client computers must point to the API server:
 
 ```env
 MSR_AMIS_DATA_MODE=REMOTE_API
-MSR_AMIS_API_BASE_URL=http://143.198.153.43:8090
+MSR_AMIS_API_BASE_URL=http://YOUR_SERVER_HOST:8090
 
 APP_MODE=REMOTE_API
-API_BASE_URL=http://143.198.153.43:8090
+API_BASE_URL=http://YOUR_SERVER_HOST:8090
 ```
 
 Use `AUTO` instead of `REMOTE_API` only on deployments that intentionally allow offline work and Sync Center recovery. Use `localhost` only when the desktop app and API are running on the same computer. If a client uses `localhost`, it will look for an API on that client machine and report `API not reachable`.

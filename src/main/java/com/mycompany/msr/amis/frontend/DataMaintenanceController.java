@@ -93,19 +93,33 @@ public class DataMaintenanceController implements Initializable {
     }
 
     private void refreshSummary() {
-        try {
-            DataMaintenanceSummary summary = dataMaintenanceService.getSummary();
+        updateStatus("Loading " + modePrefix().toLowerCase() + " data maintenance counts...");
+        setResetButtonsDisabled(true);
+        UiBackgroundLoader.run(
+                "data-maintenance-summary-loader",
+                () -> {
+                    try {
+                        return dataMaintenanceService.getSummary();
+                    } catch (Exception exception) {
+                        throw new RuntimeException(exception);
+                    }
+                },
+                summary -> {
             lblEquipmentCount.setText(Integer.toString(summary.getEquipmentCount()));
             lblAssignmentCount.setText(Integer.toString(summary.getAssignmentCount()));
             lblDistributionCount.setText(Integer.toString(summary.getDistributionCount()));
             lblReturnCount.setText(Integer.toString(summary.getReturnCount()));
             lblAuditLogCount.setText(Integer.toString(summary.getAuditLogCount()));
+            setResetButtonsDisabled(false);
+            configureConfirmationFields();
             updateStatus(modePrefix() + " data maintenance counts refreshed.");
-        } catch (Exception e) {
-            e.printStackTrace();
-            updateStatus(resolveMessage(e));
-            OperationFeedbackHelper.showError("Load Failed", resolveMessage(e));
-        }
+                },
+                error -> {
+            setResetButtonsDisabled(false);
+            updateStatus(resolveMessage(error));
+            OperationFeedbackHelper.showError("Load Failed", resolveMessage(error));
+                }
+        );
     }
 
     private void resetComponent(String component, String title) {
@@ -158,7 +172,7 @@ public class DataMaintenanceController implements Initializable {
         return ServiceRegistry.getConfiguration().usesLocalDatabase() ? "Local" : "Remote";
     }
 
-    private String resolveMessage(Exception exception) {
+    private String resolveMessage(Throwable exception) {
         if (exception == null || exception.getMessage() == null || exception.getMessage().isBlank()) {
             return "The data maintenance operation failed.";
         }
@@ -168,6 +182,20 @@ public class DataMaintenanceController implements Initializable {
             return "API is not reachable. Start the API server and try again.";
         }
         return message;
+    }
+
+    private void setResetButtonsDisabled(boolean disabled) {
+        for (String component : CONFIRMATION_PHRASES.keySet()) {
+            Button button = buttonFor(component);
+            if (button != null) {
+                button.setDisable(disabled);
+            }
+        }
+        if (!disabled) {
+            for (String component : CONFIRMATION_PHRASES.keySet()) {
+                updateConfirmationButtonState(component);
+            }
+        }
     }
 
     private void configureConfirmationFields() {

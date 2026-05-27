@@ -49,13 +49,23 @@ public class CreateAssignmentController implements Initializable {
     private final AssignmentService assignmentService = ServiceRegistry.getAssignmentService();
     private final UserService userService = ServiceRegistry.getUserService();
 
+    private static final class AssignmentSetupData {
+        private final java.util.List<User> users;
+        private final Map<String, Integer> stock;
+        private final java.util.List<Assignment> assignments;
+
+        private AssignmentSetupData(java.util.List<User> users, Map<String, Integer> stock, java.util.List<Assignment> assignments) {
+            this.users = users == null ? java.util.List.of() : users;
+            this.stock = stock == null ? Map.of() : stock;
+            this.assignments = assignments == null ? java.util.List.of() : assignments;
+        }
+    }
+
     @Override
     public void initialize(URL url, ResourceBundle rb) {
         setupTable();
         setupRightClickMenu();
-        loadUsers();
-        loadEquipmentTypes();
-        loadAssignments();
+        loadInitialDataAsync();
 
         if (cmbPerson != null) {
             cmbPerson.setPromptText("Select Responsible Person");
@@ -74,6 +84,31 @@ public class CreateAssignmentController implements Initializable {
         }
 
         updateAvailableStockLabel();
+    }
+
+    private void loadInitialDataAsync() {
+        tableAssignments.setDisable(true);
+        UiBackgroundLoader.run(
+                "create-assignment-loader",
+                () -> new AssignmentSetupData(
+                        userService.getUsers(),
+                        assignmentService.getAvailableStockByCategory(),
+                        assignmentService.getAssignments()
+                ),
+                loaded -> {
+                    applyUsers(loaded.users);
+                    availableStockByCategory.clear();
+                    availableStockByCategory.putAll(loaded.stock);
+                    cmbEquipmentType.getItems().setAll(availableStockByCategory.keySet());
+                    assignmentList.setAll(loaded.assignments);
+                    tableAssignments.setDisable(false);
+                    updateAvailableStockLabel();
+                },
+                error -> {
+                    tableAssignments.setDisable(false);
+                    showError("Load Error", safeMessage(error));
+                }
+        );
     }
 
     private void loadUsers() {
@@ -97,6 +132,24 @@ public class CreateAssignmentController implements Initializable {
             }
         } catch (Exception e) {
             e.printStackTrace();
+        }
+    }
+
+    private void applyUsers(java.util.List<User> users) {
+        if (cmbPerson == null) {
+            return;
+        }
+        cmbPerson.getItems().clear();
+        usersByName.clear();
+        for (User u : users == null ? java.util.List.<User>of() : users) {
+            if (!AccessControl.STATUS_ACTIVE.equalsIgnoreCase(u.getStatus())) {
+                continue;
+            }
+            if (AccessControl.isTemporarySetupAccountEmail(u.getEmail())) {
+                continue;
+            }
+            cmbPerson.getItems().add(u.getFullName());
+            usersByName.put(u.getFullName(), u);
         }
     }
 
@@ -161,6 +214,12 @@ public class CreateAssignmentController implements Initializable {
     private void loadAssignments() {
         assignmentList.clear();
         assignmentList.addAll(assignmentService.getAssignments());
+    }
+
+    private String safeMessage(Throwable throwable) {
+        return throwable == null || throwable.getMessage() == null || throwable.getMessage().isBlank()
+                ? "The assignment screen could not be loaded."
+                : throwable.getMessage();
     }
 
     private void setupRightClickMenu() {

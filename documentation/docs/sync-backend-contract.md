@@ -39,7 +39,7 @@ MSR-AMIS uses controlled bi-directional sync:
 | Force Release Lock | No | No | Yes |
 | Edit Sync Config | No | No | Yes |
 
-Admin access is scoped to the current user's own submitted queue records unless a central approval workflow explicitly assigns them more authority.
+Admin access is scoped to Admin/User actor records. Super Admin sync records remain hidden from Admin and User accounts.
 
 ## Database Schema
 
@@ -123,11 +123,16 @@ All endpoints require authentication.
 
 ## Current Implementation Status
 
-As of 2026-05-17, the backend sync foundation is implemented with these active capabilities:
+As of the current code state, the backend sync foundation is implemented with these active capabilities:
 
 - central sync tables exist through Flyway migrations `V22` and `V23`
 - `POST /api/sync/push` accepts per-record queue payloads and returns per-record results
 - equipment push supports `CREATE`, `UPDATE`, `UPSERT`, `DELETE`, and `STATUS`
+- assignment push supports `CREATE`, `UPDATE`, `STATUS`, and `DELETE`
+- distribution push supports batch distribution payloads
+- return push supports batch return payloads
+- user push supports `CREATE`, `UPDATE`, `STATUS`, and `DELETE`
+- department push supports `CREATE`, `UPDATE`, and `DELETE`
 - equipment idempotency keys are recorded in `sync_queue`
 - `GET /api/sync/queue` returns central queue rows for the JavaFX Sync Center
 - `GET /api/sync/status` returns API/database/schema/lock/count status
@@ -136,10 +141,11 @@ As of 2026-05-17, the backend sync foundation is implemented with these active c
 - `POST /api/sync/retry` moves failed/conflict/quarantined rows back to pending
 - Super Admin endpoints exist for clear completed logs, clear queue, reset sync state, and force-release lock
 
-Current limitation:
+Current limitations:
 
 - `GET /api/sync/pull` is still a lightweight acknowledgement endpoint. It records a pull audit event and tells the desktop to refresh available central views, but it does not yet return a full central snapshot payload grouped by entity.
-- Only equipment is handled by the generic `/api/sync/push` apply engine. Assignment, distribution, return, user, department, and audit-log push handlers remain future work for the central generic push path.
+- Audit-log generic push is not part of the current central apply engine.
+- The JavaFX conflict review buttons `Keep Local`, `Keep Central`, and `Merge` still require stored field-level snapshots and do not yet perform automatic overwrite/merge resolution.
 
 ### `POST /api/sync/push`
 

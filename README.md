@@ -53,16 +53,16 @@ Current production-oriented `.env` shape:
 
 ```env
 MSR_AMIS_DATA_MODE=REMOTE_API
-MSR_AMIS_API_BASE_URL=http://143.198.153.43:8090
+MSR_AMIS_API_BASE_URL=http://YOUR_SERVER_HOST:8090
 
 APP_MODE=REMOTE_API
-API_BASE_URL=http://143.198.153.43:8090
+API_BASE_URL=http://YOUR_SERVER_HOST:8090
 
 MSR_AMIS_API_PORT=8090
 MSR_AMIS_DB_URL=jdbc:postgresql://localhost:5432/msr_amis
-MSR_AMIS_DB_USERNAME=postgres
-MSR_AMIS_DB_PASSWORD=postgres
-MSR_AMIS_JWT_SECRET=your_base64_secret
+MSR_AMIS_DB_USERNAME=msr_amis_user
+MSR_AMIS_DB_PASSWORD=replace_with_database_password
+MSR_AMIS_JWT_SECRET=replace_with_generated_base64_secret
 MSR_AMIS_JWT_EXPIRATION_SECONDS=28800
 MSR_AMIS_EXPOSE_RESET_CODE_ON_EMAIL_FAILURE=false
 MSR_AMIS_PRIMARY_SUPER_ADMIN_EMAIL=msramis@nlgfc.gov.mw
@@ -93,19 +93,19 @@ MSR_AMIS_OPERATION_EMAIL_RECIPIENTS=msramis@nlgfc.gov.mw
 
 Use `localhost` only when the desktop and API run on the same computer. Client machines must point to the API server address.
 
-For installed desktop clients, use [desktop-client.env.example](desktop-client.env.example). Rename it to `.env` in the installed `MSR AMIS` folder and point it to the current API server, `http://143.198.153.43:8090`. The packaged desktop now checks for `.env` in the launch folder, the packaged `app` folder, and the installed application folder.
+For installed desktop clients, use [desktop-client.env.example](desktop-client.env.example). Rename it to `.env` in the installed `MSR AMIS` folder and point it to the current API server, `http://YOUR_SERVER_HOST:8090`. The packaged desktop now checks for `.env` in the launch folder, the packaged `app` folder, and the installed application folder.
 
 The installer also places an editable `.env` file in the installed `MSR AMIS` folder. If the API server IP changes, edit that file and restart the desktop application:
 
 ```env
-MSR_AMIS_API_BASE_URL=http://143.198.153.43:8090
-API_BASE_URL=http://143.198.153.43:8090
+MSR_AMIS_API_BASE_URL=http://YOUR_SERVER_HOST:8090
+API_BASE_URL=http://YOUR_SERVER_HOST:8090
 ```
 
 To build an installer that already contains the client API URL, set `MSR_AMIS_PACKAGE_API_BASE_URL` before running the package script:
 
 ```powershell
-$env:MSR_AMIS_PACKAGE_API_BASE_URL="http://143.198.153.43:8090"
+$env:MSR_AMIS_PACKAGE_API_BASE_URL="http://YOUR_SERVER_HOST:8090"
 .\scripts\build-desktop.cmd
 ```
 
@@ -124,10 +124,10 @@ Invoke-RestMethod http://localhost:8090/actuator/health
 Client computers must test the server address, not `localhost`:
 
 ```powershell
-Invoke-RestMethod http://143.198.153.43:8090/actuator/health
+Invoke-RestMethod http://YOUR_SERVER_HOST:8090/actuator/health
 ```
 
-Normal client `.env` files must use `http://143.198.153.43:8090`. See [Troubleshooting](documentation/docs/troubleshooting.md) for the full checklist covering API startup, PostgreSQL, firewall, client configuration, and Sync Center recovery.
+Normal client `.env` files must use `http://YOUR_SERVER_HOST:8090`. See [Troubleshooting](documentation/docs/troubleshooting.md) for the full checklist covering API startup, PostgreSQL, firewall, client configuration, and Sync Center recovery.
 
 ## Server Hosting For Testers
 
@@ -147,12 +147,12 @@ docker compose --env-file ./docker.env ps
 curl http://localhost:8090/actuator/health
 ```
 
-The desktop client is installed on user machines, then its `.env` API URL is set to the current server address, `http://143.198.153.43:8090`.
+The desktop client is installed on user machines, then its `.env` API URL is set to the current server address, `http://YOUR_SERVER_HOST:8090`.
 
 Build a tester desktop installer that points to the hosted API:
 
 ```powershell
-$env:MSR_AMIS_PACKAGE_API_BASE_URL="http://143.198.153.43:8090"
+$env:MSR_AMIS_PACKAGE_API_BASE_URL="http://YOUR_SERVER_HOST:8090"
 .\scripts\build-desktop.cmd
 ```
 
@@ -170,6 +170,7 @@ $env:MSR_AMIS_PACKAGE_API_BASE_URL="http://143.198.153.43:8090"
 Build the app image, MSI, and EXE:
 
 ```powershell
+$env:MSR_AMIS_PACKAGE_API_BASE_URL="http://YOUR_SERVER_HOST:8090"
 .\scripts\build-desktop.cmd
 ```
 
@@ -179,7 +180,7 @@ Generated files:
 - `dist\MSR AMIS-1.0.0.msi`
 - `dist\MSR AMIS-1.0.0.exe`
 
-Current package build: May 22, 2026. This desktop package points clients to `http://143.198.153.43:8090` and includes the updated bulk enrolment templates, full table column headers, equipment operational metadata, maintenance tracking/reporting, Asset History with maintenance events, role-based Sync Center access, active queue cleanup after successful push, and Department Management.
+The packaging script requires `MSR_AMIS_PACKAGE_API_BASE_URL`. This prevents a build from silently embedding an old server address. The current desktop includes bulk add/distribution/return progress counters, readable table headers, report-only CSV/PDF export actions, equipment operational metadata, maintenance tracking/reporting, Asset History with maintenance events, role-based Sync Center access, active queue cleanup after successful push, and Department Management.
 
 ## Development
 
@@ -225,6 +226,7 @@ These backup scripts are intended to run on the server where PostgreSQL tools ar
 ## Documentation
 
 - [Documentation Index](documentation/README.md)
+- [Current System Alignment](documentation/docs/current-system-alignment.md)
 - [System Overview](documentation/docs/system-overview.md)
 - [Sync Backend Contract](documentation/docs/sync-backend-contract.md)
 - [Sync Implementation Blueprint](documentation/docs/sync-implementation-blueprint.md)
@@ -235,6 +237,5 @@ These backup scripts are intended to run on the server where PostgreSQL tools ar
 - [Deployment](documentation/docs/deployment.md)
 - [Daily Operations](documentation/docs/daily-operations.md)
 - [Troubleshooting](documentation/docs/troubleshooting.md)
-- [Current System Alignment](documentation/docs/current-system-alignment.md)
 - [Final Corrected Design](documentation/docs/final-corrected-design.md)
 - [API Migration Plan](documentation/docs/api-migration-plan.md)

@@ -27,8 +27,9 @@ public class AuditController {
     @GetMapping
     @PreAuthorize("hasAnyRole('SUPER_ADMIN','ADMIN')")
     public List<AuditLogResponse> getAuditLogs(Authentication authentication,
-                                               @RequestParam(required = false) String username) {
-        return auditHistoryService.getAuditLogs(authentication.getName(), username);
+                                               @RequestParam(required = false) String username,
+                                               @RequestParam(required = false) Integer limit) {
+        return auditHistoryService.getAuditLogs(authentication.getName(), username, limit);
     }
 
     @PostMapping

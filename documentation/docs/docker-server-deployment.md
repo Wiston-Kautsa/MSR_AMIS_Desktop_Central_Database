@@ -3,7 +3,7 @@
 This is the recommended server deployment for MSR-AMIS.
 
 ```text
-Desktop client PCs -> http://143.198.153.43:8090 -> API container -> PostgreSQL container
+Desktop client PCs -> http://YOUR_SERVER_HOST:8090 -> API container -> PostgreSQL container
 ```
 
 The server clones the project from GitHub. Docker then builds and runs the API
@@ -16,7 +16,7 @@ source access unless they are part of the deployment team.
 | Property | Value |
 | --- | --- |
 | Deployment shape | Desktop client PCs -> MSR-AMIS API on server port `8090` -> PostgreSQL on Docker network port `5432` |
-| Current API URL | `http://143.198.153.43:8090` |
+| Current API URL | `http://YOUR_SERVER_HOST:8090` |
 | Primary platform | Linux server, Ubuntu or Debian |
 | Optional platform | Windows Server or Windows development machine using Docker Desktop |
 | Security rule | `docker.env` stays on the server only. Desktop users receive only the installer, API URL, username, and password. |
@@ -30,7 +30,7 @@ Architecture:
 ```text
 Desktop Client PCs
 Installed MSR-AMIS desktop application
-HTTP -> http://143.198.153.43:8090
+HTTP -> http://YOUR_SERVER_HOST:8090
 
 MSR-AMIS API Container
 Published port 8090 | Spring Boot
@@ -205,7 +205,7 @@ sudo ufw status
 From a client PC, test:
 
 ```powershell
-Invoke-RestMethod http://143.198.153.43:8090/actuator/health
+Invoke-RestMethod http://YOUR_SERVER_HOST:8090/actuator/health
 ```
 
 The response should show `UP`.
@@ -230,11 +230,11 @@ On each desktop client, the installed `.env` must point to the server API:
 
 ```env
 MSR_AMIS_DATA_MODE=REMOTE_API
-MSR_AMIS_API_BASE_URL=http://143.198.153.43:8090
+MSR_AMIS_API_BASE_URL=http://YOUR_SERVER_HOST:8090
 MSR_AMIS_AUTO_MIRROR_AFTER_MUTATION=false
 
 APP_MODE=REMOTE_API
-API_BASE_URL=http://143.198.153.43:8090
+API_BASE_URL=http://YOUR_SERVER_HOST:8090
 ```
 
 Use the current server IP address or DNS name.
@@ -246,7 +246,7 @@ Do not use `localhost` on client PCs unless the API is running on that same PC.
 On the development machine, set the server API URL before packaging:
 
 ```powershell
-$env:MSR_AMIS_PACKAGE_API_BASE_URL="http://143.198.153.43:8090"
+$env:MSR_AMIS_PACKAGE_API_BASE_URL="http://YOUR_SERVER_HOST:8090"
 .\scripts\build-desktop.cmd
 ```
 
@@ -272,7 +272,7 @@ After the server update is healthy, rebuild the MSI and EXE on the development
 machine if desktop code or packaged configuration changed:
 
 ```powershell
-$env:MSR_AMIS_PACKAGE_API_BASE_URL="http://143.198.153.43:8090"
+$env:MSR_AMIS_PACKAGE_API_BASE_URL="http://YOUR_SERVER_HOST:8090"
 .\scripts\build-desktop.cmd
 ```
 

@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
 <?import java.net.URL?>
+<?import javafx.geometry.Insets?>
 <?import javafx.scene.control.*?>
 <?import javafx.scene.layout.*?>
 
@@ -141,39 +142,53 @@
 
                 </VBox>
 
-                <!-- RIGHT: BULK -->
-                <VBox fx:id="bulkImportPane" spacing="14" GridPane.columnIndex="1" GridPane.rowIndex="1" fillWidth="true">
-
-                    <Label text="Bulk Upload" styleClass="card-title"/>
-                    <Label text="Upload many returns at once. Use the template so the system reads the file correctly."
-                           wrapText="true"/>
-
-                    <VBox spacing="10">
-                        <Button fx:id="btnDownloadTemplate"
-                                text="Download Template"
-                                maxWidth="1.7976931348623157E308"
-                                onAction="#downloadTemplate"/>
-                        <Button fx:id="btnChooseFile"
-                                text="Choose File"
-                                maxWidth="1.7976931348623157E308"
-                                onAction="#chooseFile"/>
-                        <Label fx:id="lblFileName"
-                               text="No file selected"
-                               wrapText="true"/>
-                        <Button fx:id="btnUpload"
-                                text="Upload"
-                                maxWidth="1.7976931348623157E308"
-                                onAction="#handleBulkUpload"/>
-                        <Region VBox.vgrow="ALWAYS"/>
-                    </VBox>
-
-                </VBox>
-
             </GridPane>
 
         </TitledPane>
 
         <!-- ================= SECTION 3 ================= -->
+        <TitledPane text="Bulk Import (Excel)" expanded="true">
+
+            <VBox fx:id="bulkImportPane" spacing="14">
+                <padding>
+                    <Insets top="10" right="10" bottom="10" left="10"/>
+                </padding>
+
+                <Label text="Required columns: asset_code_or_imei, returned_by, phone, nid, return_condition, remarks"
+                       style="-fx-text-fill: #4b5563;"/>
+
+                <Label fx:id="lblFileName"
+                       text="No file selected"
+                       style="-fx-text-fill: gray;"
+                       wrapText="true"/>
+
+                <HBox spacing="10">
+                    <Button fx:id="btnDownloadTemplate"
+                            text="Download Template"
+                            onAction="#downloadTemplate"/>
+                    <Button fx:id="btnChooseFile"
+                            text="Choose File"
+                            onAction="#chooseFile"/>
+                    <Button fx:id="btnUpload"
+                            text="Upload"
+                            onAction="#handleBulkUpload"
+                            style="-fx-background-color:#2ecc71; -fx-text-fill:white;"/>
+                </HBox>
+
+                <VBox spacing="6">
+                    <ProgressBar fx:id="progressBulkUpload"
+                                 maxWidth="Infinity"
+                                 prefHeight="16"
+                                 progress="0"/>
+                    <Label fx:id="lblBulkUploadProgress"
+                           text="No upload running"
+                           style="-fx-text-fill: #4b5563;"/>
+                </VBox>
+            </VBox>
+
+        </TitledPane>
+
+        <!-- ================= SECTION 4 ================= -->
         <TitledPane text="Returned Equipment" expanded="true">
 
             <TableView fx:id="tableReturns">

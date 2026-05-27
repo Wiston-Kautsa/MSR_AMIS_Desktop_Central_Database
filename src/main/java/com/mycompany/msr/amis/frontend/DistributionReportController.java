@@ -51,8 +51,8 @@ public class DistributionReportController implements Initializable {
         colDate.setCellValueFactory(new PropertyValueFactory<>("date"));
 
         setupContextMenu();
-        loadData();
-        loadPeople();
+        tableDistribution.setItems(data);
+        loadDataAsync(false);
     }
 
     private void loadPeople() {
@@ -73,6 +73,31 @@ public class DistributionReportController implements Initializable {
         }
 
         tableDistribution.setItems(data);
+    }
+
+    private void loadDataAsync(boolean showRefreshMessage) {
+        tableDistribution.setDisable(true);
+        UiBackgroundLoader.run(
+                "distribution-report-loader",
+                reportService::getDistributionReport,
+                records -> {
+                    allDistributions = records == null ? List.of() : records;
+                    data.setAll(allDistributions);
+                    tableDistribution.setItems(data);
+                    loadPeople();
+                    tableDistribution.setDisable(false);
+                    if (showRefreshMessage) {
+                        showAlert("Refresh", "Data refreshed successfully.");
+                    }
+                },
+                error -> {
+                    allDistributions = List.of();
+                    data.clear();
+                    tableDistribution.setItems(data);
+                    tableDistribution.setDisable(false);
+                    showAlert("Error", "Failed to load data:\n" + safeMessage(error));
+                }
+        );
     }
 
     @FXML
@@ -102,9 +127,7 @@ public class DistributionReportController implements Initializable {
         cmbStatus.setValue(null);
         dpFrom.setValue(null);
         dpTo.setValue(null);
-        loadData();
-        loadPeople();
-        showAlert("Refresh", "Data refreshed successfully.");
+        loadDataAsync(true);
     }
 
     @FXML
@@ -163,5 +186,11 @@ public class DistributionReportController implements Initializable {
         } else {
             OperationFeedbackHelper.showInfo(title, message);
         }
+    }
+
+    private String safeMessage(Throwable throwable) {
+        return throwable == null || throwable.getMessage() == null || throwable.getMessage().isBlank()
+                ? "The distribution report could not be loaded."
+                : throwable.getMessage();
     }
 }

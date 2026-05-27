@@ -481,7 +481,11 @@ Push MVP:
 Current status:
 
 - complete for equipment create/update/upsert/delete/status through `/api/sync/push`
-- remaining entities still need central handlers
+- complete for assignment create/update/status/delete through `/api/sync/push`
+- complete for distribution and return batch payloads through `/api/sync/push`
+- complete for user create/update/status/delete through `/api/sync/push`
+- complete for department create/update/delete through `/api/sync/push`
+- audit-log generic push is not part of the current central apply path
 
 ### Deliverable 5
 

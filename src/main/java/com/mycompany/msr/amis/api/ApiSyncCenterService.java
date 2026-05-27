@@ -20,6 +20,11 @@ public final class ApiSyncCenterService implements SyncCenterService {
 
     @Override
     public SyncCenterSummary getSummary() throws Exception {
+        List<SyncQueueRecord> localRecords = getLocalQueueRecords();
+        if (!localRecords.isEmpty()) {
+            return localQueueSummary(localRecords);
+        }
+
         JsonNode status = apiClient.getJson("/api/sync/status");
         return new SyncCenterSummary(
                 status.path("pendingCount").asInt(),
@@ -64,8 +69,16 @@ public final class ApiSyncCenterService implements SyncCenterService {
 
     @Override
     public List<SyncAuditRecord> getAuditRecords() throws Exception {
-        JsonNode logs = apiClient.getJson("/api/sync/audit");
-        List<SyncAuditRecord> records = new ArrayList<>();
+        List<SyncAuditRecord> records = getLocalAuditRecords();
+        JsonNode logs;
+        try {
+            logs = apiClient.getJson("/api/sync/audit");
+        } catch (Exception exception) {
+            if (!records.isEmpty()) {
+                return records;
+            }
+            throw exception;
+        }
         if (logs != null && logs.isArray()) {
             for (JsonNode node : logs) {
                 records.add(new SyncAuditRecord(
@@ -83,28 +96,69 @@ public final class ApiSyncCenterService implements SyncCenterService {
     }
 
     @Override
-    public long queueOperation(String entityType, String operationType, String entityKey, Object payload, Object baselineSnapshot, String description) {
-        throw new UnsupportedOperationException("Remote API mode does not queue local desktop operations directly.");
+    public long queueOperation(String entityType,
+                               String operationType,
+                               String entityKey,
+                               Object payload,
+                               Object baselineSnapshot,
+                               String description) throws Exception {
+        String actor = currentActor();
+        try (Connection connection = DatabaseHandler.getConnection()) {
+            connection.setAutoCommit(false);
+            try {
+                long queueId = storageRepository.insertQueueRecord(
+                        connection,
+                        entityType,
+                        operationType,
+                        entityKey,
+                        payload,
+                        baselineSnapshot,
+                        actor,
+                        description
+                );
+                storageRepository.insertAuditRecord(
+                        connection,
+                        queueId,
+                        actor,
+                        "OFFLINE_CHANGE_CAPTURED",
+                        "CAPTURED",
+                        normalize(description)
+                );
+                DatabaseHandler.logAudit(
+                        "OFFLINE_CHANGE_CAPTURED",
+                        "SYNC_QUEUE",
+                        Long.toString(queueId),
+                        normalize(description)
+                );
+                connection.commit();
+                return queueId;
+            } catch (Exception exception) {
+                connection.rollback();
+                throw exception;
+            } finally {
+                connection.setAutoCommit(true);
+            }
+        }
     }
 
     @Override
     public String processPendingQueue() throws Exception {
-        return pushLocalEquipmentQueue(null, false);
+        return pushLocalQueue(null, false);
     }
 
     @Override
     public String processPendingQueueForActor(String actor) throws Exception {
-        return pushLocalEquipmentQueue(actor, false);
+        return pushLocalQueue(actor, false);
     }
 
     @Override
     public String pushPendingEquipment() throws Exception {
-        return pushLocalEquipmentQueue(null, false);
+        return pushLocalQueue(null, false);
     }
 
     @Override
     public String pushPendingEquipmentForActor(String actor) throws Exception {
-        return pushLocalEquipmentQueue(actor, false);
+        return pushLocalQueue(actor, false);
     }
 
     @Override
@@ -144,7 +198,7 @@ public final class ApiSyncCenterService implements SyncCenterService {
 
     @Override
     public String runDryRun(Set<String> entityTypes) throws Exception {
-        JsonNode response = postLocalEquipmentQueue(null, true).response();
+        JsonNode response = postLocalQueue(null, true).response();
         return response.path("message").asText("Dry run completed.");
     }
 
@@ -165,8 +219,8 @@ public final class ApiSyncCenterService implements SyncCenterService {
         return response.path("message").asText("Central sync lock released.");
     }
 
-    private String pushLocalEquipmentQueue(String actorScope, boolean dryRun) throws Exception {
-        PushResult pushResult = postLocalEquipmentQueue(actorScope, dryRun);
+    private String pushLocalQueue(String actorScope, boolean dryRun) throws Exception {
+        PushResult pushResult = postLocalQueue(actorScope, dryRun);
         if (dryRun) {
             return pushResult.response().path("message").asText("Dry run completed.");
         }
@@ -200,13 +254,13 @@ public final class ApiSyncCenterService implements SyncCenterService {
                 connection.setAutoCommit(true);
             }
         }
-        return "Equipment push completed. Applied: " + applied + ". Failed: " + failed + ".";
+        return "Sync push completed. Applied: " + applied + ". Failed: " + failed + ".";
     }
 
-    private PushResult postLocalEquipmentQueue(String actorScope, boolean dryRun) throws Exception {
-        List<SyncStorageRepository.StoredSyncQueueItem> items = pendingLocalEquipmentItems(actorScope);
+    private PushResult postLocalQueue(String actorScope, boolean dryRun) throws Exception {
+        List<SyncStorageRepository.StoredSyncQueueItem> items = pendingLocalSyncItems(actorScope);
         if (items.isEmpty()) {
-            return new PushResult(apiMessage("No pending local equipment queue records to push."), items);
+            return new PushResult(apiMessage("No pending local queue records to push."), items);
         }
 
         List<SyncPushRecordPayload> records = new ArrayList<>();
@@ -224,21 +278,18 @@ public final class ApiSyncCenterService implements SyncCenterService {
 
         JsonNode response = apiClient.post(
                 "/api/sync/push",
-                new SyncPushPayload("SYNC-" + UUID.randomUUID(), machineId(), machineId(), dryRun, List.of("EQUIPMENT"), records),
+                new SyncPushPayload("SYNC-" + UUID.randomUUID(), machineId(), machineId(), dryRun, List.of(), records),
                 JsonNode.class
         );
         return new PushResult(response, items);
     }
 
-    private List<SyncStorageRepository.StoredSyncQueueItem> pendingLocalEquipmentItems(String actorScope) throws Exception {
+    private List<SyncStorageRepository.StoredSyncQueueItem> pendingLocalSyncItems(String actorScope) throws Exception {
         List<SyncStorageRepository.StoredSyncQueueItem> items = new ArrayList<>();
         try (Connection connection = DatabaseHandler.getConnection()) {
             for (SyncStorageRepository.StoredSyncQueueItem item : storageRepository.loadQueueItems(connection)) {
                 String status = normalize(item.getStatus());
                 if (!"PENDING".equalsIgnoreCase(status) && !"FAILED".equalsIgnoreCase(status)) {
-                    continue;
-                }
-                if (!"EQUIPMENT".equalsIgnoreCase(normalize(item.getEntityType()))) {
                     continue;
                 }
                 if (actorScope != null && !actorScope.isBlank()
@@ -275,6 +326,57 @@ public final class ApiSyncCenterService implements SyncCenterService {
             return List.of();
         }
         return records;
+    }
+
+    private List<SyncAuditRecord> getLocalAuditRecords() throws Exception {
+        try (Connection connection = DatabaseHandler.getConnection()) {
+            return new ArrayList<>(storageRepository.loadAuditRecords(connection));
+        }
+    }
+
+    private SyncCenterSummary localQueueSummary(List<SyncQueueRecord> records) {
+        int pending = 0;
+        int applied = 0;
+        int rejected = 0;
+        int failed = 0;
+        for (SyncQueueRecord record : records) {
+            switch (normalize(record.getStatus())) {
+                case "APPLIED":
+                    applied++;
+                    break;
+                case "REJECTED":
+                    rejected++;
+                    break;
+                case "FAILED":
+                    failed++;
+                    break;
+                default:
+                    pending++;
+                    break;
+            }
+        }
+        boolean onlineReady = false;
+        try {
+            JsonNode status = apiClient.getJson("/api/sync/status");
+            onlineReady = "UP".equalsIgnoreCase(status.path("apiStatus").asText());
+        } catch (Exception ignored) {
+            // The local queue is still usable while the central API is unavailable.
+        }
+        String message = onlineReady
+                ? "Central sync API is available. Local queued records are ready to push."
+                : "Central sync API is not reachable. Local queued records will stay pending.";
+        return new SyncCenterSummary(pending, applied, rejected, failed, onlineReady, message);
+    }
+
+    private String currentActor() {
+        User currentUser = Session.getCurrentUser();
+        if (currentUser == null) {
+            return "unknown";
+        }
+        if (currentUser.getEmail() != null && !currentUser.getEmail().isBlank()) {
+            return currentUser.getEmail();
+        }
+        return currentUser.getUsername();
     }
 
     private JsonNode apiMessage(String message) throws Exception {

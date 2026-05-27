@@ -14,6 +14,7 @@ import javafx.scene.control.TextField;
 
 import java.net.URL;
 import java.time.LocalDate;
+import java.util.List;
 import java.util.ResourceBundle;
 
 public class MaintenanceController implements Initializable {
@@ -93,10 +94,38 @@ public class MaintenanceController implements Initializable {
 
     @FXML
     private void refresh() {
-        cmbAssetCode.getItems().clear();
-        for (Equipment equipment : DatabaseHandler.getAllEquipment()) {
-            cmbAssetCode.getItems().add(equipment.getAssetCode());
+        tableMaintenance.setDisable(true);
+        UiBackgroundLoader.run(
+                "maintenance-loader",
+                () -> new MaintenanceLoadData(DatabaseHandler.getAllEquipment(), DatabaseHandler.getMaintenanceRecords()),
+                loaded -> {
+                    cmbAssetCode.getItems().clear();
+                    for (Equipment equipment : loaded.equipment) {
+                        cmbAssetCode.getItems().add(equipment.getAssetCode());
+                    }
+                    maintenanceRecords.setAll(loaded.records);
+                    tableMaintenance.setDisable(false);
+                },
+                error -> {
+                    tableMaintenance.setDisable(false);
+                    OperationFeedbackHelper.showError("Load Failed", safeMessage(error));
+                }
+        );
+    }
+
+    private String safeMessage(Throwable throwable) {
+        return throwable == null || throwable.getMessage() == null || throwable.getMessage().isBlank()
+                ? "Maintenance records could not be loaded."
+                : throwable.getMessage();
+    }
+
+    private static final class MaintenanceLoadData {
+        private final List<Equipment> equipment;
+        private final List<MaintenanceRecord> records;
+
+        private MaintenanceLoadData(List<Equipment> equipment, List<MaintenanceRecord> records) {
+            this.equipment = equipment == null ? List.of() : equipment;
+            this.records = records == null ? List.of() : records;
         }
-        maintenanceRecords.setAll(DatabaseHandler.getMaintenanceRecords());
     }
 }

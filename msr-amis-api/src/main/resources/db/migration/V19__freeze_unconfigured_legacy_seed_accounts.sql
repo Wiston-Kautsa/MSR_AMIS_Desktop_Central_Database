@@ -12,7 +12,6 @@ BEGIN
         reset_expiry = NULL,
         reset_requested_at = NULL
     WHERE LOWER(email) IN (
-        LOWER('wkautsa@gmail.com'),
         LOWER('admin@msr.local'),
         LOWER('user@msr.local')
     )

@@ -707,9 +707,9 @@ public final class SyncCenterController implements Initializable {
         if (!Session.hasRole(AccessControl.ROLE_ADMIN)) {
             return List.of();
         }
-        String actor = currentActor();
+        Set<String> visibleActors = visibleAdminSyncActors();
         return records.stream()
-                .filter(record -> actor.equalsIgnoreCase(record.getActor()))
+                .filter(record -> visibleActors.contains(normalizeActorIdentifier(record.getActor())))
                 .collect(Collectors.toList());
     }
 
@@ -732,10 +732,34 @@ public final class SyncCenterController implements Initializable {
         if (!Session.hasRole(AccessControl.ROLE_ADMIN)) {
             return List.of();
         }
-        String actor = currentActor();
+        Set<String> visibleActors = visibleAdminSyncActors();
         return records.stream()
-                .filter(record -> actor.equalsIgnoreCase(record.getActor()))
+                .filter(record -> visibleActors.contains(normalizeActorIdentifier(record.getActor())))
                 .collect(Collectors.toList());
+    }
+
+    private Set<String> visibleAdminSyncActors() {
+        Set<String> actors = new LinkedHashSet<>();
+        for (User user : DatabaseHandler.getUsers()) {
+            String role = normalize(user.getRole());
+            if ("ADMIN".equals(role) || "USER".equals(role)) {
+                addActorIdentifier(actors, user.getEmail());
+                addActorIdentifier(actors, user.getUsername());
+            }
+        }
+        addActorIdentifier(actors, currentActor());
+        return actors;
+    }
+
+    private void addActorIdentifier(Set<String> actors, String value) {
+        String normalized = normalizeActorIdentifier(value);
+        if (!normalized.isBlank()) {
+            actors.add(normalized);
+        }
+    }
+
+    private String normalizeActorIdentifier(String value) {
+        return value == null ? "" : value.trim().toLowerCase();
     }
 
     private void applyVisibleCounts(List<SyncQueueRecord> records, List<SyncQueueRecord> conflicts) {

@@ -23,13 +23,41 @@ public class SyncValidationService {
             issues.add(issue("ERROR", "MANDATORY_FIELD", entityType, record.entityId(), "Payload is required."));
         }
         if ("EQUIPMENT".equals(entityType)) {
-            requirePayload(record, issues, "assetCode", "Asset code is required.");
-            if (!"DELETE".equals(operation) && !"STATUS".equals(operation)) {
+            if ("DELETE".equals(operation) || "STATUS".equals(operation)) {
+                requireAnyPayload(record, issues, "Equipment asset code or serial number is required.", "assetCode", "serialNumber");
+            } else {
                 requirePayload(record, issues, "serialNumber", "Serial number is required.");
             }
         }
+        if ("ASSIGNMENT".equals(entityType)) {
+            if ("CREATE".equals(operation) || "UPDATE".equals(operation)) {
+                requirePayload(record, issues, "person", "Assignment person is required.");
+                requirePayload(record, issues, "department", "Assignment department is required.");
+                requirePayload(record, issues, "equipmentType", "Assignment equipment type is required.");
+                requirePayload(record, issues, "reason", "Assignment reason is required.");
+                if (record.payload() != null && record.payload().path("quantity").asInt(0) <= 0) {
+                    issues.add(issue("ERROR", "MANDATORY_FIELD", entityType, record.entityId(), "Assignment quantity must be greater than zero."));
+                }
+            }
+        }
+        if ("DISTRIBUTION".equals(entityType)) {
+            requirePayloadArray(record, issues, "items", "Distribution items are required.");
+        }
         if ("RETURN".equals(entityType)) {
-            requirePayload(record, issues, "assetCode", "Returned asset code is required.");
+            requirePayloadArray(record, issues, "items", "Return items are required.");
+        }
+        if ("USER".equals(entityType)) {
+            if ("CREATE".equals(operation) || "UPDATE".equals(operation)) {
+                requirePayload(record, issues, "email", "User email is required.");
+                requirePayload(record, issues, "role", "User role is required.");
+                requirePayload(record, issues, "department", "User department is required.");
+            }
+            if ("CREATE".equals(operation)) {
+                requirePayload(record, issues, "password", "User password is required.");
+            }
+        }
+        if ("DEPARTMENT".equals(entityType) && !"DELETE".equals(operation)) {
+            requirePayload(record, issues, "name", "Department name is required.");
         }
         return issues;
     }
@@ -43,6 +71,31 @@ public class SyncValidationService {
                                 String field,
                                 String message) {
         if (record.payload() == null || normalize(record.payload().path(field).asText()).isBlank()) {
+            issues.add(issue("ERROR", "MANDATORY_FIELD", record.entityType(), record.entityId(), message));
+        }
+    }
+
+    private void requireAnyPayload(SyncQueueRecordRequest record,
+                                   List<SyncValidationIssueResponse> issues,
+                                   String message,
+                                   String... fields) {
+        if (record.payload() == null) {
+            issues.add(issue("ERROR", "MANDATORY_FIELD", record.entityType(), record.entityId(), message));
+            return;
+        }
+        for (String field : fields) {
+            if (!normalize(record.payload().path(field).asText()).isBlank()) {
+                return;
+            }
+        }
+        issues.add(issue("ERROR", "MANDATORY_FIELD", record.entityType(), record.entityId(), message));
+    }
+
+    private void requirePayloadArray(SyncQueueRecordRequest record,
+                                     List<SyncValidationIssueResponse> issues,
+                                     String field,
+                                     String message) {
+        if (record.payload() == null || !record.payload().path(field).isArray() || record.payload().path(field).isEmpty()) {
             issues.add(issue("ERROR", "MANDATORY_FIELD", record.entityType(), record.entityId(), message));
         }
     }

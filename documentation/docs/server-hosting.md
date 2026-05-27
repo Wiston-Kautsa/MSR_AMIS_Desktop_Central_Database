@@ -6,7 +6,7 @@ credentials stay on the server.
 Recommended deployment:
 
 ```text
-Desktop EXE -> http://143.198.153.43:8090 -> API container -> PostgreSQL container
+Desktop EXE -> http://YOUR_SERVER_HOST:8090 -> API container -> PostgreSQL container
 ```
 
 For the full local server setup, use:
@@ -39,7 +39,7 @@ curl http://localhost:8090/actuator/health
 From a client computer:
 
 ```powershell
-Invoke-RestMethod http://143.198.153.43:8090/actuator/health
+Invoke-RestMethod http://YOUR_SERVER_HOST:8090/actuator/health
 ```
 
 The response should include:
@@ -53,7 +53,7 @@ The response should include:
 Set the hosted API URL before packaging:
 
 ```powershell
-$env:MSR_AMIS_PACKAGE_API_BASE_URL="http://143.198.153.43:8090"
+$env:MSR_AMIS_PACKAGE_API_BASE_URL="http://YOUR_SERVER_HOST:8090"
 .\scripts\build-desktop.cmd
 ```
 

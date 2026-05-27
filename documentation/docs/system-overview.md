@@ -94,7 +94,7 @@ Returns record who returned the asset, contact details, condition, remarks, and 
 - Outstanding Report
 - Maintenance Report
 
-Reports support filtering and export where implemented. Cost fields use Malawi Kwacha formatting, for example `MWK 150,000.00`.
+Reports support filtering plus CSV/PDF export. Export/PDF actions belong on report screens, not ordinary listing screens. Cost fields use Malawi Kwacha formatting, for example `MWK 150,000.00`.
 
 Asset History shows a single timeline per asset code. It includes:
 
@@ -162,17 +162,17 @@ Allowed:
 - manage departments
 - view audit logs
 - access Sync Center
-- process only their own queued sync records
-- view their own sync queue and sync audit records
-- requeue their own rejected sync records
+- process Admin/User scoped queued sync records
+- view Admin/User scoped sync queue and sync audit records
+- requeue Admin/User scoped rejected sync records
 
 Restricted:
 
 - cannot create or manage Super Admin accounts
 - cannot delete user accounts; freeze the account instead
 - cannot access Data Maintenance
-- cannot requeue other users' rejected sync records
-- cannot process other users' queued sync work
+- cannot see Super Admin audit or sync records
+- cannot process Super Admin queued sync work
 
 ### `USER`
 
@@ -180,6 +180,7 @@ User has normal operational access.
 
 Restricted:
 
+- can open User Management only as a User-role directory
 - no user-management authority
 - no department-management authority
 - no audit-log access
@@ -249,17 +250,17 @@ Access:
 | Role | Access |
 | --- | --- |
 | `SUPER_ADMIN` | Full access |
-| `ADMIN` | Own queue and own audit records only |
+| `ADMIN` | Admin/User actor queue and audit records; Super Admin hidden |
 | `USER` | Hidden |
 
 Actions:
 
 | Action | `SUPER_ADMIN` | `ADMIN` | `USER` |
 | --- | --- | --- | --- |
-| Push pending queue | All records | Own records only | No |
-| View queue | All records | Own records only | No |
-| View audit | All records | Own records only | No |
-| Requeue rejected records | All rejected records | Own rejected records only | No |
+| Push pending queue | All records | Admin/User scoped records | No |
+| View queue | All records | Admin/User scoped records | No |
+| View audit | All records | Admin/User scoped records | No |
+| Requeue rejected records | All rejected records | Admin/User scoped rejected records | No |
 
 Conflict policy:
 
@@ -269,12 +270,15 @@ Conflict policy:
 
 Current sync implementation status:
 
+- `/api/sync/push` supports `EQUIPMENT`, `ASSIGNMENT`, `DISTRIBUTION`, `RETURN`, `USER`, and `DEPARTMENT`
 - equipment queue push is active through the API for `CREATE`, `UPDATE`, `UPSERT`, `DELETE`, and `STATUS`
 - the JavaFX API Sync Center sends actual pending/failed local equipment queue records to `/api/sync/push`
 - local queue rows are marked `APPLIED` or `FAILED` using the API per-record `results[]`
 - central queue, audit, conflict, status, retry, clear queue, reset sync state, clear completed logs, and force-release lock endpoints exist
 - `/api/sync/pull` currently records/acknowledges a pull request but does not yet return a full grouped central snapshot
-- assignment, distribution, return, user, department, and audit-log handlers for the generic central push endpoint remain future work
+- assignment, distribution, return, user, and department handlers are implemented in the central push path
+- audit-log generic push remains outside the current central apply path
+- conflict review exists, but the JavaFX `Keep Local`, `Keep Central`, and `Merge` actions are still not enabled for automatic field-level overwrite/merge
 
 ## Maintenance
 
@@ -319,7 +323,7 @@ Access:
 | Role | Audit Log Scope |
 | --- | --- |
 | `SUPER_ADMIN` | All system audit logs |
-| `ADMIN` | Own audit logs only |
+| `ADMIN` | Admin/User activity; Super Admin activity hidden |
 | `USER` | Hidden |
 
 The sidebar removes unavailable role panels entirely. A role should not see an empty `Data & Records` or `Administration` panel.
@@ -394,6 +398,7 @@ The `maintenance_log` table was added so asset history can include maintenance a
 Build desktop installers with:
 
 ```powershell
+$env:MSR_AMIS_PACKAGE_API_BASE_URL="http://YOUR_SERVER_HOST:8090"
 .\scripts\build-desktop.cmd
 ```
 
@@ -403,7 +408,7 @@ Generated outputs:
 - `dist\MSR AMIS-1.0.0.msi`
 - `dist\MSR AMIS-1.0.0.exe`
 
-Current rebuilt desktop installers: May 22, 2026. The packaged client API URL is `http://143.198.153.43:8090`.
+The packaging script requires `MSR_AMIS_PACKAGE_API_BASE_URL` so a build cannot silently embed an old API address.
 
 The current build includes:
 
@@ -418,6 +423,9 @@ The current build includes:
 - Asset History with maintenance events
 - audit logs
 - operational reports
+- report-only CSV/PDF export actions
+- bulk add/distribution/return progress counters
+- readable table headers and wider table columns
 - local currency formatting
 - updated dashboard connection state
 

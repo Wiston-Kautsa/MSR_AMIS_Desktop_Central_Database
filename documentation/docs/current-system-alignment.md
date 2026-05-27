@@ -2,186 +2,207 @@
 
 ## Purpose
 
-This document corrects earlier draft documentation and states how the current system actually behaves.
+This document records the current implemented state of MSR-AMIS. Use it to check whether older notes, deployment steps, and operating procedures still match the code.
 
-## Confirmed Architecture
+## Current Architecture
 
-The implemented architecture is:
+The implemented production path is:
 
-`Desktop Client -> local SQLite mirror -> REST API -> Central PostgreSQL Database`
+```text
+JavaFX Desktop -> REST API -> PostgreSQL
+```
 
-The desktop is not the source of truth. PostgreSQL is the source of truth, and the backend API controls access to it.
+The desktop also keeps a local SQLite store. In `REMOTE_API` mode SQLite is not the source of truth. In `AUTO` mode SQLite is the offline mirror and queue store until Sync Center pushes changes to the API.
 
-## Production Mode Reality
+## Security Configuration
 
-- `REMOTE_API` is the safest centralized production mode because users cannot continue unless the API is reachable
-- `AUTO` remains available for deployments that intentionally allow offline work and Sync Center recovery
-- missing mode configuration no longer silently drops the app back to local SQLite assumptions
-- the login screen in API mode no longer presents the local setup account as the normal production path
+Production secrets must come from environment variables or a private `.env`/`docker.env` file. They must not be committed to Git.
 
-## Account and Role Reality
+Required API values:
 
-Account email identities are configuration, not hardcoded policy. Production should set them with real server environment variables. Development can set them in the root `.env` file.
+- `MSR_AMIS_DB_USERNAME`
+- `MSR_AMIS_DB_PASSWORD`
+- `MSR_AMIS_JWT_SECRET`
 
-### Protected super admin
+The API no longer has a fallback database username, fallback database password, or fallback JWT signing secret. If these values are missing, startup should fail instead of silently using a known credential.
 
-- email: configured by `MSR_AMIS_PRIMARY_SUPER_ADMIN_EMAIL`
-- role: `SUPER_ADMIN`
-- intended first use: password reset
-- this account is deliberately protected by backend policy
+Server and documentation examples use `YOUR_SERVER_HOST`. The source tree should not contain a real public server IP address.
 
-### Default admin
+## Desktop Modes
 
-- email: configured by `MSR_AMIS_SETUP_ADMIN_EMAIL`
-- username: `admin`
-- role: `ADMIN`
+### `REMOTE_API`
 
-This is not the production super admin account.
+- strict centralized mode
+- safest production default
+- requires a reachable API before users can work
+- official writes go through PostgreSQL immediately
+- desktop Backup & Restore is hidden
 
-### Default user
+### `AUTO`
 
-- email: configured by `MSR_AMIS_SETUP_USER_EMAIL`
-- username: `user`
-- role: `USER`
+- offline-capable mode
+- desktop writes locally when the API is unreachable
+- local changes are placed in the sync queue
+- Admin or Super Admin must use Sync Center after the API returns
+- SQLite is refreshed from PostgreSQL after sync processing
 
-## Important Correction to Older Drafts
+### `LOCAL_DATABASE`
 
-Older drafts described the setup admin account and its default password as a one-time setup-only account that must always be disabled immediately after initialization.
+- local SQLite-only mode
+- useful for development and controlled local-only work
+- desktop Backup & Restore is visible only in this mode
 
-That wording is incomplete for the current implementation.
+## Account And Role State
 
-The current implemented policy is:
+Account policy is configured outside source code:
 
-- the primary `SUPER_ADMIN` email is configured outside code
-- setup admin and user emails are configured outside code
-- reserved role emails are configured with comma-separated environment values
-- account email settings can be changed in `.env` for development or server environment variables for production
-- changing these settings requires an API restart
+- `MSR_AMIS_PRIMARY_SUPER_ADMIN_EMAIL`
+- `MSR_AMIS_SETUP_ADMIN_EMAIL`
+- `MSR_AMIS_SETUP_USER_EMAIL`
+- `MSR_AMIS_RESERVED_SUPER_ADMIN_EMAILS`
+- `MSR_AMIS_RESERVED_ADMIN_EMAILS`
+- `MSR_AMIS_RESERVED_USER_EMAILS`
 
-If the project later changes the setup account lifecycle, that should be done as a deliberate backend policy change, not assumed from older drafts.
+The primary Super Admin email is protected by backend policy. Setup Admin and setup User emails are reserved bootstrap accounts and can be changed by environment configuration before deployment.
 
-## Backend Ownership
+User Management current visibility:
 
-The backend now owns:
+| Role | User Management View |
+| --- | --- |
+| `SUPER_ADMIN` | all roles |
+| `ADMIN` | Admin and User roles |
+| `USER` | User role accounts |
 
-- authentication
-- password reset
-- role filtering
-- user creation and status control
-- equipment management
-- assignments
-- distributions
-- returns
-- dashboard aggregation
-- report generation
-- asset history retrieval
-- audit logging
+Admin can manage Admin and User accounts, including freeze/unfreeze. Super Admin can manage all roles and delete users. User accounts can only view the User-role directory and cannot manage accounts.
 
-## Desktop Responsibility
+## Audit Logs
 
-The desktop now primarily handles:
+Audit Logs are available to Super Admin and Admin.
 
-- UI rendering
-- user input
-- calling service abstractions
-- session token usage
-- displaying results from the backend
+| Role | Audit Scope |
+| --- | --- |
+| `SUPER_ADMIN` | all audit logs |
+| `ADMIN` | Admin/User activity visible to the admin scope; Super Admin activity is hidden |
+| `USER` | no Audit Logs panel |
 
-In `AUTO` mode, controllers use service abstractions that can work against the local SQLite mirror and route remote work through the API when a central session is available.
+Audit records are created for authentication and operational actions. In API modes, the API owns central audit persistence. Local fallback exists for `AUTO` and `LOCAL_DATABASE`.
 
-## Current Exceptions and Legacy Support
+## Sync Center
 
-Local implementations exist for `AUTO` and `LOCAL_DATABASE` behavior:
+Sync Center is available from:
 
-- local auth
-- local equipment
-- local users
-- local assignments
-- local distribution
-- local returns
-- local dashboard
-- local reports
-- local asset history
-- local maintenance tracking and maintenance report
-- local audit fallback
+```text
+Data & Records -> Sync Center
+```
 
-In `AUTO` mode these paths provide the local mirror and offline queue behavior. In `LOCAL_DATABASE` mode they are local-only.
+Access:
 
-## Backup and Sync Correction
+| Role | Sync Center Scope |
+| --- | --- |
+| `SUPER_ADMIN` | full queue, audit, conflicts, and recovery actions |
+| `ADMIN` | Admin/User actor queue and audit records; Super Admin records hidden |
+| `USER` | hidden |
 
-In strict `REMOTE_API` mode:
+The API `/api/sync/push` endpoint now accepts:
 
-- desktop backup/restore/publish actions are intentionally disabled
-- centralized data should be backed up on the server side
+- `EQUIPMENT`
+- `ASSIGNMENT`
+- `DISTRIBUTION`
+- `RETURN`
+- `USER`
+- `DEPARTMENT`
 
-In `AUTO` mode:
+The API still rejects unsupported entity types with `Unsupported sync entity`.
 
-- offline changes are stored in SQLite and queued
-- Sync Center uploads valid queued changes through the API
-- rejected changes remain visible for review
-- SQLite is refreshed from PostgreSQL after sync
-- Sync Center is available in the desktop sidebar under `Data & Records`
-- Sync Center is hidden from User accounts, scoped to the current Admin for Admin users, and fully available to Super Admin users
-- applied queue records are removed from the active queue list after successful push
+Current Sync Center limitations:
 
-If the API is not reachable, the operational response is documented in [Troubleshooting](troubleshooting.md). The main checks are API health on the server, PostgreSQL service status, client `.env` server URL, and firewall access to port `8090`.
+- `GET /api/sync/pull` records a successful pull request and tells the desktop to refresh; it does not yet return a full grouped central snapshot payload.
+- Conflict review exists, but the JavaFX `Keep Local`, `Keep Central`, and `Merge` buttons still show a not-ready message because automatic field-level merge/overwrite resolution is not enabled yet.
 
-Older desktop-centric backup assumptions should not be treated as correct for centralized deployment. PostgreSQL server backups remain the official backup path.
+## Desktop Screens And Current UI Behavior
 
-## Department Management Reality
+Equipment:
 
-Departments are now a managed feature.
+- Add Equipment supports bulk import with a progress counter.
+- Equipment List no longer exposes Export/PDF buttons.
+- Maintenance Tracking is available and feeds Maintenance Report and Asset History.
 
-Implemented:
+Assignments and distribution:
 
-- `GET /api/departments`
-- `POST /api/departments`
-- `PUT /api/departments/{name}`
-- `DELETE /api/departments/{name}`
-- `Administration -> Departments` desktop screen
-- department selection or typed entry in user and assignment forms
-- department values stored on users and assignments
-- `MSR` as the default department
+- Create Assignment creates assignment requests.
+- Assignment List no longer exposes Export/PDF buttons.
+- Distribute Equipment supports manual and bulk distribution.
+- Bulk distribution has a progress counter.
+- Distribution List is a listing screen and does not expose Export/PDF buttons.
+- Distribution Report is the report screen and exposes Export/PDF buttons.
 
-Rules:
+Returns:
 
-- `SUPER_ADMIN` and `ADMIN` can manage departments.
-- The default `MSR` department cannot be renamed or deleted.
-- A department that is still used by users or assignments cannot be deleted.
-- Renaming a department updates matching users and assignments.
-- Offline department changes in `AUTO` mode are queued and processed by Sync Center.
+- Return Equipment contains separate Return Entry and Bulk Import sections.
+- Bulk return import has a progress counter.
+- Return Equipment List no longer exposes Export/PDF buttons.
+- Return Report is the report screen and exposes Export/PDF buttons.
 
-## Authentication Correction
+Reports with Export/PDF:
 
-The backend login path was corrected so both of these now authenticate correctly against the live API:
+- Inventory Report
+- Assignment Report
+- Distribution Report
+- Asset History
+- Return Report
+- Outstanding Report
+- Maintenance Report
 
-- the configured setup admin email
-- the configured primary super admin email
+Table readability:
 
-## Current Operational State
+- dashboard-loaded tables use wider columns and horizontal scrolling
+- table headers and content are kept readable instead of clipped where possible
+- sidebar labels were widened so report names remain visible
 
-At the time of this document:
+## Saved Desktop Credentials
 
-- PostgreSQL is running locally
-- the backend API is running successfully
-- desktop login works against the centralized backend
-- desktop `REMOTE_API` mode supports strict centralized operation
-- desktop `AUTO` mode supports local SQLite fallback when the API is unreachable
-- Sync Center is responsible for replaying offline changes and refreshing SQLite from PostgreSQL
-- the rebuilt desktop package includes the Sync Center sidebar entry
-- the desktop includes Department Management under `Administration -> Departments`
-- the desktop includes Maintenance Tracking and Maintenance Report
-- Asset History includes maintenance events as part of the asset timeline
-- PostgreSQL includes `maintenance_log` schema support
-- the May 22, 2026 desktop installer points clients to `http://143.198.153.43:8090` and includes updated bulk enrolment templates, complete table column headers, equipment metadata columns, maintenance tracking/reporting, Asset History maintenance events, role-based Sync Center access, and Department Management
+Saved credentials are opt-in after successful login. The login screen does not automatically fill credentials when it opens.
 
-## Conclusion
+Current behavior:
 
-The current system is no longer accurately described as an unfinished API migration prototype.
+- saved email addresses appear as suggestions while typing
+- selecting a saved email fills the email field and then fills the saved password
+- choosing a different suggestion fills that selected account, not a different stored account
 
-It is now better described as:
+Saved secrets are encrypted before being stored in the local Java preferences store. For a stricter production policy, save only email addresses or use the operating-system credential vault.
 
-- a centralized desktop client system
-- with a working Spring Boot backend
-- backed by PostgreSQL
-- in stabilization and deployment phase
+## Deployment And Packaging
+
+Desktop clients should normally use:
+
+```env
+MSR_AMIS_DATA_MODE=REMOTE_API
+MSR_AMIS_API_BASE_URL=http://YOUR_SERVER_HOST:8090
+APP_MODE=REMOTE_API
+API_BASE_URL=http://YOUR_SERVER_HOST:8090
+```
+
+Use `localhost` only when the API is running on the same computer.
+
+Packaging requires an explicit server URL:
+
+```powershell
+$env:MSR_AMIS_PACKAGE_API_BASE_URL="http://YOUR_SERVER_HOST:8090"
+.\scripts\build-desktop.cmd
+```
+
+This requirement prevents accidental builds that contain an old hardcoded server address.
+
+## Backup Reality
+
+Centralized production backup is PostgreSQL backup on the server.
+
+Desktop Backup & Restore is a local SQLite feature for `LOCAL_DATABASE` mode only. It is not the official backup path for centralized deployment.
+
+## Current Test Coverage
+
+The API has tests for authentication, equipment facade behavior, sync service behavior, and sync validation. Sync Center still needs broader end-to-end tests for offline distribution/return replay, idempotency retry behavior, central pull snapshots, and UI conflict resolution.
+
+## Production Notes
+
+Use HTTPS in front of the API for real production use. The current documentation examples use HTTP on port `8090` for local/server testing. Put nginx, Caddy, IIS reverse proxy, or another approved HTTPS terminator in front of the API before public or wider network exposure.

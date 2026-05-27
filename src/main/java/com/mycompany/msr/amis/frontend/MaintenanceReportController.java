@@ -49,8 +49,8 @@ public class MaintenanceReportController implements Initializable {
         colStatus.setCellValueFactory(cell -> cell.getValue().statusProperty());
 
         setupContextMenu();
-        loadData();
-        loadFilters();
+        tableMaintenance.setItems(data);
+        loadDataAsync(false);
     }
 
     @FXML
@@ -97,6 +97,31 @@ public class MaintenanceReportController implements Initializable {
         tableMaintenance.setItems(data);
     }
 
+    private void loadDataAsync(boolean showRefreshMessage) {
+        tableMaintenance.setDisable(true);
+        UiBackgroundLoader.run(
+                "maintenance-report-loader",
+                () -> new ArrayList<>(DatabaseHandler.getMaintenanceRecords()),
+                records -> {
+                    allMaintenance = records == null ? List.of() : records;
+                    data.setAll(allMaintenance);
+                    tableMaintenance.setItems(data);
+                    loadFilters();
+                    tableMaintenance.setDisable(false);
+                    if (showRefreshMessage) {
+                        showAlert("Refresh", "Maintenance report refreshed successfully.");
+                    }
+                },
+                error -> {
+                    allMaintenance = List.of();
+                    data.clear();
+                    tableMaintenance.setItems(data);
+                    tableMaintenance.setDisable(false);
+                    showAlert("Error", "Failed to load maintenance report:\n" + safeMessage(error));
+                }
+        );
+    }
+
     private void loadFilters() {
         cmbAssetCode.getItems().clear();
         cmbStatus.getItems().clear();
@@ -111,8 +136,7 @@ public class MaintenanceReportController implements Initializable {
         cmbStatus.setValue(null);
         dpFrom.setValue(null);
         dpTo.setValue(null);
-        loadData();
-        loadFilters();
+        loadDataAsync(true);
     }
 
     private void setupContextMenu() {
@@ -148,5 +172,11 @@ public class MaintenanceReportController implements Initializable {
 
     private void showAlert(String title, String message) {
         OperationFeedbackHelper.showInfo(title, message);
+    }
+
+    private String safeMessage(Throwable throwable) {
+        return throwable == null || throwable.getMessage() == null || throwable.getMessage().isBlank()
+                ? "The maintenance report could not be loaded."
+                : throwable.getMessage();
     }
 }

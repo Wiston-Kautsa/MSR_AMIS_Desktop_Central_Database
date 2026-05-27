@@ -1,9 +1,12 @@
 package com.mycompany.msr.amis;
 
+import javafx.application.Platform;
+import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
 import javafx.fxml.Initializable;
+import javafx.concurrent.Task;
 import javafx.scene.control.ComboBox;
 import javafx.scene.control.ContextMenu;
 import javafx.scene.control.DatePicker;
@@ -22,6 +25,8 @@ import java.util.Set;
 
 public class AuditLogsController implements Initializable {
 
+    private static final int INITIAL_LOG_LIMIT = 500;
+
     @FXML private ComboBox<String> cmbAction;
     @FXML private ComboBox<String> cmbUsername;
     @FXML private DatePicker dpFrom;
@@ -37,19 +42,21 @@ public class AuditLogsController implements Initializable {
     @FXML private TableColumn<AuditLog, String> colDetails;
     @FXML private TableColumn<AuditLog, String> colActionTime;
 
+    private ObservableList<AuditLog> cachedLogs = FXCollections.observableArrayList();
+
     @Override
     public void initialize(URL url, ResourceBundle resourceBundle) {
         AccessControl.requireRole(AccessControl.ROLE_SUPER_ADMIN, AccessControl.ROLE_ADMIN);
         configureTable();
         configureScope();
         setupContextMenu();
-        loadFilters();
-        loadLogs();
+        tableAuditLogs.setItems(FXCollections.observableArrayList());
+        loadLogsAsync(false);
     }
 
     @FXML
     private void handleFilter(ActionEvent event) {
-        loadLogs();
+        applyCurrentFilters();
     }
 
     @FXML
@@ -66,9 +73,7 @@ public class AuditLogsController implements Initializable {
         if (dpTo != null) {
             dpTo.setValue(null);
         }
-        loadFilters();
-        loadLogs();
-        updateStatus("Audit filters reset and logs refreshed.");
+        loadLogsAsync(true);
     }
 
     @FXML
@@ -109,9 +114,7 @@ public class AuditLogsController implements Initializable {
         cmbUsername.setVisible(true);
     }
 
-    private void loadFilters() {
-        ObservableList<AuditLog> source = AuditService.getAllLogs();
-
+    private void loadFilters(ObservableList<AuditLog> source) {
         Set<String> actions = new LinkedHashSet<>();
         Set<String> usernames = new LinkedHashSet<>();
         for (AuditLog log : source) {
@@ -127,20 +130,68 @@ public class AuditLogsController implements Initializable {
         cmbUsername.getItems().setAll(usernames);
     }
 
-    private void loadLogs() {
-        ObservableList<AuditLog> logs = AuditService.getAllLogs();
-
+    private void applyCurrentFilters() {
         String selectedAction = cmbAction.getValue();
         String selectedUsername = cmbUsername.getValue();
 
-        ObservableList<AuditLog> filtered = logs.filtered(log ->
+        ObservableList<AuditLog> filtered = cachedLogs.filtered(log ->
                 matches(log.getAction(), selectedAction) &&
                         matches(log.getUsername(), selectedUsername) &&
                         ReportFilterHelper.matchesDateRange(normalizeAuditDate(log.getActionTime()), dpFrom, dpTo)
         );
 
         tableAuditLogs.setItems(filtered);
-        updateStatus("Loaded " + filtered.size() + " audit log entries.");
+        updateStatus("Showing " + filtered.size() + " of " + cachedLogs.size() + " recent audit log entries.");
+    }
+
+    private void loadLogsAsync(boolean refreshRequested) {
+        updateStatus(refreshRequested
+                ? "Refreshing recent audit logs..."
+                : "Loading recent audit logs...");
+        setControlsDisabled(true);
+
+        Task<ObservableList<AuditLog>> task = new Task<>() {
+            @Override
+            protected ObservableList<AuditLog> call() {
+                return AuditService.getRecentLogs(INITIAL_LOG_LIMIT);
+            }
+        };
+
+        task.setOnSucceeded(event -> {
+            cachedLogs = task.getValue() == null
+                    ? FXCollections.observableArrayList()
+                    : task.getValue();
+            loadFilters(cachedLogs);
+            applyCurrentFilters();
+            setControlsDisabled(false);
+        });
+        task.setOnFailed(event -> {
+            setControlsDisabled(false);
+            updateStatus("Audit logs could not be loaded: " + safeMessage(task.getException()));
+        });
+
+        Thread worker = new Thread(task, "audit-logs-loader");
+        worker.setDaemon(true);
+        worker.start();
+    }
+
+    private void setControlsDisabled(boolean disabled) {
+        if (!Platform.isFxApplicationThread()) {
+            Platform.runLater(() -> setControlsDisabled(disabled));
+            return;
+        }
+        if (cmbAction != null) {
+            cmbAction.setDisable(disabled);
+        }
+        if (cmbUsername != null) {
+            cmbUsername.setDisable(disabled);
+        }
+        if (dpFrom != null) {
+            dpFrom.setDisable(disabled);
+        }
+        if (dpTo != null) {
+            dpTo.setDisable(disabled);
+        }
     }
 
     private void setupContextMenu() {
@@ -182,7 +233,7 @@ public class AuditLogsController implements Initializable {
                 : user.getUsername().trim();
     }
 
-    private String safeMessage(Exception e) {
+    private String safeMessage(Throwable e) {
         return e.getMessage() == null || e.getMessage().isBlank()
                 ? "Unexpected error."
                 : e.getMessage();

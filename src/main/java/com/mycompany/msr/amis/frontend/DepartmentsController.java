@@ -107,16 +107,25 @@ public final class DepartmentsController implements Initializable {
     }
 
     private void refreshDepartments() {
-        try {
-            departments.setAll(departmentService.getDepartments());
+        showStatus("Loading departments...");
+        tableDepartments.setDisable(true);
+        UiBackgroundLoader.run(
+                "departments-loader",
+                departmentService::getDepartments,
+                loaded -> {
+            departments.setAll(loaded == null ? java.util.List.of() : loaded);
             if (!departments.contains(DEFAULT_DEPARTMENT)) {
                 departments.add(DEFAULT_DEPARTMENT);
                 FXCollections.sort(departments);
             }
+            tableDepartments.setDisable(false);
             showStatus("Departments refreshed.");
-        } catch (Exception exception) {
-            showError(resolveMessage(exception));
-        }
+                },
+                error -> {
+            tableDepartments.setDisable(false);
+            showError(resolveMessage(error));
+                }
+        );
     }
 
     private void selectDepartment(String department) {
@@ -174,7 +183,7 @@ public final class DepartmentsController implements Initializable {
         OperationFeedbackHelper.showError("Department Error", message);
     }
 
-    private String resolveMessage(Exception exception) {
+    private String resolveMessage(Throwable exception) {
         return exception == null || exception.getMessage() == null || exception.getMessage().isBlank()
                 ? "Department operation failed."
                 : exception.getMessage();

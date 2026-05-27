@@ -65,8 +65,8 @@ public class ReturnReportController implements Initializable {
         colDate.setCellValueFactory(new PropertyValueFactory<>("returnDate"));
 
         setupContextMenu();
-        loadData();
-        loadPeople();
+        tableReturns.setItems(data);
+        loadDataAsync(false);
     }
 
     private void loadPeople() {
@@ -87,6 +87,31 @@ public class ReturnReportController implements Initializable {
         }
 
         tableReturns.setItems(data);
+    }
+
+    private void loadDataAsync(boolean showRefreshMessage) {
+        tableReturns.setDisable(true);
+        UiBackgroundLoader.run(
+                "return-report-loader",
+                reportService::getReturnReport,
+                records -> {
+                    allReturns = records == null ? List.of() : records;
+                    data.setAll(allReturns);
+                    tableReturns.setItems(data);
+                    loadPeople();
+                    tableReturns.setDisable(false);
+                    if (showRefreshMessage) {
+                        showAlert("Refresh", "Return report refreshed successfully.");
+                    }
+                },
+                error -> {
+                    allReturns = List.of();
+                    data.clear();
+                    tableReturns.setItems(data);
+                    tableReturns.setDisable(false);
+                    showAlert("Error", "Failed to load data:\n" + safeMessage(error));
+                }
+        );
     }
 
     @FXML
@@ -116,9 +141,7 @@ public class ReturnReportController implements Initializable {
         cmbCondition.setValue(null);
         dpFrom.setValue(null);
         dpTo.setValue(null);
-        loadData();
-        loadPeople();
-        showAlert("Refresh", "Return report refreshed successfully.");
+        loadDataAsync(true);
     }
 
     @FXML
@@ -184,5 +207,11 @@ public class ReturnReportController implements Initializable {
         } else {
             OperationFeedbackHelper.showInfo(title, message);
         }
+    }
+
+    private String safeMessage(Throwable throwable) {
+        return throwable == null || throwable.getMessage() == null || throwable.getMessage().isBlank()
+                ? "The return report could not be loaded."
+                : throwable.getMessage();
     }
 }

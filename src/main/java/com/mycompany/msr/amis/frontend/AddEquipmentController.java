@@ -2,6 +2,7 @@ package com.mycompany.msr.amis;
 
 import javafx.collections.*;
 import javafx.event.ActionEvent;
+import javafx.concurrent.Task;
 import javafx.fxml.FXML;
 import javafx.fxml.Initializable;
 import javafx.scene.control.*;
@@ -19,7 +20,9 @@ import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.net.URL;
 import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.LinkedHashSet;
+import java.util.List;
 import java.util.ResourceBundle;
 import java.util.Set;
 
@@ -66,6 +69,11 @@ public class AddEquipmentController implements Initializable {
     @FXML private TextField txtSupplier;
 
     @FXML private Label lblSelectedFile;
+    @FXML private Label lblBulkUploadProgress;
+    @FXML private ProgressBar progressBulkUpload;
+    @FXML private Button btnDownloadTemplate;
+    @FXML private Button btnChooseExcelFile;
+    @FXML private Button btnUploadExcel;
 
     @FXML private TableView<Equipment> equipmentTable;
     @FXML private TableColumn<Equipment, Void> colNo;
@@ -100,8 +108,9 @@ public class AddEquipmentController implements Initializable {
         txtPurchaseCost.setPromptText("Example: MWK 150,000.00");
         CurrencyFormatHelper.installCurrencyFormatter(txtPurchaseCost);
 
-        loadEquipmentFromDatabase();
-        loadCategories();
+        equipmentTable.setItems(equipmentList);
+        loadEquipmentAndCategoriesAsync();
+        resetBulkUploadProgress();
     }
 
     // ================= TABLE =================
@@ -129,10 +138,39 @@ public class AddEquipmentController implements Initializable {
         equipmentList.addAll(equipmentService.getAllEquipment());
     }
 
+    private void loadEquipmentAndCategoriesAsync() {
+        equipmentTable.setDisable(true);
+        UiBackgroundLoader.run(
+                "add-equipment-loader",
+                () -> new EquipmentLoadResult(
+                        javafx.collections.FXCollections.observableArrayList(equipmentService.getAllEquipment()),
+                        new java.util.LinkedHashSet<>(equipmentService.getEquipmentCategories())
+                ),
+                result -> {
+                    equipmentList.setAll(result.equipment());
+                    LinkedHashSet<String> categories = new LinkedHashSet<>(cmbCategory.getItems());
+                    categories.addAll(result.categories());
+                    cmbCategory.getItems().setAll(categories);
+                    equipmentTable.setItems(equipmentList);
+                    equipmentTable.setDisable(false);
+                },
+                error -> {
+                    equipmentTable.setDisable(false);
+                    showError("Failed to load equipment data: " + safeMessage(error));
+                }
+        );
+    }
+
     private void loadCategories() {
         LinkedHashSet<String> categories = new LinkedHashSet<>(cmbCategory.getItems());
         categories.addAll(equipmentService.getEquipmentCategories());
         cmbCategory.getItems().setAll(categories);
+    }
+
+    private String safeMessage(Throwable throwable) {
+        return throwable == null || throwable.getMessage() == null || throwable.getMessage().isBlank()
+                ? "Unexpected error."
+                : throwable.getMessage();
     }
 
     // ================= SAVE =================
@@ -206,6 +244,7 @@ public class AddEquipmentController implements Initializable {
 
         if (selectedFile != null) {
             lblSelectedFile.setText(selectedFile.getName());
+            resetBulkUploadProgress();
             OperationFeedbackHelper.showInfo(
                     "File Selected",
                     "Ready to upload:\n" + selectedFile.getName() +
@@ -315,11 +354,6 @@ public class AddEquipmentController implements Initializable {
             return;
         }
 
-        OperationFeedbackHelper.showInfo(
-                "Upload Starting",
-                "Reading equipment data from:\n" + selectedFile.getName()
-        );
-
         try (Workbook wb = new XSSFWorkbook(new FileInputStream(selectedFile))) {
 
             Sheet sheet = wb.getSheetAt(0);
@@ -336,6 +370,7 @@ public class AddEquipmentController implements Initializable {
             int skipped = 0;
             Set<String> fileSerials = new LinkedHashSet<>();
             StringBuilder skippedDetails = new StringBuilder();
+            List<BulkEquipmentRow> rowsToImport = new ArrayList<>();
 
             // Row 1 is reserved for column titles; actual bulk data starts on row 2.
             for (int i = BULK_DATA_START_ROW_INDEX; i <= sheet.getLastRowNum(); i++) {
@@ -378,30 +413,128 @@ public class AddEquipmentController implements Initializable {
                         supplier
                 );
 
-                try {
-                    equipmentService.createEquipment(eq);
-                    inserted++;
-                } catch (Exception e) {
-                    skipped++;
-                    appendSkipped(skippedDetails, i + 1, serial, e.getMessage());
-                }
+                rowsToImport.add(new BulkEquipmentRow(i + 1, serial, eq));
             }
 
-            loadEquipmentFromDatabase();
-            loadCategories();
-            OperationFeedbackHelper.showInfo(
-                    "Upload Complete",
-                    "Equipment upload completed.\n\nImported records: " + inserted +
-                            "\nSkipped records: " + skipped +
-                            (skippedDetails.length() == 0 ? "" : "\n\nSkipped details:\n" + skippedDetails)
-            );
+            if (rowsToImport.isEmpty()) {
+                resetBulkUploadProgress();
+                OperationFeedbackHelper.showWarning(
+                        "No Equipment Found",
+                        "The selected Excel file does not contain any equipment records to import."
+                                + (skippedDetails.length() == 0 ? "" : "\n\nSkipped details:\n" + skippedDetails)
+                );
+                return;
+            }
+
+            runBulkUploadTask(rowsToImport, inserted, skipped, skippedDetails);
 
         } catch (Exception e) {
             e.printStackTrace();
+            resetBulkUploadProgress();
             OperationFeedbackHelper.showError(
                 "Upload Failed",
                 "Error reading the Excel file.\n\n" + e.getMessage()
             );
+        }
+    }
+
+    private void runBulkUploadTask(List<BulkEquipmentRow> rowsToImport,
+                                   int initialInserted,
+                                   int initialSkipped,
+                                   StringBuilder initialSkippedDetails) {
+        Task<BulkUploadResult> task = new Task<>() {
+            @Override
+            protected BulkUploadResult call() {
+                int inserted = initialInserted;
+                int skipped = initialSkipped;
+                StringBuilder skippedDetails = new StringBuilder(initialSkippedDetails);
+                int total = rowsToImport.size();
+                updateProgress(0, total);
+                updateMessage("Entering equipment 0 of " + total);
+
+                for (int index = 0; index < total; index++) {
+                    BulkEquipmentRow row = rowsToImport.get(index);
+                    try {
+                        equipmentService.createEquipment(row.equipment);
+                        inserted++;
+                    } catch (Exception e) {
+                        skipped++;
+                        appendSkipped(skippedDetails, row.rowNumber, row.serial, e.getMessage());
+                    }
+                    int processed = index + 1;
+                    updateProgress(processed, total);
+                    updateMessage("Entering equipment " + processed + " of " + total);
+                }
+                return new BulkUploadResult(inserted, skipped, skippedDetails.toString(), total);
+            }
+        };
+
+        setBulkUploadRunning(true);
+        progressBulkUpload.progressProperty().bind(task.progressProperty());
+        lblBulkUploadProgress.textProperty().bind(task.messageProperty());
+
+        task.setOnSucceeded(event -> {
+            unbindBulkUploadProgress();
+            BulkUploadResult result = task.getValue();
+            progressBulkUpload.setProgress(1.0);
+            lblBulkUploadProgress.setText("Completed " + result.total + " equipment record(s).");
+            setBulkUploadRunning(false);
+            loadEquipmentFromDatabase();
+            loadCategories();
+            OperationFeedbackHelper.showInfo(
+                    "Upload Complete",
+                    "Equipment upload completed.\n\nImported records: " + result.inserted +
+                            "\nSkipped records: " + result.skipped +
+                            (result.skippedDetails.isBlank() ? "" : "\n\nSkipped details:\n" + result.skippedDetails)
+            );
+        });
+
+        task.setOnFailed(event -> {
+            unbindBulkUploadProgress();
+            progressBulkUpload.setProgress(0);
+            lblBulkUploadProgress.setText("Upload failed");
+            setBulkUploadRunning(false);
+            Throwable error = task.getException();
+            OperationFeedbackHelper.showError(
+                    "Upload Failed",
+                    "Failed to import equipment records.\n\n" + (error == null ? "" : error.getMessage())
+            );
+        });
+
+        Thread worker = new Thread(task, "equipment-bulk-upload");
+        worker.setDaemon(true);
+        worker.start();
+    }
+
+    private void setBulkUploadRunning(boolean running) {
+        if (btnUploadExcel != null) {
+            btnUploadExcel.setDisable(running);
+        }
+        if (btnChooseExcelFile != null) {
+            btnChooseExcelFile.setDisable(running);
+        }
+        if (btnDownloadTemplate != null) {
+            btnDownloadTemplate.setDisable(running);
+        }
+    }
+
+    private void resetBulkUploadProgress() {
+        unbindBulkUploadProgress();
+        if (progressBulkUpload != null) {
+            progressBulkUpload.setProgress(0);
+        }
+        if (lblBulkUploadProgress != null) {
+            lblBulkUploadProgress.setText("No upload running");
+        }
+        setBulkUploadRunning(false);
+    }
+
+    private void unbindBulkUploadProgress() {
+        if (progressBulkUpload != null) {
+            progressBulkUpload.progressProperty().unbind();
+        }
+        if (lblBulkUploadProgress != null) {
+            lblBulkUploadProgress.textProperty().unbind();
         }
     }
 
@@ -474,6 +607,50 @@ public class AddEquipmentController implements Initializable {
                 .append("): ")
                 .append(reason == null || reason.isBlank() ? "Duplicate or invalid record." : reason)
                 .append("\n");
+    }
+
+    private static final class BulkEquipmentRow {
+        private final int rowNumber;
+        private final String serial;
+        private final Equipment equipment;
+
+        private BulkEquipmentRow(int rowNumber, String serial, Equipment equipment) {
+            this.rowNumber = rowNumber;
+            this.serial = serial;
+            this.equipment = equipment;
+        }
+    }
+
+    private static final class EquipmentLoadResult {
+        private final ObservableList<Equipment> equipment;
+        private final Set<String> categories;
+
+        private EquipmentLoadResult(ObservableList<Equipment> equipment, Set<String> categories) {
+            this.equipment = equipment == null ? FXCollections.observableArrayList() : equipment;
+            this.categories = categories == null ? Set.of() : categories;
+        }
+
+        private ObservableList<Equipment> equipment() {
+            return equipment;
+        }
+
+        private Set<String> categories() {
+            return categories;
+        }
+    }
+
+    private static final class BulkUploadResult {
+        private final int inserted;
+        private final int skipped;
+        private final String skippedDetails;
+        private final int total;
+
+        private BulkUploadResult(int inserted, int skipped, String skippedDetails, int total) {
+            this.inserted = inserted;
+            this.skipped = skipped;
+            this.skippedDetails = skippedDetails == null ? "" : skippedDetails;
+            this.total = total;
+        }
     }
 
     // ================= ALERTS =================

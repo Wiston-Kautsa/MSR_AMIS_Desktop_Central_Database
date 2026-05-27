@@ -77,10 +77,12 @@ if defined MSR_AMIS_PACKAGE_API_BASE_URL (
   >> "%APP_DIR%\.env" echo APP_MODE=REMOTE_API
   >> "%APP_DIR%\.env" echo API_BASE_URL=%MSR_AMIS_PACKAGE_API_BASE_URL%
 ) else (
-  > "%APP_DIR%\.env" echo MSR_AMIS_DATA_MODE=REMOTE_API
-  >> "%APP_DIR%\.env" echo MSR_AMIS_API_BASE_URL=http://143.198.153.43:8090
-  >> "%APP_DIR%\.env" echo APP_MODE=REMOTE_API
-  >> "%APP_DIR%\.env" echo API_BASE_URL=http://143.198.153.43:8090
+  echo MSR_AMIS_PACKAGE_API_BASE_URL must be set before packaging the desktop app.
+  echo Example: set MSR_AMIS_PACKAGE_API_BASE_URL=https://api.example.com
+  goto :fail
+)
+
+if not exist "%APP_DIR%\.env" (
   copy /Y "%BUILD_ROOT%desktop-client.env.example" "%APP_DIR%\desktop-client.env.example" >nul
   if errorlevel 1 goto :fail
 )

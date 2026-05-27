@@ -5,8 +5,8 @@ spring:
     name: msr-amis-api
   datasource:
     url: ${MSR_AMIS_DB_URL:jdbc:postgresql://localhost:5432/msr_amis}
-    username: ${MSR_AMIS_DB_USERNAME:postgres}
-    password: ${MSR_AMIS_DB_PASSWORD:postgres}
+    username: ${MSR_AMIS_DB_USERNAME}
+    password: ${MSR_AMIS_DB_PASSWORD}
   jpa:
     hibernate:
       ddl-auto: validate
@@ -34,7 +34,7 @@ management:
 app:
   security:
     jwt:
-      secret: ${MSR_AMIS_JWT_SECRET:VGhpc0lzQVN0cm9uZ0RldmVsb3BtZW50U2VjcmV0S2V5Rm9yTVNSQU1JUw==}
+      secret: ${MSR_AMIS_JWT_SECRET}
       expiration-seconds: ${MSR_AMIS_JWT_EXPIRATION_SECONDS:28800}
     password-reset:
       expose-code-when-email-disabled: ${MSR_AMIS_EXPOSE_RESET_CODE_ON_EMAIL_FAILURE:false}

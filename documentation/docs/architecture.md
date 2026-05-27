@@ -93,17 +93,19 @@ Current behavior:
 - Offline creates, updates, deletes, status changes, distributions, and returns are captured in a local sync queue.
 - Sync Center replays queued changes through the API when a central session is available.
 - Sync Center is exposed in the desktop navigation at `Data & Records -> Sync Center`.
-- Sync Center is role-based: Super Admin sees and processes all records; Admin sees and processes only their own records; User accounts do not see the panel.
+- Sync Center is role-based: Super Admin sees and processes all records; Admin sees Admin/User scoped records while Super Admin records stay hidden; User accounts do not see the panel.
 - Applied queue records are removed from the active queue list after push and remain available through audit/history.
 - If PostgreSQL has changed the same record while the desktop was offline, the queued local change is rejected instead of overwriting central data.
 - API validation and business-rule failures are marked as rejected.
 - After sync, SQLite is refreshed from PostgreSQL so the local database status matches the central state.
+- The central push endpoint currently supports equipment, assignment, distribution, return, user, and department records.
 
 Important limits:
 
 - A user must have logged in online on that computer before they can authenticate offline from the SQLite mirror.
 - A valid central session is required before pending offline actions can be uploaded.
 - Rejected queue items must be reviewed in Sync Center and corrected manually if needed.
+- The JavaFX `Keep Local`, `Keep Central`, and `Merge` conflict buttons are review placeholders until automatic field-level conflict resolution is completed.
 - Desktop Backup & Restore is not the official centralized backup path.
 
 ## Maintenance and Asset History

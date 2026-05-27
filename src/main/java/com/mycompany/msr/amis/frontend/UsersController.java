@@ -1,10 +1,12 @@
 package com.mycompany.msr.amis;
 
 import java.net.URL;
+import java.util.List;
 import java.util.Optional;
 import java.util.ResourceBundle;
 import javafx.application.Platform;
 import javafx.beans.binding.Bindings;
+import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
@@ -70,7 +72,17 @@ public class UsersController implements Initializable {
     @FXML private TableColumn<User, String> colStatus;
 
     private final UserService userService = ServiceRegistry.getUserService();
-    private ObservableList<User> data;
+    private ObservableList<User> data = FXCollections.observableArrayList();
+
+    private static final class UserDirectoryLoad {
+        private final List<User> users;
+        private final List<String> departments;
+
+        private UserDirectoryLoad(List<User> users, List<String> departments) {
+            this.users = users == null ? List.of() : users;
+            this.departments = departments == null ? List.of() : departments;
+        }
+    }
 
     @Override
     public void initialize(URL url, ResourceBundle rb) {
@@ -78,7 +90,6 @@ public class UsersController implements Initializable {
             AccessControl.requireRole(AccessControl.ROLE_SUPER_ADMIN, AccessControl.ROLE_ADMIN, AccessControl.ROLE_USER);
         }
         configureRoleChoices(cmbRole);
-        loadDepartments();
         configurePasswordToggle();
         configureSetupMode();
         configureManagementAvailability();
@@ -94,11 +105,9 @@ public class UsersController implements Initializable {
 
         if (!Session.isSetupMode() && AccessControl.canManageUsers()) {
             setupUsersTableMenu();
-            loadUsers();
-        } else {
-            loadUsers();
-            updateSetupProgress();
         }
+        tableUsers.setItems(data);
+        refreshUsersAsync(false);
     }
 
     private void configureSetupMode() {
@@ -193,9 +202,21 @@ public class UsersController implements Initializable {
     }
 
     private void loadUsers() {
-        data = javafx.collections.FXCollections.observableArrayList();
+        data = FXCollections.observableArrayList();
         String roleFilter = currentDirectoryRoleFilter();
         for (User user : userService.getUsers()) {
+            if (roleFilter == null || roleFilter.equalsIgnoreCase(user.getRole())) {
+                data.add(user);
+            }
+        }
+        tableUsers.setItems(null);
+        tableUsers.setItems(data);
+    }
+
+    private void applyUsers(List<User> users) {
+        data = FXCollections.observableArrayList();
+        String roleFilter = currentDirectoryRoleFilter();
+        for (User user : users == null ? List.<User>of() : users) {
             if (roleFilter == null || roleFilter.equalsIgnoreCase(user.getRole())) {
                 data.add(user);
             }
@@ -215,6 +236,55 @@ public class UsersController implements Initializable {
             cmbDepartment.setValue(DEFAULT_SETUP_DEPARTMENT);
             cmbDepartment.getEditor().setText(DEFAULT_SETUP_DEPARTMENT);
         }
+    }
+
+    private void applyDepartments(List<String> departments) {
+        if (cmbDepartment == null) {
+            return;
+        }
+        cmbDepartment.getItems().clear();
+        cmbDepartment.getItems().addAll(departments == null ? List.of() : departments);
+        cmbDepartment.setEditable(true);
+        if (Session.isSetupMode()) {
+            if (!cmbDepartment.getItems().contains(DEFAULT_SETUP_DEPARTMENT)) {
+                cmbDepartment.getItems().add(DEFAULT_SETUP_DEPARTMENT);
+            }
+            cmbDepartment.setValue(DEFAULT_SETUP_DEPARTMENT);
+            cmbDepartment.getEditor().setText(DEFAULT_SETUP_DEPARTMENT);
+        }
+    }
+
+    private void refreshUsersAsync(boolean showRefreshMessage) {
+        showStatus("Loading User Management...");
+        if (tableUsers != null) {
+            tableUsers.setDisable(true);
+        }
+        UiBackgroundLoader.run(
+                "users-loader",
+                () -> new UserDirectoryLoad(userService.getUsers(), userService.getDepartments()),
+                loaded -> {
+                    applyDepartments(loaded.departments);
+                    applyUsers(loaded.users);
+                    if (tableUsers != null) {
+                        tableUsers.setDisable(false);
+                        tableUsers.getSelectionModel().clearSelection();
+                    }
+                    if (Session.isSetupMode()) {
+                        updateSetupProgress();
+                    } else if (showRefreshMessage) {
+                        showStatus("User Management refreshed.");
+                    } else {
+                        showStatus("Loaded " + data.size() + " user account(s).");
+                    }
+                },
+                error -> {
+                    if (tableUsers != null) {
+                        tableUsers.setDisable(false);
+                    }
+                    showStatus("User Management could not be loaded.");
+                    showAlert("Error", resolveUserCreationError(error));
+                }
+        );
     }
 
     @FXML
@@ -276,6 +346,10 @@ public class UsersController implements Initializable {
     }
 
     private String resolveUserCreationError(Exception exception) {
+        return resolveUserCreationError((Throwable) exception);
+    }
+
+    private String resolveUserCreationError(Throwable exception) {
         if (exception == null) {
             return "User creation failed.";
         }
@@ -498,16 +572,7 @@ public class UsersController implements Initializable {
     }
 
     private void refreshUsers() {
-        loadDepartments();
-        loadUsers();
-        if (tableUsers != null) {
-            tableUsers.getSelectionModel().clearSelection();
-        }
-        if (Session.isSetupMode()) {
-            updateSetupProgress();
-        } else {
-            showStatus("User Management refreshed.");
-        }
+        refreshUsersAsync(true);
     }
 
     private void clearForm() {
@@ -727,7 +792,7 @@ public class UsersController implements Initializable {
     private SetupCounts readSetupCounts() {
         int adminCount = 0;
         int userCount = 0;
-        for (User user : userService.getUsers()) {
+        for (User user : data == null ? List.<User>of() : data) {
             if (!AccessControl.STATUS_ACTIVE.equalsIgnoreCase(user.getStatus())) {
                 continue;
             }

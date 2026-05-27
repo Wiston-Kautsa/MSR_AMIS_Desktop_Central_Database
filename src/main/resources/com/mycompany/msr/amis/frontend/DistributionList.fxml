@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import java.net.URL?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+
+<AnchorPane prefHeight="600.0" prefWidth="900.0"
+            styleClass="content"
+            xmlns="http://javafx.com/javafx/17"
+            xmlns:fx="http://javafx.com/fxml/1"
+            fx:controller="com.mycompany.msr.amis.DistributionReportController">
+
+    <stylesheets>
+        <URL value="@theme.css"/>
+    </stylesheets>
+
+    <VBox spacing="15"
+          AnchorPane.topAnchor="10"
+          AnchorPane.bottomAnchor="10"
+          AnchorPane.leftAnchor="10"
+          AnchorPane.rightAnchor="10">
+
+        <Label text="Distribution List" styleClass="header-title"/>
+
+        <HBox spacing="10">
+            <ComboBox fx:id="cmbPerson" promptText="Assigned To" prefWidth="180"/>
+            <ComboBox fx:id="cmbStatus" promptText="Status" prefWidth="150"/>
+            <DatePicker fx:id="dpFrom" promptText="From" prefWidth="130"/>
+            <DatePicker fx:id="dpTo" promptText="To" prefWidth="130"/>
+            <Button text="Filter" onAction="#handleFilter"/>
+        </HBox>
+
+        <TableView fx:id="tableDistribution" VBox.vgrow="ALWAYS">
+            <columns>
+                <TableColumn fx:id="colNo" text="No." prefWidth="55"/>
+                <TableColumn fx:id="colAssetCode" text="Asset Code" prefWidth="120"/>
+                <TableColumn fx:id="colResponsiblePerson" text="Responsible Person" prefWidth="190"/>
+                <TableColumn fx:id="colAssignedTo" text="Assigned To" prefWidth="150"/>
+                <TableColumn fx:id="colPhone" text="Phone" prefWidth="120"/>
+                <TableColumn fx:id="colNID" text="NID" prefWidth="130"/>
+                <TableColumn fx:id="colStatus" text="Status" prefWidth="120"/>
+                <TableColumn fx:id="colDate" text="Issued Date" prefWidth="140"/>
+            </columns>
+        </TableView>
+
+    </VBox>
+
+</AnchorPane>

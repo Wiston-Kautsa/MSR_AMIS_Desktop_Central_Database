@@ -27,7 +27,6 @@
             <ComboBox fx:id="cmbCondition" promptText="Condition" prefWidth="150"/>
             <Button text="Filter" onAction="#handleFilter"/>
             <Region HBox.hgrow="ALWAYS"/>
-            <Button text="Export" onAction="#handleExport"/>
         </HBox>
 
         <TableView fx:id="tableReturns" VBox.vgrow="ALWAYS">

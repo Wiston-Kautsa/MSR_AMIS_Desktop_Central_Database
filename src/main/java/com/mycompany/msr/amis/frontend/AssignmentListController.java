@@ -62,7 +62,7 @@ public class AssignmentListController implements Initializable {
 
         tableAssignments.setItems(assignmentList);
 
-        loadAssignments();
+        loadAssignmentsAsync(false);
         enableRowMenu();
     }
 
@@ -73,6 +73,28 @@ public class AssignmentListController implements Initializable {
         } catch (Exception e) {
             showError("Load Error", e.getMessage());
         }
+    }
+
+    private void loadAssignmentsAsync(boolean showRefreshMessage) {
+        tableAssignments.setDisable(true);
+        UiBackgroundLoader.run(
+                "assignment-list-loader",
+                () -> FXCollections.observableArrayList(assignmentService.getAssignments()),
+                loaded -> {
+                    assignmentList.setAll(loaded);
+                    tableAssignments.setItems(assignmentList);
+                    tableAssignments.setDisable(false);
+                    if (showRefreshMessage) {
+                        showInfo("Assignment list refreshed successfully.");
+                    }
+                },
+                error -> {
+                    assignmentList.clear();
+                    tableAssignments.setItems(assignmentList);
+                    tableAssignments.setDisable(false);
+                    showError("Load Error", safeMessage(error));
+                }
+        );
     }
 
     @FXML
@@ -101,8 +123,7 @@ public class AssignmentListController implements Initializable {
 
     private void refreshTable() {
         txtSearch.clear();
-        loadAssignments();
-        tableAssignments.setItems(assignmentList);
+        loadAssignmentsAsync(true);
     }
 
     private void enableRowMenu() {
@@ -253,5 +274,11 @@ public class AssignmentListController implements Initializable {
 
     private void showError(String title, String msg) {
         OperationFeedbackHelper.showError(title, msg);
+    }
+
+    private String safeMessage(Throwable throwable) {
+        return throwable == null || throwable.getMessage() == null || throwable.getMessage().isBlank()
+                ? "The assignment list could not be loaded."
+                : throwable.getMessage();
     }
 }

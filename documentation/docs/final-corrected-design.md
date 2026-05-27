@@ -31,12 +31,13 @@ Final architecture:
 
 - can manage `ADMIN` and `USER`
 - cannot create or manage `SUPER_ADMIN`
-- can use Sync Center only for their own queue and audit records
-- can retry their own rejected sync records
-- cannot retry other users' rejected sync records
+- can use Sync Center for Admin/User scoped queue and audit records
+- can retry Admin/User scoped rejected sync records
+- cannot see or retry Super Admin sync records
 
 ### `USER`
 
+- can open User Management as a User-role directory
 - no user-management authority
 - operational access only according to module permissions
 - no Sync Center access

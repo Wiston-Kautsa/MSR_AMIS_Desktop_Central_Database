@@ -1,6 +1,14 @@
 package com.mycompany.msr.amis.api.service;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.mycompany.msr.amis.api.domain.UserAccount;
 import com.mycompany.msr.amis.api.dto.CommonMessageResponse;
+import com.mycompany.msr.amis.api.dto.assignment.AssignmentRequest;
+import com.mycompany.msr.amis.api.dto.assignment.AssignmentResponse;
+import com.mycompany.msr.amis.api.dto.distribution.DistributionBatchRequest;
+import com.mycompany.msr.amis.api.dto.distribution.DistributionRequest;
+import com.mycompany.msr.amis.api.dto.returns.ReturnBatchRequest;
+import com.mycompany.msr.amis.api.dto.returns.ReturnItemRequest;
 import com.mycompany.msr.amis.api.dto.sync.SyncPushRequest;
 import com.mycompany.msr.amis.api.dto.sync.SyncPushItemResponse;
 import com.mycompany.msr.amis.api.dto.sync.SyncPushResponse;
@@ -8,10 +16,15 @@ import com.mycompany.msr.amis.api.dto.sync.SyncQueueRecordRequest;
 import com.mycompany.msr.amis.api.dto.sync.SyncRetryRequest;
 import com.mycompany.msr.amis.api.dto.sync.SyncStatusResponse;
 import com.mycompany.msr.amis.api.dto.sync.SyncValidationIssueResponse;
+import com.mycompany.msr.amis.api.dto.user.UserRequest;
 import com.mycompany.msr.amis.api.exception.ApiException;
+import com.mycompany.msr.amis.api.repository.UserRepository;
 import java.time.OffsetDateTime;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
+import java.util.Map;
 import org.springframework.http.HttpStatus;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
@@ -26,6 +39,10 @@ public class SyncService {
     private final SyncLockService syncLockService;
     private final SyncValidationService syncValidationService;
     private final EquipmentSyncHandler equipmentSyncHandler;
+    private final OperationsService operationsService;
+    private final UserManagementService userManagementService;
+    private final DepartmentService departmentService;
+    private final UserRepository userRepository;
 
     public SyncService(JdbcTemplate jdbcTemplate,
                        SyncQueueService syncQueueService,
@@ -33,7 +50,11 @@ public class SyncService {
                        SyncConflictService syncConflictService,
                        SyncLockService syncLockService,
                        SyncValidationService syncValidationService,
-                       EquipmentSyncHandler equipmentSyncHandler) {
+                       EquipmentSyncHandler equipmentSyncHandler,
+                       OperationsService operationsService,
+                       UserManagementService userManagementService,
+                       DepartmentService departmentService,
+                       UserRepository userRepository) {
         this.jdbcTemplate = jdbcTemplate;
         this.syncQueueService = syncQueueService;
         this.syncAuditService = syncAuditService;
@@ -41,6 +62,10 @@ public class SyncService {
         this.syncLockService = syncLockService;
         this.syncValidationService = syncValidationService;
         this.equipmentSyncHandler = equipmentSyncHandler;
+        this.operationsService = operationsService;
+        this.userManagementService = userManagementService;
+        this.departmentService = departmentService;
+        this.userRepository = userRepository;
     }
 
     public SyncPushResponse pushNow(String actor, SyncPushRequest request) {
@@ -113,11 +138,244 @@ public class SyncService {
     }
 
     private String processRecord(String actor, String machineId, SyncQueueRecordRequest record) {
-        String entityType = normalize(record.entityType()).toUpperCase();
-        if ("EQUIPMENT".equals(entityType)) {
-            return equipmentSyncHandler.apply(actor, machineId, record);
+        String entityType = normalize(record.entityType()).toUpperCase(Locale.ROOT);
+        if (syncQueueService.alreadyProcessed(record.idempotencyKey())) {
+            return "Already processed";
         }
-        throw new ApiException(HttpStatus.BAD_REQUEST, "Unsupported sync entity: " + record.entityType());
+        String message = switch (entityType) {
+            case "EQUIPMENT" -> equipmentSyncHandler.apply(actor, machineId, record);
+            case "ASSIGNMENT" -> applyAssignment(actor, record);
+            case "DISTRIBUTION" -> applyDistribution(actor, record);
+            case "RETURN" -> applyReturn(actor, record);
+            case "USER" -> applyUser(actor, record);
+            case "DEPARTMENT" -> applyDepartment(actor, record);
+            default -> throw new ApiException(HttpStatus.BAD_REQUEST, "Unsupported sync entity: " + record.entityType());
+        };
+        if (!"EQUIPMENT".equals(entityType)) {
+            syncQueueService.markIdempotencyKeyProcessed(
+                    actor,
+                    machineId,
+                    record.idempotencyKey(),
+                    entityType,
+                    record.entityId(),
+                    record.operation(),
+                    record.payload()
+            );
+        }
+        return message;
+    }
+
+    private String applyDepartment(String actor, SyncQueueRecordRequest record) {
+        JsonNode payload = requirePayload(record);
+        String operation = operation(record);
+        switch (operation) {
+            case "CREATE" -> departmentService.createDepartment(actor, text(payload, "name"));
+            case "UPDATE" -> departmentService.updateDepartment(actor, text(payload, "oldName"), text(payload, "name"));
+            case "DELETE" -> departmentService.deleteDepartment(actor, firstNonBlank(text(payload, "name"), record.entityId()));
+            default -> throw new ApiException(HttpStatus.BAD_REQUEST, "Unsupported department sync operation: " + operation);
+        }
+        return "Department " + operation.toLowerCase(Locale.ROOT) + " applied";
+    }
+
+    private String applyAssignment(String actor, SyncQueueRecordRequest record) {
+        JsonNode payload = requirePayload(record);
+        String operation = operation(record);
+        switch (operation) {
+            case "CREATE" -> operationsService.createAssignment(actor, assignmentRequest(payload));
+            case "UPDATE" -> operationsService.updateAssignment(actor, resolveAssignmentId(record), assignmentRequest(payload));
+            case "STATUS" -> operationsService.updateAssignmentStatus(actor, resolveAssignmentId(record), text(payload, "status"));
+            case "DELETE" -> operationsService.deleteAssignment(actor, resolveAssignmentId(record));
+            default -> throw new ApiException(HttpStatus.BAD_REQUEST, "Unsupported assignment sync operation: " + operation);
+        }
+        return "Assignment " + operation.toLowerCase(Locale.ROOT) + " applied";
+    }
+
+    private String applyDistribution(String actor, SyncQueueRecordRequest record) {
+        JsonNode payload = requirePayload(record);
+        int assignmentId = resolveAssignmentId(payload.path("assignment"), record.entityId());
+        List<DistributionRequest> distributions = new ArrayList<>();
+        for (JsonNode item : payload.path("items")) {
+            distributions.add(new DistributionRequest(
+                    resolveAssetCode(item),
+                    text(item, "assignedTo"),
+                    text(item, "phone"),
+                    text(item, "nid")
+            ));
+        }
+        operationsService.distributeBatch(actor, new DistributionBatchRequest(assignmentId, distributions));
+        return "Distribution sync applied";
+    }
+
+    private String applyReturn(String actor, SyncQueueRecordRequest record) {
+        JsonNode payload = requirePayload(record);
+        int assignmentId = resolveAssignmentId(payload.path("assignment"), record.entityId());
+        List<ReturnItemRequest> items = new ArrayList<>();
+        for (JsonNode item : payload.path("items")) {
+            items.add(new ReturnItemRequest(
+                    firstNonBlank(text(item, "originalAssetCode"), resolveAssetCode(item)),
+                    text(item, "enteredIdentifier"),
+                    text(item, "returnedBy"),
+                    text(item, "phone"),
+                    text(item, "nid"),
+                    text(item, "condition"),
+                    text(item, "remarks"),
+                    item.path("replacement").asBoolean(false)
+            ));
+        }
+        operationsService.completeReturns(actor, new ReturnBatchRequest(
+                assignmentId,
+                text(payload, "equipmentType"),
+                text(payload, "outstandingRemark"),
+                stringMap(payload.path("outstandingRemarks")),
+                items
+        ));
+        return "Return sync applied";
+    }
+
+    private String applyUser(String actor, SyncQueueRecordRequest record) {
+        JsonNode payload = requirePayload(record);
+        String operation = operation(record);
+        switch (operation) {
+            case "CREATE" -> userManagementService.createUser(actor, userRequest(payload));
+            case "UPDATE" -> userManagementService.updateUser(actor, resolveUserId(record), userRequest(payload));
+            case "STATUS" -> userManagementService.updateStatus(actor, resolveUserId(record), text(payload, "status"));
+            case "DELETE" -> userManagementService.deleteUser(actor, resolveUserId(record));
+            default -> throw new ApiException(HttpStatus.BAD_REQUEST, "Unsupported user sync operation: " + operation);
+        }
+        return "User " + operation.toLowerCase(Locale.ROOT) + " applied";
+    }
+
+    private AssignmentRequest assignmentRequest(JsonNode payload) {
+        return new AssignmentRequest(
+                text(payload, "person"),
+                text(payload, "department"),
+                text(payload, "equipmentType"),
+                text(payload, "reason"),
+                payload.path("quantity").asInt()
+        );
+    }
+
+    private UserRequest userRequest(JsonNode payload) {
+        String email = text(payload, "email");
+        return new UserRequest(
+                text(payload, "name"),
+                firstNonBlank(text(payload, "username"), email.toLowerCase(Locale.ROOT)),
+                email,
+                text(payload, "role"),
+                text(payload, "department"),
+                text(payload, "phone"),
+                text(payload, "password")
+        );
+    }
+
+    private int resolveAssignmentId(SyncQueueRecordRequest record) {
+        return resolveAssignmentId(requirePayload(record), record.entityId());
+    }
+
+    private int resolveAssignmentId(JsonNode payload, String fallbackId) {
+        int directId = firstPositive(payload.path("id").asInt(0), parseInt(fallbackId));
+        if (directId > 0) {
+            return directId;
+        }
+        String person = text(payload, "person");
+        String department = text(payload, "department");
+        String equipmentType = text(payload, "equipmentType");
+        String reason = text(payload, "reason");
+        int quantity = payload.path("quantity").asInt(0);
+        for (AssignmentResponse assignment : operationsService.getAssignments()) {
+            if (same(person, assignment.person())
+                    && same(department, assignment.department())
+                    && same(equipmentType, assignment.equipmentType())
+                    && same(reason, assignment.reason())
+                    && quantity == assignment.quantity()) {
+                return assignment.id();
+            }
+        }
+        throw new ApiException(HttpStatus.NOT_FOUND, "Assignment could not be resolved for sync.");
+    }
+
+    private long resolveUserId(SyncQueueRecordRequest record) {
+        JsonNode payload = requirePayload(record);
+        long directId = firstPositive(payload.path("id").asLong(0), parseLong(record.entityId()));
+        if (directId > 0) {
+            return directId;
+        }
+        String email = firstNonBlank(text(payload, "email"), text(record.baseline(), "email"));
+        UserAccount user = userRepository.findByEmailIgnoreCaseOrUsernameIgnoreCase(email, email)
+                .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "User could not be resolved for sync."));
+        return user.getId();
+    }
+
+    private String resolveAssetCode(JsonNode item) {
+        String assetCode = firstNonBlank(text(item, "assetCode"), text(item, "originalAssetCode"));
+        if (!assetCode.isBlank()) {
+            return assetCode;
+        }
+        String serialNumber = text(item, "serialNumber");
+        if (serialNumber.isBlank()) {
+            return "";
+        }
+        return jdbcTemplate.query(
+                "SELECT asset_code FROM equipment WHERE LOWER(TRIM(serial_number))=LOWER(TRIM(?)) LIMIT 1",
+                (rs, rowNum) -> rs.getString("asset_code"),
+                serialNumber
+        ).stream().findFirst().orElse("");
+    }
+
+    private JsonNode requirePayload(SyncQueueRecordRequest record) {
+        JsonNode payload = record.payload();
+        if (payload == null || payload.isMissingNode() || payload.isNull()) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "Payload is required.");
+        }
+        return payload;
+    }
+
+    private String operation(SyncQueueRecordRequest record) {
+        return normalize(record.operation()).toUpperCase(Locale.ROOT);
+    }
+
+    private Map<String, String> stringMap(JsonNode node) {
+        Map<String, String> values = new LinkedHashMap<>();
+        if (node != null && node.isObject()) {
+            node.fields().forEachRemaining(entry -> values.put(entry.getKey(), entry.getValue().asText("")));
+        }
+        return values;
+    }
+
+    private String text(JsonNode payload, String field) {
+        if (payload == null || payload.isMissingNode() || payload.isNull()) {
+            return "";
+        }
+        JsonNode value = payload.path(field);
+        return value.isMissingNode() || value.isNull() ? "" : value.asText("");
+    }
+
+    private boolean same(String first, String second) {
+        return normalize(first).equalsIgnoreCase(normalize(second));
+    }
+
+    private int firstPositive(int first, int second) {
+        return first > 0 ? first : second;
+    }
+
+    private long firstPositive(long first, long second) {
+        return first > 0 ? first : second;
+    }
+
+    private int parseInt(String value) {
+        try {
+            return Integer.parseInt(normalize(value));
+        } catch (Exception ignored) {
+            return 0;
+        }
+    }
+
+    private long parseLong(String value) {
+        try {
+            return Long.parseLong(normalize(value));
+        } catch (Exception ignored) {
+            return 0L;
+        }
     }
 
     private SyncPushItemResponse result(Long queueId, SyncQueueRecordRequest record, String status, String message) {

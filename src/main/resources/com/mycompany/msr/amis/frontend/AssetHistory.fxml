@@ -28,6 +28,7 @@
             <Button text="Clear" onAction="#handleClear"/>
             <Region HBox.hgrow="ALWAYS"/>
             <Button text="Export" onAction="#handleExport"/>
+            <Button text="PDF" onAction="#handleExportPdf"/>
         </HBox>
 
         <GridPane hgap="18" vgap="10" styleClass="card">

@@ -96,7 +96,7 @@ Use:
 
 - `MSR_AMIS_DATA_MODE=REMOTE_API` for strict centralized production
 - `MSR_AMIS_DATA_MODE=AUTO` only when offline work and Sync Center recovery are intentionally enabled
-- `MSR_AMIS_API_BASE_URL=http://143.198.153.43:8090`
+- `MSR_AMIS_API_BASE_URL=http://YOUR_SERVER_HOST:8090`
 
 Important:
 

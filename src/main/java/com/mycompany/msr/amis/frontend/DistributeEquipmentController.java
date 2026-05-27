@@ -2,6 +2,7 @@ package com.mycompany.msr.amis;
 
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
+import javafx.concurrent.Task;
 import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
 import javafx.fxml.Initializable;
@@ -9,6 +10,7 @@ import javafx.scene.control.Alert;
 import javafx.scene.control.Button;
 import javafx.scene.control.ComboBox;
 import javafx.scene.control.Label;
+import javafx.scene.control.ProgressBar;
 import javafx.scene.control.TableColumn;
 import javafx.scene.control.TableView;
 import javafx.scene.control.TextField;
@@ -67,6 +69,8 @@ public class DistributeEquipmentController implements Initializable {
     @FXML private Label lblSelectedAssignment;
     @FXML private Label lblAssignmentStats;
     @FXML private Label lblSelectedFile;
+    @FXML private Label lblBulkUploadProgress;
+    @FXML private ProgressBar progressBulkUpload;
 
     @FXML private TextField txtName;
     @FXML private TextField txtPhone;
@@ -83,6 +87,9 @@ public class DistributeEquipmentController implements Initializable {
     @FXML private Button btnSave;
     @FXML private Button btnAdd;
     @FXML private Button btnClear;
+    @FXML private Button btnDownloadTemplate;
+    @FXML private Button btnChooseExcelFile;
+    @FXML private Button btnUploadExcel;
 
     private final ObservableList<Distribution> stagedData = FXCollections.observableArrayList();
     private final ObservableList<Distribution> currentDistributionData = FXCollections.observableArrayList();
@@ -97,19 +104,51 @@ public class DistributeEquipmentController implements Initializable {
     private final AssignmentService assignmentService = ServiceRegistry.getAssignmentService();
     private final DistributionService distributionService = ServiceRegistry.getDistributionService();
 
+    private static final class DistributionSetupData {
+        private final List<Assignment> assignments;
+        private final List<String> availableEquipment;
+        private final List<Distribution> currentDistributions;
+
+        private DistributionSetupData(List<Assignment> assignments, List<String> availableEquipment, List<Distribution> currentDistributions) {
+            this.assignments = assignments == null ? List.of() : assignments;
+            this.availableEquipment = availableEquipment == null ? List.of() : availableEquipment;
+            this.currentDistributions = currentDistributions == null ? List.of() : currentDistributions;
+        }
+    }
+
     @Override
     public void initialize(URL url, ResourceBundle rb) {
         setupTable();
-        loadAssignments();
         setAssignmentDependentState(false);
-
-        if (equipmentCombo != null) {
-            loadAvailableEquipment();
-        }
-
-        loadCurrentDistributions();
+        loadInitialDataAsync();
         btnSave.setDisable(true);
         cmbAssignments.setOnAction(e -> loadAssignmentDetails());
+        resetBulkUploadProgress();
+    }
+
+    private void loadInitialDataAsync() {
+        distributionTable.setDisable(true);
+        UiBackgroundLoader.run(
+                "distribution-loader",
+                () -> new DistributionSetupData(
+                        assignmentService.getAssignments(),
+                        distributionService.getAvailableEquipment(),
+                        distributionService.getCurrentDistributions()
+                ),
+                loaded -> {
+                    applyAssignments(loaded.assignments);
+                    if (equipmentCombo != null) {
+                        equipmentCombo.getItems().setAll(loaded.availableEquipment);
+                    }
+                    currentDistributionData.setAll(loaded.currentDistributions);
+                    distributionTable.setItems(currentDistributionData);
+                    distributionTable.setDisable(false);
+                },
+                error -> {
+                    distributionTable.setDisable(false);
+                    showError("Load error: " + safeMessage(error));
+                }
+        );
     }
 
     private void setupTable() {
@@ -132,6 +171,13 @@ public class DistributeEquipmentController implements Initializable {
         assignmentMap.clear();
 
         List<Assignment> list = assignmentService.getAssignments();
+        applyAssignments(list);
+    }
+
+    private void applyAssignments(List<Assignment> list) {
+        cmbAssignments.getItems().clear();
+        assignmentMap.clear();
+
         for (Assignment assignment : list) {
             if (AccessControl.STATUS_FROZEN.equalsIgnoreCase(assignment.getStatus())
                     || AccessControl.STATUS_RETIRED.equalsIgnoreCase(assignment.getStatus())) {
@@ -147,6 +193,12 @@ public class DistributeEquipmentController implements Initializable {
             cmbAssignments.getItems().add(label);
             assignmentMap.put(label, assignment);
         }
+    }
+
+    private String safeMessage(Throwable throwable) {
+        return throwable == null || throwable.getMessage() == null || throwable.getMessage().isBlank()
+                ? "The distribution screen could not be loaded."
+                : throwable.getMessage();
     }
 
     private void loadAvailableEquipment() {
@@ -190,6 +242,7 @@ public class DistributeEquipmentController implements Initializable {
             lblSelectedFile.setText("No file selected");
             distributionTable.setItems(currentDistributionData);
             setAssignmentDependentState(false);
+            resetBulkUploadProgress();
             updateProgress();
             return;
         }
@@ -206,6 +259,7 @@ public class DistributeEquipmentController implements Initializable {
                         " (" + getAssignmentStatus(existingDistributedQty, requiredQty) + ")"
         );
         lblSelectedFile.setText("No file selected");
+        resetBulkUploadProgress();
         txtName.setText(selectedAssignment.getPerson());
         loadAvailableEquipmentForAssignment();
         distributionTable.setItems(stagedData);
@@ -304,9 +358,9 @@ public class DistributeEquipmentController implements Initializable {
                 " | Remaining: " + remaining
         );
 
-        btnAdd.setDisable(requiredQty == 0 || entered >= requiredQty);
+        btnAdd.setDisable(entered >= requiredQty && requiredQty > 0);
         btnSave.setDisable(requiredQty == 0 || staged == 0 || entered != requiredQty);
-        btnClear.setDisable(requiredQty == 0);
+        btnClear.setDisable(false);
     }
 
     private void showInfo(String msg) {
@@ -323,15 +377,19 @@ public class DistributeEquipmentController implements Initializable {
 
     @FXML
     private void clearForm() {
-        if (!isAssignmentSelected()) {
-            return;
-        }
-
         clearFields();
         stagedData.clear();
         usedAssets.clear();
         selectedFile = null;
         lblSelectedFile.setText("No file selected");
+        resetBulkUploadProgress();
+
+        if (selectedAssignment == null) {
+            distributionTable.setItems(currentDistributionData);
+            updateProgress();
+            return;
+        }
+
         txtName.setText(selectedAssignment.getPerson());
         loadAvailableEquipmentForAssignment();
         distributionTable.setItems(stagedData);
@@ -354,6 +412,7 @@ public class DistributeEquipmentController implements Initializable {
         selectedFile = fileChooser.showOpenDialog(null);
         if (selectedFile != null) {
             lblSelectedFile.setText(selectedFile.getName());
+            resetBulkUploadProgress();
             OperationFeedbackHelper.showInfo(
                     "File Selected",
                     "Ready to upload distribution data from:\n" + selectedFile.getName()
@@ -449,11 +508,6 @@ public class DistributeEquipmentController implements Initializable {
             );
             return;
         }
-
-        OperationFeedbackHelper.showInfo(
-                "Upload Starting",
-                "Reading distribution data from:\n" + selectedFile.getName()
-        );
 
         try (FileInputStream inputStream = new FileInputStream(selectedFile);
              Workbook workbook = WorkbookFactory.create(inputStream)) {
@@ -556,7 +610,47 @@ public class DistributeEquipmentController implements Initializable {
                 return;
             }
 
-            distributionService.distributeEquipmentBatch(selectedAssignment.getId(), importedRows);
+            runBulkUploadTask(selectedAssignment.getId(), importedRows);
+        } catch (Exception e) {
+            e.printStackTrace();
+            resetBulkUploadProgress();
+            OperationFeedbackHelper.showError(
+                    "Upload Failed",
+                    "Failed to import the distribution list.\n\n" + e.getMessage()
+            );
+        }
+    }
+
+    private void runBulkUploadTask(int assignmentId, List<Distribution> importedRows) {
+        Task<Integer> task = new Task<>() {
+            @Override
+            protected Integer call() throws Exception {
+                int total = importedRows.size();
+                updateProgress(0, total);
+                updateMessage("Distributing equipment 0 of " + total);
+                for (int index = 0; index < total; index++) {
+                    distributionService.distributeEquipmentBatch(
+                            assignmentId,
+                            List.of(importedRows.get(index))
+                    );
+                    int processed = index + 1;
+                    updateProgress(processed, total);
+                    updateMessage("Distributing equipment " + processed + " of " + total);
+                }
+                return total;
+            }
+        };
+
+        setBulkUploadRunning(true);
+        progressBulkUpload.progressProperty().bind(task.progressProperty());
+        lblBulkUploadProgress.textProperty().bind(task.messageProperty());
+
+        task.setOnSucceeded(event -> {
+            unbindBulkUploadProgress();
+            int importedCount = task.getValue();
+            progressBulkUpload.setProgress(1);
+            lblBulkUploadProgress.setText("Completed " + importedCount + " equipment record(s).");
+            setBulkUploadRunning(false);
 
             stagedData.clear();
             usedAssets.clear();
@@ -567,14 +661,66 @@ public class DistributeEquipmentController implements Initializable {
 
             OperationFeedbackHelper.showInfo(
                     "Upload Complete",
-                    "Distribution upload completed successfully.\n\nImported records: " + importedRows.size()
+                    "Distribution upload completed successfully.\n\nImported records: " + importedCount
             );
-        } catch (Exception e) {
-            e.printStackTrace();
+        });
+
+        task.setOnFailed(event -> {
+            unbindBulkUploadProgress();
+            progressBulkUpload.setProgress(0);
+            lblBulkUploadProgress.setText("Upload failed");
+            setBulkUploadRunning(false);
+            Throwable error = task.getException();
             OperationFeedbackHelper.showError(
                     "Upload Failed",
-                    "Failed to import the distribution list.\n\n" + e.getMessage()
+                    "Failed to import the distribution list.\n\n" + (error == null ? "" : error.getMessage())
             );
+        });
+
+        Thread worker = new Thread(task, "distribution-bulk-upload");
+        worker.setDaemon(true);
+        worker.start();
+    }
+
+    private void setBulkUploadRunning(boolean running) {
+        if (btnUploadExcel != null) {
+            btnUploadExcel.setDisable(running);
+        }
+        if (btnChooseExcelFile != null) {
+            btnChooseExcelFile.setDisable(running);
+        }
+        if (btnDownloadTemplate != null) {
+            btnDownloadTemplate.setDisable(running);
+        }
+        if (btnAdd != null) {
+            btnAdd.setDisable(running || (existingDistributedQty + stagedData.size() >= requiredQty && requiredQty > 0));
+        }
+        if (btnSave != null) {
+            btnSave.setDisable(running || requiredQty == 0 || stagedData.isEmpty()
+                    || existingDistributedQty + stagedData.size() != requiredQty);
+        }
+        if (btnClear != null) {
+            btnClear.setDisable(running);
+        }
+    }
+
+    private void resetBulkUploadProgress() {
+        unbindBulkUploadProgress();
+        if (progressBulkUpload != null) {
+            progressBulkUpload.setProgress(0);
+        }
+        if (lblBulkUploadProgress != null) {
+            lblBulkUploadProgress.setText("No upload running");
+        }
+        setBulkUploadRunning(false);
+    }
+
+    private void unbindBulkUploadProgress() {
+        if (progressBulkUpload != null) {
+            progressBulkUpload.progressProperty().unbind();
+        }
+        if (lblBulkUploadProgress != null) {
+            lblBulkUploadProgress.textProperty().unbind();
         }
     }
 
@@ -646,15 +792,19 @@ public class DistributeEquipmentController implements Initializable {
 
     private void setAssignmentDependentState(boolean enabled) {
         if (manualEntryPane != null) {
-            manualEntryPane.setDisable(!enabled);
+            manualEntryPane.setDisable(false);
         }
         if (bulkImportPane != null) {
-            bulkImportPane.setDisable(!enabled);
+            bulkImportPane.setDisable(false);
         }
     }
 
     private boolean isAssignmentSelected() {
-        return selectedAssignment != null;
+        if (selectedAssignment != null) {
+            return true;
+        }
+        showWarning("Select assignment first");
+        return false;
     }
 
     private void resetAfterDistributionSave() {
